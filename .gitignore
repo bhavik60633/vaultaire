@@ -26,6 +26,8 @@ captures/
 *.aab
 *.ap_
 *.dex
+# Native libraries built by cargo-ndk (rebuild them; see spikes/phase0/README.md)
+jniLibs/
 
 # --- IDEs ---
 .idea/

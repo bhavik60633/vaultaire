@@ -91,6 +91,17 @@ pub fn argon2id_timing(memory_kib: u32, passes: u32, lanes: u32) -> Result<Argon
     Ok(Argon2Timing { millis, memory_kib, passes, lanes })
 }
 
+/// ADR-001 criterion 3: a hand-written JNI export with no JNA involved, for comparing
+/// start-up cost. Primitives only, so it needs no JNIEnv calls and no `jni` crate.
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_dev_vaultaire_spike_Jni_noop(
+    _env: *mut std::ffi::c_void,
+    _class: *mut std::ffi::c_void,
+    x: i32,
+) -> i32 {
+    x.wrapping_add(1)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
