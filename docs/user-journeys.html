@@ -1,0 +1,649 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>How Vaultaire works</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap">
+<style>
+/* Layout: one reading column; every journey is a top-to-bottom flowchart built from HTML so it reflows on a phone.
+   Dark-first "Obsidian" palette with the "Ivory" light variant, both from the Vaultaire design system. */
+:root {
+  --bg: #0B0B0C;
+  --panel: #141416;
+  --panel-2: #1C1C1F;
+  --line: rgba(255, 245, 230, 0.10);
+  --line-2: rgba(255, 245, 230, 0.20);
+  --fg: #F2EEE6;
+  --fg-2: #A8A39A;
+  --fg-3: #8A857C;
+  --accent: #C9B38A;
+  --accent-soft: rgba(201, 179, 138, 0.12);
+  --ok: #7DB8A5;
+  --warn: #D8AE5E;
+  --crit: #E0A196;
+  --display: "Cormorant Garamond", Georgia, serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #F7F4EE; --panel: #FBF9F5; --panel-2: #FFFFFF; --line: #E3DED4; --line-2: #CBC4B6;
+    --fg: #1A1917; --fg-2: #5E5A53; --fg-3: #6E6A62; --accent: #7A6240; --accent-soft: rgba(122, 98, 64, 0.10);
+    --ok: #2F6B5A; --warn: #85570F; --crit: #9A3B30; color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #F7F4EE; --panel: #FBF9F5; --panel-2: #FFFFFF; --line: #E3DED4; --line-2: #CBC4B6;
+  --fg: #1A1917; --fg-2: #5E5A53; --fg-3: #6E6A62; --accent: #7A6240; --accent-soft: rgba(122, 98, 64, 0.10);
+  --ok: #2F6B5A; --warn: #85570F; --crit: #9A3B30; color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+.page { max-width: 760px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 72px; }
+h1, h2, h3 { font-family: var(--display); font-weight: 500; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(38px, 7vw, 54px); line-height: 1.05; letter-spacing: 0.01em; }
+h2 { font-size: 30px; line-height: 1.15; }
+h3 { font-size: 21px; line-height: 1.2; }
+p { margin: 0; }
+a { color: var(--accent); }
+a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+.eyebrow { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-3); }
+.lede { font-size: 17px; color: var(--fg-2); max-width: 62ch; }
+.muted { color: var(--fg-2); }
+.small { font-size: 13px; }
+code, .mono { font-family: var(--mono); font-size: 0.9em; }
+
+/* Header */
+header { display: flex; flex-direction: column; gap: 14px; padding-bottom: 28px; border-bottom: 1px solid var(--line); }
+.status { display: inline-flex; align-self: flex-start; gap: 8px; align-items: center; font-size: 12.5px; color: var(--fg-2); border: 1px solid var(--line-2); border-radius: 6px; padding: 4px 10px; }
+.status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); }
+
+/* Journey index */
+.toc { display: flex; flex-wrap: wrap; gap: 8px; padding-block: 20px; }
+.toc a { font-size: 13.5px; text-decoration: none; color: var(--fg); border: 1px solid var(--line-2); border-radius: 6px; padding: 6px 11px; }
+.toc a:hover { border-color: var(--accent); color: var(--accent); }
+.toc a span { color: var(--fg-3); font-family: var(--mono); font-size: 11.5px; margin-right: 6px; }
+
+/* Sections */
+section { padding-block: 40px 8px; border-top: 1px solid var(--line); }
+section:first-of-type { border-top: 0; }
+.sec-head { display: flex; flex-direction: column; gap: 8px; margin-bottom: 22px; }
+.sec-head .eyebrow { font-family: var(--mono); letter-spacing: 0.06em; }
+.note { margin-top: 18px; font-size: 13.5px; color: var(--fg-2); max-width: 64ch; }
+.note strong { color: var(--fg); font-weight: 600; }
+
+/* Keys to remember */
+.keys { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-top: 24px; }
+.key { padding: 14px 16px; border-radius: 10px; background: var(--panel); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
+.key b { font-weight: 600; font-size: 14.5px; }
+.key span { font-size: 13.5px; color: var(--fg-2); }
+
+/* Overview map */
+figure { margin: 0; }
+.map-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: 14px 8px; }
+.map { display: block; width: 100%; min-width: 620px; height: auto; color: var(--fg); }
+.map .box { fill: var(--panel-2); stroke: var(--line-2); stroke-width: 1.2; }
+.map .box.hot { stroke: var(--accent); }
+.map .box.file { stroke-dasharray: 5 4; }
+.map .t { fill: currentColor; font-family: var(--body); font-size: 13.5px; font-weight: 600; }
+.map .s { fill: var(--fg-2); font-family: var(--body); font-size: 11.5px; }
+.map .e { stroke: var(--fg-3); stroke-width: 1.4; fill: none; }
+.map .el { fill: var(--fg-2); font-family: var(--body); font-size: 11.5px; }
+.map .head { fill: var(--fg-3); }
+figcaption { margin-top: 10px; font-size: 13px; color: var(--fg-2); }
+
+/* Flowchart parts */
+.flow { display: flex; flex-direction: column; min-width: 0; }
+.node { min-width: 0; background: var(--panel); border: 1px solid var(--line-2); border-radius: 10px; padding: 11px 14px; display: flex; flex-direction: column; gap: 3px; }
+.node b { font-weight: 600; font-size: 14.5px; line-height: 1.35; }
+.node span { font-size: 13.5px; color: var(--fg-2); line-height: 1.45; }
+.node.start { border-color: var(--accent); background: var(--accent-soft); }
+.node.q { border-style: dashed; }
+.node.q b::before { content: ""; display: inline-block; width: 8px; height: 8px; margin: 0 9px 1px 1px; border: 1.5px solid var(--accent); transform: rotate(45deg); }
+.node.good { border-color: var(--ok); }
+.node.good b { color: var(--ok); }
+.node.warn { border-color: var(--warn); }
+.node.warn b { color: var(--warn); }
+.node.stop { border-color: var(--crit); }
+.node.stop b { color: var(--crit); }
+.node .loop { margin-top: 4px; font-size: 12.5px; color: var(--fg-3); font-family: var(--mono); }
+.arrow { position: relative; height: 30px; margin-left: 24px; display: flex; align-items: center; }
+.arrow::before { content: ""; position: absolute; left: 0; top: 2px; bottom: 7px; border-left: 1.5px solid var(--fg-3); }
+.arrow::after { content: ""; position: absolute; left: -4px; bottom: 1px; border-left: 4.75px solid transparent; border-right: 4.75px solid transparent; border-top: 6px solid var(--fg-3); }
+.arrow i { font-style: normal; font-size: 12px; color: var(--fg-3); margin-left: 14px; }
+.split { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.flow.spaced { margin-top: 24px; }
+.branch { display: flex; flex-direction: column; min-width: 0; }
+.branch > .tag { align-self: flex-start; font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); border: 1px solid var(--accent); border-radius: 5px; padding: 2px 8px; margin-bottom: 8px; }
+.branch > .tag.bad { color: var(--crit); border-color: var(--crit); }
+.branch > .tag.neutral { color: var(--fg-2); border-color: var(--line-2); }
+
+/* Tiers table */
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 520px; }
+th, td { text-align: left; padding: 11px 14px; border-top: 1px solid var(--line); vertical-align: top; }
+thead th { border-top: 0; font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-3); font-weight: 500; background: var(--panel); }
+td:first-child { font-weight: 600; white-space: nowrap; }
+.pill { display: inline-block; font-size: 11px; letter-spacing: 0.06em; border-radius: 4px; padding: 1px 6px; border: 1px solid currentColor; }
+.pill.n { color: var(--fg-2); } .pill.c { color: var(--accent); } .pill.x { color: var(--crit); }
+
+/* Problem finder */
+.problems { display: flex; flex-direction: column; gap: 10px; }
+details { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+details[open] { border-color: var(--line-2); }
+summary { cursor: pointer; list-style: none; padding: 13px 16px; display: flex; gap: 12px; align-items: baseline; font-weight: 500; }
+summary::-webkit-details-marker { display: none; }
+summary::before { content: "+"; font-family: var(--mono); color: var(--accent); width: 12px; flex-shrink: 0; }
+details[open] summary::before { content: "–"; }
+summary em { font-style: normal; margin-left: auto; font-size: 12px; font-weight: 400; color: var(--fg-3); white-space: nowrap; }
+details .flow { padding: 2px 16px 16px; }
+
+/* Never list */
+.never { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+.never li { padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px; display: flex; gap: 10px; }
+.never li::before { content: ""; flex-shrink: 0; width: 14px; height: 14px; margin-top: 3px; border-radius: 50%; border: 1.5px solid var(--crit); background: linear-gradient(135deg, transparent 45%, var(--crit) 45%, var(--crit) 55%, transparent 55%); }
+
+footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--fg-3); }
+
+@media (max-width: 520px) {
+  .page { padding-block: 28px 56px; }
+  h2 { font-size: 26px; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+<header>
+  <span class="eyebrow">Vaultaire · user journeys</span>
+  <h1>How Vaultaire works</h1>
+  <p class="lede">Everything you do in Vaultaire, as flowcharts: setting up, opening the vault, finding and showing secrets, adding things, locking, backups, and what to do when something goes wrong.</p>
+  <span class="status">Describes the app as designed (V1). The phone prototype shows most of these screens with sample data.</span>
+</header>
+
+<nav class="toc" aria-label="Journeys">
+  <a href="#map"><span>00</span>The big picture</a>
+  <a href="#setup"><span>01</span>First-time setup</a>
+  <a href="#unlock"><span>02</span>Opening your vault</a>
+  <a href="#find"><span>03</span>Finding things</a>
+  <a href="#reveal"><span>04</span>Showing and copying</a>
+  <a href="#add"><span>05</span>Adding something</a>
+  <a href="#lock"><span>06</span>Locking</a>
+  <a href="#backup"><span>07</span>Backups and a new phone</a>
+  <a href="#problems"><span>08</span>When something goes wrong</a>
+  <a href="#settings"><span>09</span>Changing settings</a>
+  <a href="#never"><span>10</span>What Vaultaire never does</a>
+</nav>
+
+<!-- 00 -->
+<section id="map">
+  <div class="sec-head">
+    <span class="eyebrow">00</span>
+    <h2>The big picture</h2>
+    <p class="muted">Your vault is always in one of two states: locked or open. Everything else is a way between them.</p>
+  </div>
+  <figure>
+    <div class="map-wrap">
+      <svg class="map" viewBox="0 68 660 222" role="img" aria-label="Setup leads to a locked vault. Fingerprint or password opens it; locking closes it. An open vault can export an encrypted backup file, which restores onto a new phone with the Recovery Key and vault password.">
+        <defs>
+          <marker id="tip" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head" d="M0 0 L10 5 L0 10 z"/></marker>
+        </defs>
+        <!-- nodes -->
+        <rect class="box" x="16" y="104" width="140" height="62" rx="10"/>
+        <text class="t" x="86" y="131" text-anchor="middle">First launch</text>
+        <text class="s" x="86" y="149" text-anchor="middle">no vault yet</text>
+
+        <rect class="box" x="236" y="104" width="150" height="62" rx="10"/>
+        <text class="t" x="311" y="131" text-anchor="middle">Locked</text>
+        <text class="s" x="311" y="149" text-anchor="middle">nothing readable</text>
+
+        <rect class="box hot" x="474" y="104" width="170" height="62" rx="10"/>
+        <text class="t" x="559" y="131" text-anchor="middle">Open</text>
+        <text class="s" x="559" y="149" text-anchor="middle">your items, on this phone</text>
+
+        <rect class="box file" x="474" y="226" width="170" height="56" rx="10"/>
+        <text class="t" x="559" y="250" text-anchor="middle">Backup file</text>
+        <text class="s" x="559" y="267" text-anchor="middle">encrypted, you keep it</text>
+
+        <rect class="box" x="236" y="226" width="150" height="56" rx="10"/>
+        <text class="t" x="311" y="250" text-anchor="middle">New phone</text>
+        <text class="s" x="311" y="267" text-anchor="middle">Vaultaire installed</text>
+
+        <!-- edges -->
+        <line class="e" x1="156" y1="135" x2="234" y2="135" marker-end="url(#tip)"/>
+        <text class="el" x="195" y="126" text-anchor="middle">set up</text>
+
+        <path class="e" d="M386 120 C 420 96, 440 96, 472 120" marker-end="url(#tip)"/>
+        <text class="el" x="430" y="84" text-anchor="middle">fingerprint, or</text>
+        <text class="el" x="430" y="98" text-anchor="middle">password + screen lock</text>
+
+        <path class="e" d="M474 152 C 440 176, 420 176, 388 152" marker-end="url(#tip)"/>
+        <text class="el" x="430" y="186" text-anchor="middle">lock · idle 2 min</text>
+        <text class="el" x="430" y="200" text-anchor="middle">away 30 s · screen off</text>
+
+        <line class="e" x1="559" y1="166" x2="559" y2="224" marker-end="url(#tip)"/>
+        <text class="el" x="566" y="200">export</text>
+        <text class="el" x="566" y="213">(needs password)</text>
+
+        <line class="e" x1="474" y1="254" x2="388" y2="254" marker-end="url(#tip)"/>
+        <text class="el" x="431" y="246" text-anchor="middle">copy it over</text>
+
+        <line class="e" x1="311" y1="226" x2="311" y2="168" marker-end="url(#tip)"/>
+        <text class="el" x="302" y="194" text-anchor="end">restore with</text>
+        <text class="el" x="302" y="208" text-anchor="end">Recovery Key + password</text>
+      </svg>
+    </div>
+    <figcaption>The only thing that ever leaves the phone is the backup file, and only when you export it. Restoring it onto a new phone needs your Recovery Key and vault password together, and gives you a vault there that opens like any other.</figcaption>
+  </figure>
+
+  <div class="keys">
+    <div class="key"><b>Your fingerprint</b><span>Opens the vault every day. Nothing to type.</span></div>
+    <div class="key"><b>Your vault password</b><span>The backup way in, and needed for anything that weakens your protection.</span></div>
+    <div class="key"><b>Your Recovery Key</b><span>28 characters you write down once, on paper. With your password, it gets you back in if the phone's keys are lost.</span></div>
+  </div>
+</section>
+
+<!-- 01 -->
+<section id="setup">
+  <div class="sec-head">
+    <span class="eyebrow">01 · once</span>
+    <h2>First-time setup</h2>
+    <p class="muted">Seven short steps. You can't skip the Recovery Kit, because it is your only way back in if this phone ever loses its keys.</p>
+  </div>
+  <div class="flow">
+    <div class="node start"><b>Open Vaultaire for the first time</b><span>Welcome screen</span></div>
+    <div class="arrow"></div>
+    <div class="node"><b>How your vault works</b><span>Plain-language summary: it lives only on this phone, nobody (including us) can open it or reset it for you.</span></div>
+    <div class="arrow"></div>
+    <div class="node q"><b>Is this phone safe enough?</b><span>Checks for a screen lock and hardware-protected key storage.</span></div>
+    <div class="arrow"></div>
+    <div class="split">
+      <div class="branch"><span class="tag">Yes</span>
+        <div class="flow"><div class="node good"><b>Continue</b><span>Also shows advisory warnings, such as an old security patch.</span></div></div>
+      </div>
+      <div class="branch"><span class="tag bad">No</span>
+        <div class="flow"><div class="node stop"><b>Setup stops here</b><span>"Set a screen lock first." Vaultaire won't create a vault on a phone without one.</span><span class="loop">↺ try again after setting a screen lock</span></div></div>
+      </div>
+    </div>
+    <div class="arrow"></div>
+    <div class="node"><b>Choose your vault password</b><span>Offered first: a generated 6-word passphrase. Or type your own: at least 12 characters and hard to guess.</span><span class="loop">↺ too weak? pick another</span></div>
+    <div class="arrow"></div>
+    <div class="node q"><b>Turn on fingerprint unlock?</b><span>Warning shown first: anyone whose fingerprint is enrolled on this phone can open your vault.</span></div>
+    <div class="arrow"></div>
+    <div class="split">
+      <div class="branch"><span class="tag">Turn on</span>
+        <div class="flow"><div class="node"><b>Touch the sensor</b><span>Daily unlock is now one touch.</span></div></div>
+      </div>
+      <div class="branch"><span class="tag neutral">Skip</span>
+        <div class="flow"><div class="node"><b>Password-only mode</b><span>For people who share a phone or want the strictest setup. Can be changed later.</span></div></div>
+      </div>
+    </div>
+    <div class="arrow"></div>
+    <div class="node warn"><b>Your Recovery Key</b><span>28 characters in 7 groups. Write it by hand. Screenshots, PDFs and printing are blocked.</span></div>
+    <div class="arrow"></div>
+    <div class="node q"><b>Type groups 3 and 6 from your paper</b><span>Proves you actually wrote it down. Letter case, spaces and dashes don't matter.</span><span class="loop">↺ doesn't match? check your handwriting, or show the key again</span></div>
+    <div class="arrow"><i>matches</i></div>
+    <div class="node good"><b>Your vault is ready</b><span>It opens, empty, with "Add your first item".</span></div>
+  </div>
+</section>
+
+<!-- 02 -->
+<section id="unlock">
+  <div class="sec-head">
+    <span class="eyebrow">02 · every day</span>
+    <h2>Opening your vault</h2>
+    <p class="muted">Fingerprint first. The vault password is the backup, and it always needs your phone's screen lock too, so someone who only knows your phone PIN can't get in.</p>
+  </div>
+  <div class="flow">
+    <div class="node start"><b>Open Vaultaire</b><span>Lock screen with the logo and the unlock ring. The fingerprint prompt appears by itself.</span></div>
+    <div class="arrow"></div>
+    <div class="split">
+      <div class="branch"><span class="tag">Fingerprint</span>
+        <div class="flow">
+          <div class="node q"><b>Does it match?</b><span>Checked by the phone's secure hardware, which then releases the key.</span></div>
+          <div class="arrow"></div>
+          <div class="split">
+            <div class="branch"><span class="tag">Yes</span><div class="flow"><div class="node good"><b>Ring closes, vault opens</b></div></div></div>
+            <div class="branch"><span class="tag bad">No or cancelled</span><div class="flow"><div class="node"><b>Stay on the lock screen</b><span>Try again, or use your vault password. After too many tries the phone pauses fingerprint for a while.</span></div></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="branch"><span class="tag neutral">Vault password</span>
+        <div class="flow">
+          <div class="node"><b>Type your vault password</b></div>
+          <div class="arrow"></div>
+          <div class="node"><b>Phone asks for its screen lock</b><span>PIN, pattern or password. Both are needed.</span></div>
+          <div class="arrow"></div>
+          <div class="node q"><b>"Verifying…"</b><span>The dial turns while the password is checked (about a second).</span></div>
+          <div class="arrow"></div>
+          <div class="split">
+            <div class="branch"><span class="tag">Correct</span><div class="flow"><div class="node good"><b>Vault opens</b></div></div></div>
+            <div class="branch"><span class="tag bad">Wrong</span><div class="flow"><div class="node warn"><b>"Incorrect password."</b><span>From the 5th wrong try you must wait: 30 s, 1 min, 5 min, 15 min, 1 h, then 3 h each. Restarting the phone doesn't shorten it.</span></div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="arrow"><i>after it opens</i></div>
+    <div class="node q"><b>Were there failed attempts while you were away?</b><span>If yes, a banner says so: "3 failed password attempts since your last unlock".</span></div>
+    <div class="arrow"></div>
+    <div class="node q"><b>Is your password check due?</b><span>Every 14 days, after a fingerprint unlock, you're asked to type your vault password so you don't forget it. You can put it off once, for 24 hours.</span><span class="loop">↺ forgot it? reset it with your Recovery Key (see 08)</span></div>
+    <div class="arrow"></div>
+    <div class="node good"><b>Your vault home screen</b></div>
+  </div>
+  <p class="note"><strong>Changed your fingerprints?</strong> If you add or remove a fingerprint in your phone's settings, fingerprint unlock turns itself off. Type your vault password once and it turns back on. This stops someone from adding their own finger to get in.</p>
+</section>
+
+<!-- 03 -->
+<section id="find">
+  <div class="sec-head">
+    <span class="eyebrow">03</span>
+    <h2>Finding things</h2>
+    <p class="muted">The home screen is one page of sections. Cards always come first; you choose the order of the rest.</p>
+  </div>
+  <div class="flow">
+    <div class="node start"><b>Home screen</b><span>Greeting, a "Protections on" line, search, then your sections: Cards, Passwords, API keys, Bank accounts, Identity, Notes, Memberships.</span></div>
+    <div class="arrow"></div>
+    <div class="split">
+      <div class="branch"><span class="tag">Browse</span>
+        <div class="flow">
+          <div class="node"><b>Tap a section heading</b><span>Opens that category: every item in it, and one line on how it's protected.</span></div>
+          <div class="arrow"></div>
+          <div class="node"><b>Tap an item</b><span>Opens its details. Cards show the card face and finish.</span></div>
+        </div>
+      </div>
+      <div class="branch"><span class="tag">Search</span>
+        <div class="flow">
+          <div class="node"><b>Type in search</b><span>Searches titles and names across every category, hidden ones included. Results stay grouped by category.</span></div>
+          <div class="arrow"></div>
+          <div class="node"><b>Tap a result</b><span>Opens its details.</span></div>
+        </div>
+      </div>
+      <div class="branch"><span class="tag neutral">Organise</span>
+        <div class="flow">
+          <div class="node"><b>"Organise sections"</b><span>At the bottom of home, or Settings → Appearance.</span></div>
+          <div class="arrow"></div>
+          <div class="node"><b>Move sections up or down, or hide them</b><span>Cards stay pinned first. Changes apply at once; "Reset to default" undoes them.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="note"><strong>Hiding is tidying, not protection.</strong> A hidden section's items are still in your vault, still found by search, still in your backups, and listed at the bottom of home ("Hidden from home: API keys (2)").</p>
+</section>
+
+<!-- 04 -->
+<section id="reveal">
+  <div class="sec-head">
+    <span class="eyebrow">04</span>
+    <h2>Showing and copying secrets</h2>
+    <p class="muted">Every field has one of three protection levels. The level decides what you need to do to see or copy it.</p>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Level</th><th>Examples</th><th>To see it</th><th>To copy it</th></tr></thead>
+      <tbody>
+        <tr><td><span class="pill n">NORMAL</span></td><td>Titles, usernames, bank name, expiry date, websites</td><td>Always shown</td><td>Tap copy</td></tr>
+        <tr><td><span class="pill c">CONCEALED</span></td><td>Passwords, membership PINs, note text, Wi-Fi password</td><td>Tap the eye</td><td>Tap copy</td></tr>
+        <tr><td><span class="pill x">CRITICAL</span></td><td>Card number, CVV (if you stored it), account numbers, document numbers, API secrets, recovery codes</td><td>Tap the eye, then fingerprint</td><td>Tap copy, then fingerprint</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="flow spaced">
+    <div class="node start"><b>Tap the eye (or copy) on a field</b></div>
+    <div class="arrow"></div>
+    <div class="node q"><b>Is it a critical field?</b></div>
+    <div class="arrow"></div>
+    <div class="split">
+      <div class="branch"><span class="tag neutral">No</span>
+        <div class="flow"><div class="node"><b>Happens straight away</b></div></div>
+      </div>
+      <div class="branch"><span class="tag">Yes</span>
+        <div class="flow">
+          <div class="node q"><b>Fingerprint in the last 60 seconds?</b><span>Unlocking with your fingerprint counts. If yes, the next step is skipped.</span></div>
+          <div class="arrow"><i>no</i></div>
+          <div class="node"><b>"Confirm it's you"</b><span>Touch the sensor. Cancel and nothing happens.</span></div>
+          <div class="arrow"><i>confirmed</i></div>
+          <div class="node"><b>Happens</b><span>No second prompt for the next 60 seconds.</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="arrow"></div>
+    <div class="split">
+      <div class="branch"><span class="tag">Shown</span>
+        <div class="flow"><div class="node"><b>One field at a time</b><span>Hides again after 30 seconds, when you leave the screen, when you switch apps, or when the vault locks.</span></div></div>
+      </div>
+      <div class="branch"><span class="tag">Copied</span>
+        <div class="flow"><div class="node"><b>"Copied · clears in 60 s"</b><span>The clipboard is marked sensitive and cleared after 60 seconds, and at once if you lock.</span></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 05 -->
+<section id="add">
+  <div class="sec-head">
+    <span class="eyebrow">05</span>
+    <h2>Adding something</h2>
+    <p class="muted">Each type has its own form, with the sensitive fields already set to the right protection level.</p>
+  </div>
+  <div class="flow">
+    <div class="node start"><b>Tap +</b><span>Or "Add password" (and so on) on a category page, which skips the next step.</span></div>
+    <div class="arrow"></div>
+    <div class="node"><b>Choose a type</b><span>Card, Password, API key, Bank account, Identity, Secure note, Membership, Other.</span></div>
+    <div class="arrow"></div>
+    <div class="split">
+      <div class="branch"><span class="tag">Password</span>
+        <div class="flow"><div class="node"><b>A strong passphrase is suggested</b><span>6 random words. "Generate" gives a new one, or type your own.</span></div></div>
+      </div>
+      <div class="branch"><span class="tag">Card</span>
+        <div class="flow">
+          <div class="node q"><b>Also store the security code?</b><span>Switch is off by default.</span></div>
+          <div class="arrow"><i>switched on</i></div>
+          <div class="node warn"><b>Warning, then the CVV field</b><span>Number, expiry and CVV together are all anyone needs to shop online with the card. Stored as critical, never autofilled.</span></div>
+          <div class="arrow"></div>
+          <div class="node"><b>Card PIN: never</b><span>There is no field for it.</span></div>
+        </div>
+      </div>
+      <div class="branch"><span class="tag neutral">Others</span>
+        <div class="flow"><div class="node"><b>Fill in the form</b><span>Critical fields are marked, such as account numbers and API secrets.</span></div></div>
+      </div>
+    </div>
+    <div class="arrow"></div>
+    <div class="node good"><b>Save</b><span>You land on that category, with the new item in it.</span></div>
+  </div>
+</section>
+
+<!-- 06 -->
+<section id="lock">
+  <div class="sec-head">
+    <span class="eyebrow">06</span>
+    <h2>Locking</h2>
+    <p class="muted">Locking happens often and on its own. It is instant: the screen is cleared before any animation plays.</p>
+  </div>
+  <div class="flow">
+    <div class="split">
+      <div class="branch"><span class="tag">You</span><div class="flow"><div class="node"><b>Tap the lock icon</b><span>Always in the top corner.</span></div></div></div>
+      <div class="branch"><span class="tag neutral">Idle</span><div class="flow"><div class="node"><b>2 minutes untouched</b><span>Adjustable, but never "never".</span></div></div></div>
+      <div class="branch"><span class="tag neutral">Away</span><div class="flow"><div class="node"><b>30 seconds in the background</b><span>Or the screen turns off, or the app is closed.</span></div></div></div>
+    </div>
+    <div class="arrow"></div>
+    <div class="node"><b>Everything is cleared</b><span>Keys wiped from memory, revealed fields hidden, clipboard cleared.</span></div>
+    <div class="arrow"></div>
+    <div class="node good"><b>Lock screen</b><span>Back to journey 02 to open it again.</span></div>
+  </div>
+</section>
+
+<!-- 07 -->
+<section id="backup">
+  <div class="sec-head">
+    <span class="eyebrow">07</span>
+    <h2>Backups and a new phone</h2>
+    <p class="muted">Your vault exists only on this phone. A backup file is how it survives a lost or broken phone. You're reminded every 30 days.</p>
+  </div>
+  <div class="split">
+    <div class="branch"><span class="tag">Make a backup</span>
+      <div class="flow">
+        <div class="node start"><b>Settings → Create encrypted backup</b></div>
+        <div class="arrow"></div>
+        <div class="node"><b>Enter your vault password</b></div>
+        <div class="arrow"></div>
+        <div class="node"><b>Choose where to save it</b><span>Your cloud drive, a USB stick, your computer. Vaultaire never uploads anything itself.</span></div>
+        <div class="arrow"></div>
+        <div class="node good"><b>Backup file saved</b><span>Opening it needs your vault password and your Recovery Key. The file alone is useless to anyone.</span></div>
+      </div>
+    </div>
+    <div class="branch"><span class="tag">Restore on a new phone</span>
+      <div class="flow">
+        <div class="node start"><b>Install Vaultaire → "Restore from backup"</b></div>
+        <div class="arrow"></div>
+        <div class="node"><b>Pick the backup file</b></div>
+        <div class="arrow"></div>
+        <div class="node"><b>Type your Recovery Key</b><span>Typos are caught at once. A key from a different backup is caught too.</span></div>
+        <div class="arrow"></div>
+        <div class="node q"><b>Type your vault password</b><span>If anything is wrong: "Wrong password or Recovery Key, or the file is damaged."</span></div>
+        <div class="arrow"><i>correct</i></div>
+        <div class="node"><b>Check what's in it, then confirm</b></div>
+        <div class="arrow"></div>
+        <div class="node good"><b>Vault restored</b><span>Turn fingerprint unlock back on. Your paper Recovery Key still works. You're prompted to delete the vault from the old phone.</span></div>
+      </div>
+    </div>
+  </div>
+  <p class="note"><strong>Anything added after your last backup is not in it.</strong> Merging a backup into an existing vault is also possible: imported items are added as new and tagged "Imported" with the date. Nothing gets overwritten.</p>
+</section>
+
+<!-- 08 -->
+<section id="problems">
+  <div class="sec-head">
+    <span class="eyebrow">08</span>
+    <h2>When something goes wrong</h2>
+    <p class="muted">Pick what happened. Every way back needs two things, so no single lost or stolen secret opens your vault.</p>
+  </div>
+  <div class="problems">
+    <details open>
+      <summary>I forgot my vault password <em>fingerprint still works</em></summary>
+      <div class="flow">
+        <div class="node"><b>Open the vault with your fingerprint</b></div>
+        <div class="arrow"></div>
+        <div class="node"><b>Settings → Reset vault password</b></div>
+        <div class="arrow"></div>
+        <div class="node"><b>Type your Recovery Key</b></div>
+        <div class="arrow"></div>
+        <div class="node good"><b>Choose a new password</b><span>Make a new backup: older backups still need the old password.</span></div>
+      </div>
+    </details>
+    <details>
+      <summary>My fingerprint stopped working <em>after adding or removing one</em></summary>
+      <div class="flow">
+        <div class="node"><b>"Your biometric settings changed"</b></div>
+        <div class="arrow"></div>
+        <div class="node"><b>Enter your vault password (plus screen lock)</b></div>
+        <div class="arrow"></div>
+        <div class="node good"><b>Fingerprint unlock is back on</b></div>
+      </div>
+    </details>
+    <details>
+      <summary>I removed my phone's screen lock</summary>
+      <div class="flow">
+        <div class="node warn"><b>The phone erased Vaultaire's unlock keys</b><span>Android does this on purpose. Fingerprint and password unlock both stop working.</span></div>
+        <div class="arrow"></div>
+        <div class="node"><b>Set a screen lock again</b></div>
+        <div class="arrow"></div>
+        <div class="node"><b>Enter your Recovery Key and vault password</b></div>
+        <div class="arrow"></div>
+        <div class="node good"><b>Vault opens; set up fingerprint again</b></div>
+      </div>
+    </details>
+    <details>
+      <summary>I lost my phone, or it broke</summary>
+      <div class="flow">
+        <div class="node"><b>New phone → Restore from backup</b><span>Journey 07. Needs the backup file, your Recovery Key and your vault password.</span></div>
+        <div class="arrow"></div>
+        <div class="node warn"><b>No backup?</b><span>The vault is gone. It was only ever on that phone. This is why backups are reminded every 30 days.</span></div>
+      </div>
+    </details>
+    <details>
+      <summary>I lost my Recovery Key <em>still know my password</em></summary>
+      <div class="flow">
+        <div class="node"><b>Settings → Regenerate Recovery Key</b><span>Needs your vault password.</span></div>
+        <div class="arrow"></div>
+        <div class="node"><b>Write down and confirm the new key</b></div>
+        <div class="arrow"></div>
+        <div class="node good"><b>Make a new backup</b><span>Old backups need the old key, which you no longer have.</span></div>
+      </div>
+    </details>
+    <details>
+      <summary>"This vault's data could not be verified"</summary>
+      <div class="flow">
+        <div class="node warn"><b>The file was damaged or tampered with</b><span>Nothing is shown and nothing is changed. There is no "repair", on purpose.</span></div>
+        <div class="arrow"></div>
+        <div class="node"><b>Try again, or restore from your latest backup</b></div>
+      </div>
+    </details>
+    <details>
+      <summary>I forgot my password and my fingerprint doesn't work</summary>
+      <div class="flow">
+        <div class="node stop"><b>The vault cannot be opened</b><span>Not by you, not by us, not by anyone. We never hold a copy of your keys, and there is no support-desk reset.</span></div>
+        <div class="arrow"></div>
+        <div class="node"><b>If you have a backup</b><span>You still need the password to open it. The periodic password check exists to stop this from happening.</span></div>
+      </div>
+    </details>
+  </div>
+  <p class="note"><strong>We will never ask for your Recovery Key.</strong> You only ever type it into Vaultaire, in restore and reset screens. Anyone else asking for it is trying to steal your vault.</p>
+</section>
+
+<!-- 09 -->
+<section id="settings">
+  <div class="sec-head">
+    <span class="eyebrow">09</span>
+    <h2>Changing settings</h2>
+    <p class="muted">Making protection stronger is free. Making it weaker always needs your vault password.</p>
+  </div>
+  <div class="split">
+    <div class="branch"><span class="tag">Stronger: no password</span>
+      <div class="flow"><div class="node"><b>Examples</b><span>Shorter auto-lock, more frequent password checks, turning on password-only mode, hiding or reordering sections.</span></div></div>
+    </div>
+    <div class="branch"><span class="tag bad">Weaker: password first</span>
+      <div class="flow"><div class="node"><b>Examples</b><span>Longer auto-lock, turning off fingerprint for critical fields, changing your password, exporting a backup, regenerating the Recovery Key.</span></div></div>
+    </div>
+  </div>
+  <div class="flow spaced">
+    <div class="node start"><b>Settings → Delete vault</b></div>
+    <div class="arrow"></div>
+    <div class="node q"><b>Export a backup first?</b><span>Offered before anything happens.</span></div>
+    <div class="arrow"></div>
+    <div class="node"><b>Enter your vault password</b></div>
+    <div class="arrow"></div>
+    <div class="node"><b>Type DELETE</b></div>
+    <div class="arrow"></div>
+    <div class="node stop"><b>Vault erased from this phone</b><span>Keys first, then data. Back to the welcome screen. Backup files you made elsewhere are out of our reach; delete them yourself.</span></div>
+  </div>
+  <p class="note"><strong>Device protection check</strong> (Settings) shows what could weaken your phone's safety: no screen lock, an old security patch, USB debugging left on, a third-party keyboard, or no recent backup.</p>
+</section>
+
+<!-- 10 -->
+<section id="never">
+  <div class="sec-head">
+    <span class="eyebrow">10</span>
+    <h2>What Vaultaire never does</h2>
+  </div>
+  <ul class="never">
+    <li>Connect to the internet. The app has no network permission at all.</li>
+    <li>Sync, upload, or keep an account for you.</li>
+    <li>Let your phone PIN alone open the vault.</li>
+    <li>Reset your vault through support, email or security questions.</li>
+    <li>Ask for your Recovery Key.</li>
+    <li>Store a card PIN.</li>
+    <li>Store a CVV unless you switch it on for that card.</li>
+    <li>Allow screenshots or screen recording of the app.</li>
+    <li>Show vault items in notifications, widgets or phone search.</li>
+    <li>Include analytics, ads or crash-reporting services.</li>
+  </ul>
+  <p class="note"><strong>Unaudited beta.</strong> Until an independent security review is published, don't store real credentials in Vaultaire.</p>
+</section>
+
+<footer>Vaultaire · user journeys for V1 (Android), drawn from the threat model, crypto and vault format specs as of 29 Sep 2026. Timings shown are the defaults.</footer>
+</div>
+</body>
+</html>
