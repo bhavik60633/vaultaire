@@ -224,7 +224,7 @@
   // ---------- Screens ----------
   function lock() {
     return `<section class="screen lock${S.unlocking ? ' unlocking' : ''}">
-      <div class="stack intro"><h1 class="wordmark">Vaultaire</h1><p class="small muted">You have things worth protecting.</p></div>
+      <div class="stack intro"><h1 class="brand"><img src="brand/lockup.png" alt="Vaultaire" width="300" height="200"></h1><p class="small muted">You have things worth protecting.</p></div>
       <div class="grow"><div class="ring">
         <svg class="rosette" width="300" height="300" viewBox="0 0 300 300" aria-hidden="true"><path d="${LOCK_ROSETTE}"/></svg>
         <svg class="track" width="148" height="148" viewBox="0 0 148 148" fill="none" aria-hidden="true"><circle cx="74" cy="74" r="70" stroke="rgba(255,245,230,0.10)" stroke-width="1.5"/><circle class="arc" cx="74" cy="74" r="70" stroke="#C9B38A" stroke-width="1.5" stroke-linecap="round" transform="rotate(-90 74 74)"/></svg>
@@ -565,7 +565,8 @@
     try { return el.selectionStart == null ? null : [el.selectionStart, el.selectionEnd]; } catch (e) { return null; }
   }
   function renderNav(name) {
-    nav.innerHTML = `<p class="label">Vaultaire · UI prototype</p>
+    nav.innerHTML = `<img class="nav-mark" src="brand/mark.png" alt="" width="48" height="48">
+      <p class="label">Vaultaire · UI prototype</p>
       ${Object.keys(ROUTES).map((k) => `<a href="${ROUTES[k].link || '#/' + k}"${k === name ? ' aria-current="page"' : ''}>${ROUTES[k].title}</a>`).join('')}
       <p class="note">Design mockup. No encryption, no storage, sample data only.</p>`;
   }

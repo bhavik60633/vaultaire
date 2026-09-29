@@ -33,6 +33,7 @@ h1:focus { outline: none; }
 /* Prototype screen index (desktop only) */
 .screens { width: 220px; display: flex; flex-direction: column; gap: 4px; }
 .screens .label { margin-bottom: 8px; }
+.nav-mark { display: block; width: 48px; height: 48px; margin: 0 0 12px 8px; }
 .screens a { padding: 10px 12px; border-radius: 8px; color: var(--text2); text-decoration: none; font-size: 14px; }
 .screens a:hover { background: var(--raised); color: var(--text); }
 .screens a[aria-current="page"] { background: var(--raised); color: var(--accent); }
@@ -114,13 +115,14 @@ textarea.input { height: auto; padding: 12px 14px; line-height: 24px; resize: no
 .engrave path { fill: none; stroke: var(--cf-line, rgba(255, 245, 230, 0.05)); stroke-width: 0.7; vector-effect: non-scaling-stroke; }
 
 /* Lock */
-.lock { align-items: center; padding: 88px 24px 32px; text-align: center; overflow: hidden; }
-.lock .intro { gap: 8px; }
-.wordmark { font-family: var(--serif); font-weight: 500; font-size: 44px; line-height: 50px; letter-spacing: 0.06em; }
+.lock { align-items: center; padding: 40px 24px 32px; text-align: center; overflow: hidden; }
+.lock .intro { gap: 0; align-items: center; }
+.brand img { display: block; width: 300px; height: auto; }
+.lock .intro p { margin-top: -6px; }
 .lock .grow { display: flex; align-items: center; justify-content: center; }
-.ring { position: relative; width: 300px; height: 300px; display: flex; align-items: center; justify-content: center; color: var(--accent); }
-.ring .rosette { position: absolute; left: 0; top: 0; }
-.ring .track { position: absolute; left: 76px; top: 76px; }
+.ring { position: relative; width: 260px; height: 260px; display: flex; align-items: center; justify-content: center; color: var(--accent); }
+.ring .rosette { position: absolute; left: 0; top: 0; width: 260px; height: 260px; }
+.ring .track { position: absolute; left: 56px; top: 56px; }
 .ring .arc { stroke-dasharray: 440; stroke-dashoffset: 110; }
 .ring-core { width: 96px; height: 96px; border-radius: 50%; background: radial-gradient(circle at 50% 35%, #1E1E21, #111113); border: 1px solid var(--hair); display: flex; align-items: center; justify-content: center; }
 .lock .actions { width: 100%; }
