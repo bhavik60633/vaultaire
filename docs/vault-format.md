@@ -271,8 +271,13 @@ Only security-relevant settings live here, so that weakening them requires the v
 | 8 | `last_password_check` | uint | | |
 | 9 | `last_backup_at` | uint | | Optional |
 | 10 | `backup_reminder_days` | uint | 30 | 7 – 90 |
+| 11 | `home_sections` | array of `[item_type (uint), shown (bool)]` | Every type except Card, in the order Password, API key, Bank account, Identity, Note, Membership, Other; all shown | Each item type except Card appears exactly once |
 
 "Never auto-lock" is not a representable value.
+
+`home_sections` is **layout, not protection**, the one exception to this record's rule. It sets the order of the home screen's category sections and which ones are shown. Cards are always first and cannot be hidden, so Card never appears in the array. Changing it never needs the vault password, because it weakens nothing. It lives in the encrypted vault rather than in plaintext preferences because the categories a person uses say something about what they keep.
+
+Hiding a section only removes it from the home screen. Its items stay in the vault, appear in search, have their own category page, and are included in backups. The app must never present hiding as protection.
 
 ### 5.6 Recovery (meta, kind 4)
 

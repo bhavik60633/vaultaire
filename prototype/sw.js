@@ -3,7 +3,7 @@
 // Network first, so a phone on the same network always gets the latest layout;
 // falls back to the cache when offline. The prototype holds no secrets.
 
-const CACHE = 'vaultaire-prototype-v1';
+const CACHE = 'vaultaire-prototype-v3';
 const FILES = [
   './',
   './index.html',
