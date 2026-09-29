@@ -1,0 +1,39 @@
+# --- Secrets: never commit ---
+# Android signing keys and their passwords
+*.jks
+*.keystore
+keystore.properties
+signing.properties
+# Local SDK paths / machine config
+local.properties
+.env
+.env.*
+# Real vault files must never enter the repo (test vectors live under tests/vectors/)
+*.vault
+!tests/vectors/**/*.vault
+
+# --- Rust ---
+/target/
+**/target/
+
+# --- Android / Gradle ---
+.gradle/
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# --- IDEs ---
+.idea/
+*.iml
+.vscode/
+!.vscode/extensions.json
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
