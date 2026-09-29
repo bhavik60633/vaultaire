@@ -12,7 +12,19 @@ python prototype/serve.py
 
 Then open <http://localhost:8000>. The server listens on `127.0.0.1` only. Use `python prototype/serve.py 8080` to pick another port.
 
-No install or build step is needed: plain HTML, CSS and JavaScript, with no dependencies. The two fonts (Cormorant Garamond and JetBrains Mono) load from Google Fonts. Offline, the page falls back to Georgia and Consolas.
+No install or build step is needed: plain HTML, CSS and JavaScript, with no dependencies. The two fonts (Cormorant Garamond and JetBrains Mono, SIL Open Font License) are bundled in `fonts/`, so nothing is loaded from other sites.
+
+### On a phone (same Wi-Fi)
+
+```powershell
+python prototype/serve.py --lan
+```
+
+The server prints an address such as `http://192.168.1.2:8000/`; open it on the phone.
+
+- Windows must treat the Wi-Fi as a **Private** network, and Windows Firewall must allow Python on **Private** networks only. Never allow it on Public networks.
+- LAN mode answers only devices with private (home-network) addresses.
+- Over plain HTTP, the phone shows it as a web page or a home-screen bookmark, not a full-screen installed app. Installation and offline mode (`manifest.webmanifest`, `sw.js`) need HTTPS or `localhost`.
 
 ## What it shows
 

@@ -673,5 +673,10 @@
   });
   window.addEventListener('hashchange', onRoute);
 
+  // Offline support once installed on a phone. Browsers allow this only on HTTPS or localhost.
+  if ('serviceWorker' in navigator && window.isSecureContext) {
+    navigator.serviceWorker.register('sw.js').catch(() => { /* the prototype works without it */ });
+  }
+
   onRoute();
 })();
