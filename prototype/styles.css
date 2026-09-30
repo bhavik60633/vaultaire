@@ -1,8 +1,12 @@
 /* Vaultaire UI prototype — "Obsidian" dark tokens from blueprint §15. */
 
-/* Bundled fonts (SIL Open Font License; see fonts/OFL-*.txt). Variable fonts: one file covers every weight used. */
-@font-face { font-family: "Cormorant Garamond"; font-style: normal; font-weight: 300 700; font-display: swap; src: url("fonts/cormorant-garamond-latin.woff2") format("woff2"); }
-@font-face { font-family: "JetBrains Mono"; font-style: normal; font-weight: 100 800; font-display: swap; src: url("fonts/jetbrains-mono-latin.woff2") format("woff2"); }
+/* Bundled fonts (SIL Open Font License; see fonts/OFL-*.txt). Three typeface candidates are bundled so they
+   can be compared on a phone (Settings → Prototype → Typeface); the two not chosen will be removed. */
+@font-face { font-family: "IBM Plex Sans"; font-style: normal; font-weight: 100 700; font-display: swap; src: url("fonts/ibm-plex-sans-latin.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/ibm-plex-mono-400-latin.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 500; font-display: swap; src: url("fonts/ibm-plex-mono-500-latin.woff2") format("woff2"); }
+@font-face { font-family: "Newsreader"; font-style: normal; font-weight: 400 600; font-display: swap; src: url("fonts/newsreader-latin.woff2") format("woff2"); }
+@font-face { font-family: "Schibsted Grotesk"; font-style: normal; font-weight: 400 700; font-display: swap; src: url("fonts/schibsted-grotesk-latin.woff2") format("woff2"); }
 
 :root {
   --safe-top: env(safe-area-inset-top, 0px);
@@ -20,11 +24,36 @@
   --crit: #E0A196;
   --ok: #7DB8A5;
   --warn: #D8AE5E;
-  --serif: "Cormorant Garamond", Georgia, serif;
-  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
-  --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Typeface A (default): IBM Plex, engineered and exact. */
+  --display: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  --d-weight: 500;
+  --d-track: -0.02em;
+  --d-size: 26px; --d-line: 32px;
+  --dl-size: 28px; --dl-line: 34px;
+  --sec-size: 19px; --sec-line: 24px;
   --ease: cubic-bezier(0.2, 0, 0, 1);
   color-scheme: dark;
+}
+
+/* Typeface B: Newsreader headings, the phone's own font for text. */
+:root[data-type="newsreader"] {
+  --display: "Newsreader", Georgia, serif;
+  --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --d-weight: 500; --d-track: -0.01em;
+  --d-size: 30px; --d-line: 36px;
+  --dl-size: 32px; --dl-line: 38px;
+  --sec-size: 22px; --sec-line: 28px;
+}
+/* Typeface C: Schibsted Grotesk throughout. */
+:root[data-type="schibsted"] {
+  --display: "Schibsted Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --sans: "Schibsted Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --d-weight: 600; --d-track: -0.025em;
+  --d-size: 26px; --d-line: 32px;
+  --dl-size: 28px; --dl-line: 34px;
+  --sec-size: 19px; --sec-line: 24px;
 }
 
 * { box-sizing: border-box; }
@@ -72,8 +101,8 @@ button, .btn, .tile, .label { -webkit-user-select: none; user-select: none; }
 .inline { display: flex; gap: 8px; align-items: center; }
 
 /* Type */
-.display { font-family: var(--serif); font-weight: 500; font-size: 30px; line-height: 36px; }
-.display-l { font-family: var(--serif); font-weight: 500; font-size: 32px; line-height: 38px; }
+.display { font-family: var(--display); font-weight: var(--d-weight); letter-spacing: var(--d-track); font-size: var(--d-size); line-height: var(--d-line); }
+.display-l { font-family: var(--display); font-weight: var(--d-weight); letter-spacing: var(--d-track); font-size: var(--dl-size); line-height: var(--dl-line); }
 .body { font-size: 15px; line-height: 22px; }
 .small { font-size: 14px; line-height: 20px; }
 .muted { color: var(--text2); }
@@ -188,7 +217,7 @@ a.item:hover { background: rgba(255, 245, 230, 0.03); }
 .fav { color: var(--accent); flex-shrink: 0; }
 .chev { color: var(--text3); flex-shrink: 0; }
 .empty { padding: 48px 32px; text-align: center; display: flex; flex-direction: column; gap: 8px; }
-.empty .display { font-size: 28px; line-height: 34px; }
+.empty .display { font-size: calc(var(--d-size) - 2px); line-height: calc(var(--d-line) - 2px); }
 .list-foot { padding: 24px 20px 0; text-align: center; font-size: 12px; line-height: 16px; letter-spacing: 0.02em; color: var(--text3); }
 .fab { position: absolute; right: 20px; bottom: calc(28px + var(--safe-bottom)); width: 56px; height: 56px; border-radius: 16px; background: var(--text); color: var(--bg); display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); transition: background-color 120ms var(--ease); }
 .fab:hover { background: #FFFFFF; }
@@ -197,7 +226,7 @@ a.item:hover { background: rgba(255, 245, 230, 0.03); }
 .sec { padding: 0 20px; margin-top: 22px; }
 .sec:first-child { margin-top: 12px; }
 .sec-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; color: var(--text); text-decoration: none; }
-.sec-title { font-family: var(--serif); font-weight: 500; font-size: 23px; line-height: 28px; }
+.sec-title { font-family: var(--display); font-weight: var(--d-weight); letter-spacing: var(--d-track); font-size: var(--sec-size); line-height: var(--sec-line); }
 .sec-count { font-size: 13px; color: var(--text3); }
 .sec-head .chev { margin-left: auto; align-self: center; }
 .sec .wallet { margin: 0 -20px; }
@@ -360,6 +389,75 @@ a.srow:hover { background: var(--elev); }
 .srow-note { font-size: 13px; line-height: 18px; color: var(--warn); }
 .srow .ok { color: var(--ok); flex-shrink: 0; }
 .srow .warn { color: var(--warn); flex-shrink: 0; }
+
+/* Wallet folders: a folder of two or more cards is a fanned deck; captions line every entry up */
+.wallet { align-items: flex-start; }
+.wallet-entry { flex-shrink: 0; width: 188px; display: flex; flex-direction: column; gap: 8px; color: var(--text2); text-decoration: none; }
+.wallet-entry > .card-face { margin-top: 21px; transition: transform 200ms var(--ease); }
+.wallet-entry:hover > .card-face, .wallet-entry:hover .fan { transform: translateY(-2px); }
+.wallet-caption { display: flex; align-items: center; gap: 6px; font-size: 13px; line-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wallet-caption svg { flex-shrink: 0; color: var(--accent); }
+.fan { position: relative; display: block; width: 188px; height: 140px; transition: transform 200ms var(--ease); }
+.fan-card { position: absolute; left: 0; right: 0; bottom: 0; transform-origin: 50% 0; }
+.fan-1 { bottom: 10px; transform: scale(0.94); filter: brightness(0.75); }
+.fan-2 { bottom: 20px; transform: scale(0.88); filter: brightness(0.55); }
+.card-face.is-blocked > div, .card-face.is-blocked > svg { opacity: 0.4; }
+.blocked-band { position: absolute; left: -10%; right: -10%; top: 50%; z-index: 2; transform: translateY(-50%) rotate(-8deg); background: var(--crit); color: #1A1917; text-align: center; font-size: 12px; line-height: 24px; font-weight: 600; letter-spacing: 0.24em; }
+.card-face.sm .blocked-band { font-size: 9px; line-height: 18px; }
+.badge-crit { border-color: rgba(224, 161, 150, 0.5); color: var(--crit); }
+.warn-text { color: var(--warn); }
+
+/* Coming up (expiry watch) */
+.item.soon .type-tile { color: var(--warn); }
+.soon-when { flex-shrink: 0; font-size: 13px; line-height: 18px; color: var(--warn); white-space: nowrap; }
+
+/* Cards page: folders */
+.lost-btn { margin-bottom: 24px; }
+.fields .lost-btn { margin: 16px 0 8px; }
+.folder-sec + .folder-sec { margin-top: 20px; }
+.folder-head { display: flex; align-items: center; gap: 8px; min-height: 36px; margin-bottom: 6px; color: var(--text); text-decoration: none; font-size: 15px; font-weight: 600; }
+.folder-head > svg:first-child { color: var(--accent); }
+.folder-head .chev { margin-left: auto; color: var(--text3); }
+.frow-link { color: var(--text); text-decoration: none; }
+.frow-value .frow-note { display: block; margin-top: 2px; }
+.frow-value svg { vertical-align: -2px; color: var(--accent); }
+
+/* Move to folder */
+button.srow { width: 100%; border: 0; border-top: 1px solid var(--hair); background: transparent; font: inherit; color: var(--text); text-align: left; cursor: pointer; }
+button.srow:first-child { border-top: 0; }
+button.srow:hover { background: var(--elev); }
+.pick-row[aria-pressed="true"] .srow-label { color: var(--accent); }
+.accent-icon { color: var(--accent); flex-shrink: 0; }
+.new-folder { margin-top: 28px; padding-bottom: calc(32px + var(--safe-bottom)); display: flex; flex-direction: column; gap: 8px; }
+.new-folder .btn-small { align-self: stretch; height: 52px; }
+
+/* Lost wallet */
+.progress-line { margin-top: 18px; display: flex; align-items: center; gap: 12px; }
+.progress-bar { flex: 1; height: 4px; border-radius: 2px; background: var(--elev); overflow: hidden; }
+.progress-fill { display: block; height: 100%; width: 0; background: var(--ok); transition: width 200ms var(--ease); }
+.p1 { width: 10%; } .p2 { width: 20%; } .p3 { width: 30%; } .p4 { width: 40%; } .p5 { width: 50%; }
+.p6 { width: 60%; } .p7 { width: 70%; } .p8 { width: 80%; } .p9 { width: 90%; } .p10 { width: 100%; }
+.lost-list { display: flex; flex-direction: column; gap: 14px; }
+.lost-head { display: flex; align-items: center; gap: 12px; padding: 12px 12px 12px 16px; background: var(--elev); }
+.call-btn { align-self: center; height: 40px; }
+.lost-row { gap: 12px; cursor: pointer; }
+.lost-row .type-tile { width: 32px; height: 32px; }
+.lost-state { font-size: 13px; color: var(--ok); }
+.lost-last { margin-bottom: calc(32px + var(--safe-bottom)); }
+
+/* Recovery codes */
+.codes { list-style: none; margin: 8px 0 12px; padding: 0; border-radius: 12px; background: var(--raised); border: 1px solid var(--hair); overflow: hidden; }
+.code-row { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 4px 0 14px; border-top: 1px solid var(--hair); }
+.code-row:first-child { border-top: 0; }
+.code-n { width: 20px; font-family: var(--mono); font-size: 12px; color: var(--text3); }
+.code { flex: 1; font-size: 17px; letter-spacing: 0.06em; }
+.code-row.used .code { text-decoration: line-through; color: var(--text3); }
+.code-row.used .text-btn { color: var(--text3); font-weight: 500; }
+.codes-masked { margin: 8px 0 12px; min-height: 56px; padding: 0 14px; display: flex; align-items: center; gap: 10px; border-radius: 12px; border: 1px dashed var(--hair2); color: var(--text2); font-size: 14px; }
+.fields > .btn { margin-top: 4px; }
+
+/* Settings row whose control sits under its label */
+.srow-stack { flex-direction: column; align-items: flex-start; gap: 10px; padding: 14px 16px; }
 
 /* Motion (blueprint §15): decoration only, never gating; security state changes stay instant. */
 @media (prefers-reduced-motion: no-preference) {

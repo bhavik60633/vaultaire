@@ -12,7 +12,7 @@ python prototype/serve.py
 
 Then open <http://localhost:8000>. The server listens on `127.0.0.1` only. Use `python prototype/serve.py 8080` to pick another port.
 
-No install or build step is needed: plain HTML, CSS and JavaScript, with no dependencies. The two fonts (Cormorant Garamond and JetBrains Mono, SIL Open Font License) are bundled in `fonts/`, so nothing is loaded from other sites.
+No install or build step is needed: plain HTML, CSS and JavaScript, with no dependencies. The fonts (SIL Open Font License) are bundled in `fonts/`, so nothing is loaded from other sites.
 
 ### On a phone (same Wi-Fi)
 
@@ -34,6 +34,18 @@ The iPhone version uses Face ID, the passcode, iOS-style back buttons that name 
 
 The real iPhone app is deferred (it needs a Mac). This version only lets the design be judged on an iPhone.
 
+### Typeface: three candidates
+
+The first design used Cormorant Garamond, which read as generic "AI luxury". Three replacements are bundled so they can be compared on a real phone: **Settings → Prototype → Typeface**, the side panel, or `?type=plex`, `?type=newsreader`, `?type=schibsted`.
+
+| Option | Headings | Text | Character |
+|---|---|---|---|
+| **Plex** (default) | IBM Plex Sans | IBM Plex Sans | Engineered and exact: the blueprint's "precision instrument" |
+| **Newsreader** | Newsreader (serif) | The phone's own font (SF on iPhone, Roboto on Android) | Editorial, quietly classic |
+| **Schibsted** | Schibsted Grotesk | Schibsted Grotesk | Sturdy and confident |
+
+All three use IBM Plex Mono for card numbers, keys and codes. Once one is chosen, the other two fonts are deleted.
+
 ## What it shows
 
 | Screen | Behaviour worth checking |
@@ -42,6 +54,11 @@ The real iPhone app is deferred (it needs a Mac). This version only lets the des
 | Vault password | Unlock is disabled until something is typed; a dial turns while the (simulated) key derivation runs |
 | Vault | One scrolling page of category sections in a fixed order: Cards (wallet), Passwords, API keys, Bank accounts, Identity, Notes, Memberships. Up to 3 items per section with "See all"; empty categories hidden; search covers everything. Greeting, protections status, failed-attempts banner, Lock always visible. |
 | Home sections (`#/sections`) | The user orders and hides home sections: up and down buttons plus a show switch per section, reset to default. Cards are pinned first. Hidden sections are listed at the bottom of home and stay in search and backups. Opened from "Organise sections" on home or Settings → Appearance. The prototype remembers the layout in this browser only. |
+| Coming up (on Vault) | Expiry watch: cards, documents and memberships ending within 6 months, soonest first, below the Cards section. Shown only inside the unlocked app, never as a notification (a notification would need the vault readable while locked). |
+| Cards (`#/category/card`) | Cards grouped into folders, with a "Lost your wallet?" button |
+| Folder (`#/folder/American%20Express`) | Cards from the same bank group into a folder automatically. On Vault a folder of two or more cards shows as a fanned deck. Any card can be moved into a folder the user makes (card → Folder → New folder). |
+| Lost wallet (`#/lost`) | Every card grouped by bank, one Call button per bank (the card's lost-or-stolen number), and a switch per card to tick it off as blocked, with progress. A checklist only: nothing is sent to any bank. |
+| Recovery codes (`#/item/r2`) | Two-step login backup codes: all hidden behind one biometric, each can be marked used, and a warning when 2 or fewer are left |
 | Category (`#/category/login` and so on) | Every item in one category, a line on how that category is protected, and an Add button for that type |
 | Card (`#/card/1`, `#/card/2`) | **Critical** fields: reveal or copy asks for a fingerprint, then not again for 60 s; one field at a time; auto-hides after 30 s. Five finishes to choose from. Card 1 has a stored CVV, card 2 does not. No PIN field. |
 | Item (`#/item/k1` and so on) | One detail screen for every other type. Each field follows its tier: **normal** shown, **concealed** tap to reveal, **critical** fingerprint to reveal or copy. Passwords show a strength meter. |

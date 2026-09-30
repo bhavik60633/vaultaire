@@ -38,7 +38,11 @@
     other: '<circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/>',
     up: '<path d="M12 19V5M6 11l6-6 6 6"/>',
     down: '<path d="M12 5v14M6 13l6 6 6-6"/>',
-    pin: '<path d="M9 4h6l-1 6 3 3H7l3-3z"/><path d="M12 13v7"/>'
+    pin: '<path d="M9 4h6l-1 6 3 3H7l3-3z"/><path d="M12 13v7"/>',
+    folder: '<path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/>',
+    phone: '<path d="M6.5 4h3l1.5 4-2 1.5a11 11 0 0 0 5.5 5.5l1.5-2 4 1.5v3a2 2 0 0 1-2 2A15.5 15.5 0 0 1 4.5 6a2 2 0 0 1 2-2z"/>',
+    calendar: '<rect x="4" y="5.5" width="16" height="14.5" rx="2"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/>',
+    codes: '<path d="M10 7h10M10 12h10M10 17h10"/><path d="M4.5 6.5l1.2-.7v3.4M4.3 11h2.2l-2.2 2.6h2.2M4.3 16h2.2l-1.1 1.2 1.1 1.3H4.3"/>'
   };
 
   // `attrs` come first so they win over the defaults (the first duplicate attribute wins).
@@ -131,11 +135,36 @@
     announce(`Showing the ${PLATFORMS[next].name} version`);
   }
 
+  // ---------- Typeface: three candidates to compare on a phone (the two not chosen get removed) ----------
+  const TYPEFACES = { plex: 'Plex', newsreader: 'Newsreader', schibsted: 'Schibsted' };
+  const TYPE_KEY = 'vaultaire-prototype-typeface';
+  const own = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+  function loadTypeface() {
+    const asked = new URLSearchParams(location.search).get('type'); // e.g. ?type=newsreader
+    if (asked && own(TYPEFACES, asked)) return asked;
+    try {
+      const saved = localStorage.getItem(TYPE_KEY);
+      if (saved && own(TYPEFACES, saved)) return saved;
+    } catch (e) { /* storage unavailable: default */ }
+    return 'plex';
+  }
+  let typeface = loadTypeface();
+  document.documentElement.dataset.type = typeface;
+  function setTypeface(next) {
+    if (!own(TYPEFACES, next) || next === typeface) return;
+    typeface = next;
+    document.documentElement.dataset.type = next;
+    try { localStorage.setItem(TYPE_KEY, next); } catch (e) { /* not persisted; fine for a prototype */ }
+    render();
+    announce(`Typeface: ${TYPEFACES[next]}`);
+  }
+
   // ---------- Categories, in the order the vault shows them ----------
   const CATEGORIES = [
     { type: 'card', label: 'Cards', one: 'card', many: 'cards', add: 'Add card', note: 'Card numbers and security codes need your {bio} to show or copy.' },
     { type: 'login', label: 'Passwords', one: 'password', many: 'passwords', add: 'Add password', note: 'Passwords stay masked until you tap. Copies clear after 60 seconds.' },
     { type: 'devkey', label: 'API keys', one: 'key', many: 'keys', add: 'Add API key', note: 'Secrets need your {bio} to show or copy.' },
+    { type: 'codes', label: 'Recovery codes', one: 'set', many: 'sets', add: 'Add recovery codes', note: 'Codes need your {bio} to show. Each code works once, so tick it off when you use it.' },
     { type: 'bank', label: 'Bank accounts', one: 'account', many: 'accounts', add: 'Add bank account', note: 'Account numbers need your {bio} to show or copy.' },
     { type: 'identity', label: 'Identity', one: 'document', many: 'documents', add: 'Add document', note: 'Document numbers need your {bio} to show or copy.' },
     { type: 'note', label: 'Notes', one: 'note', many: 'notes', add: 'Add note', note: 'Notes stay hidden until you tap.' },
@@ -154,8 +183,10 @@
   function loadLayout() {
     try {
       const saved = JSON.parse(localStorage.getItem(LAYOUT_KEY));
-      if (saved && Array.isArray(saved.order) && saved.order.length === DEFAULT_ORDER.length && DEFAULT_ORDER.every((t) => saved.order.includes(t))) {
-        return { order: saved.order, hidden: saved.hidden && typeof saved.hidden === 'object' ? saved.hidden : {} };
+      if (saved && Array.isArray(saved.order)) {
+        const order = saved.order.filter((t, i) => DEFAULT_ORDER.includes(t) && saved.order.indexOf(t) === i);
+        for (const t of DEFAULT_ORDER) if (!order.includes(t)) order.push(t);
+        return { order, hidden: saved.hidden && typeof saved.hidden === 'object' ? saved.hidden : {} };
       }
     } catch (e) { /* storage unavailable: use the default */ }
     return { order: DEFAULT_ORDER.slice(), hidden: {} };
@@ -171,9 +202,14 @@
 
   // ---------- Sample data (not real) ----------
   const FINISHES = [['obsidian', 'Obsidian'], ['titanium', 'Titanium'], ['platinum', 'Platinum'], ['ivory', 'Ivory'], ['champagne', 'Champagne']];
+  // Hotline numbers are fictional (the reserved 555-01xx range).
   const CARDS = {
-    1: { id: '1', nick: 'Travel card', network: 'VISA', issuer: 'Northbridge Bank', holder: 'Alex Morgan', number: '4929 1845 7720 4821', last4: '4821', expiry: '08 / 29', cvv: '317' },
-    2: { id: '2', nick: 'Everyday debit', network: 'MASTERCARD', issuer: 'Harbour Mutual', holder: 'Alex Morgan', number: '5412 7534 9021 1177', last4: '1177', expiry: '11 / 27', cvv: null }
+    1: { id: '1', nick: 'Travel card', network: 'VISA', issuer: 'Northbridge Bank', holder: 'Alex Morgan', number: '4929 1845 7720 4821', last4: '4821', expiry: '08 / 29', cvv: '317', hotline: '+1 800 555 0142' },
+    2: { id: '2', nick: 'Everyday debit', network: 'MASTERCARD', issuer: 'Harbour Mutual', holder: 'Alex Morgan', number: '5412 7534 9021 1177', last4: '1177', expiry: '12 / 26', cvv: null, hotline: '+1 800 555 0163' },
+    3: { id: '3', nick: 'Platinum', network: 'AMEX', issuer: 'American Express', holder: 'Alex Morgan', number: '3714 496353 98431', last4: '8431', expiry: '05 / 28', cvv: null, hotline: '+1 800 555 0177' },
+    4: { id: '4', nick: 'Gold', network: 'AMEX', issuer: 'American Express', holder: 'Alex Morgan', number: '3787 344936 71006', last4: '1006', expiry: '04 / 27', cvv: null, hotline: '+1 800 555 0177' },
+    5: { id: '5', nick: 'Business Platinum', network: 'AMEX', issuer: 'American Express', holder: 'Alex Morgan', number: '3782 822463 10005', last4: '0005', expiry: '10 / 29', cvv: null, hotline: '+1 800 555 0177' },
+    6: { id: '6', nick: 'Blue Cash', network: 'AMEX', issuer: 'American Express', holder: 'Alex Morgan', number: '3400 000000 00009', last4: '0009', expiry: '02 / 28', cvv: null, hotline: '+1 800 555 0177' }
   };
   // Field tiers follow blueprint §17: normal (shown), concealed (tap), critical (biometric).
   const N = (label, value, extra) => Object.assign({ label, value, tier: 'normal', copy: false }, extra);
@@ -182,6 +218,10 @@
   const ITEMS = [
     { id: 'c1', type: 'card', card: '1', title: 'Travel card', sub: 'Visa · •••• 4821', fav: true },
     { id: 'c2', type: 'card', card: '2', title: 'Everyday debit', sub: 'Mastercard · •••• 1177', fav: false },
+    { id: 'c3', type: 'card', card: '3', title: 'Platinum', sub: 'American Express · •••• 8431', fav: false },
+    { id: 'c4', type: 'card', card: '4', title: 'Gold', sub: 'American Express · •••• 1006', fav: false },
+    { id: 'c5', type: 'card', card: '5', title: 'Business Platinum', sub: 'American Express · •••• 0005', fav: false },
+    { id: 'c6', type: 'card', card: '6', title: 'Blue Cash', sub: 'American Express · •••• 0009', fav: false },
     {
       id: 'p1', type: 'login', title: 'Primary email', sub: 'alex.morgan@example.com', fav: true,
       fields: [N('Username', 'alex.morgan@example.com', { copy: true }), C('Password', 'harbor-violet-onyx-ledger-canyon-rune', { mono: true, meter: [5, 'Very strong · 6-word passphrase'] }), N('Website', 'mail.example.com'), N('Password history', '2 earlier versions kept')],
@@ -194,8 +234,16 @@
     },
     {
       id: 'p3', type: 'login', title: 'Code hosting', sub: 'alexm-dev · code.example',
-      fields: [N('Username', 'alexm-dev', { copy: true }), C('Password', 'lantern-quartz-willow-ember-orbit-slate', { mono: true, meter: [5, 'Very strong · 6-word passphrase'] }), N('Website', 'code.example'), X('Recovery codes', '4f9a-2c71  8b3e-d046\n19c5-7e2a  a6d8-30fb\ne27b-9154  0c3f-b8a9', { mono: true, multiline: true })],
+      fields: [N('Username', 'alexm-dev', { copy: true }), C('Password', 'lantern-quartz-willow-ember-orbit-slate', { mono: true, meter: [5, 'Very strong · 6-word passphrase'] }), N('Website', 'code.example'), N('Two-step login', 'Authenticator app · recovery codes saved')],
       foot: 'Tags: work · Edited 21 Sep 2026'
+    },
+    {
+      id: 'r1', type: 'codes', title: 'Code hosting', service: 'code.example', sub: 'code.example',
+      codes: ['4f9a-2c71', '8b3e-d046', '19c5-7e2a', 'a6d8-30fb', 'e27b-9154', '0c3f-b8a9', '5d12-f7c0', '96ab-3e48', 'c0e5-1b93', '7f84-a26d']
+    },
+    {
+      id: 'r2', type: 'codes', title: 'Primary email', service: 'mail.example.com', sub: 'mail.example.com',
+      codes: ['KQ7M 4TXB', 'R9HF 2WZN', 'D3PV 8YCJ', 'G5EA 6LNU', 'P2SD 9HBK', 'W4MX 7QRT', 'J8CF 3VZE', 'N6TB 5AGY']
     },
     {
       id: 'k1', type: 'devkey', title: 'Cloud root key', sub: 'production · AKIA…MPLE',
@@ -213,12 +261,12 @@
       foot: 'Linked to: Online banking'
     },
     {
-      id: 'i1', type: 'identity', title: 'Passport', sub: 'Expires Mar 2031',
+      id: 'i1', type: 'identity', title: 'Passport', sub: 'Expires Mar 2031', expires: '2031-03-14',
       fields: [N('Document type', 'Passport'), N('Full name', 'Alex Jordan Morgan'), X('Document number', '552 081 443', { mono: true }), N('Issuing country', 'United Kingdom'), N('Expires', '14 Mar 2031')],
       foot: 'Tags: travel'
     },
     {
-      id: 'i2', type: 'identity', title: 'Driving licence', sub: 'Expires Aug 2029',
+      id: 'i2', type: 'identity', title: 'Driving licence', sub: 'Expires Aug 2029', expires: '2029-08-02',
       fields: [N('Document type', 'Driving licence'), N('Full name', 'Alex Jordan Morgan'), X('Licence number', 'MORGA 853214 AJ9', { mono: true }), N('Categories', 'B, BE'), N('Expires', '2 Aug 2029')]
     },
     {
@@ -226,8 +274,8 @@
       fields: [N('Network name', 'Morgan-Home-5G', { copy: true }), C('Wi-Fi password', 'tidal-cobalt-meadow-41', { mono: true }), C('Note', 'Router admin page is on the sticker under the router.\nAdmin password changed March 2026.\nGuest network off.', { multiline: true, copy: false })]
     },
     {
-      id: 'm1', type: 'membership', title: 'Airline miles', sub: 'Skyward · Gold',
-      fields: [N('Program', 'Skyward'), N('Member number', 'SKY 8830 1274', { mono: true, copy: true }), N('Tier', 'Gold'), C('Account PIN', '4417', { mono: true })]
+      id: 'm1', type: 'membership', title: 'Airline miles', sub: 'Skyward · Gold', expires: '2027-01-31', expiresWhat: 'Gold tier ends',
+      fields: [N('Program', 'Skyward'), N('Member number', 'SKY 8830 1274', { mono: true, copy: true }), N('Tier', 'Gold'), N('Tier ends', '31 Jan 2027'), C('Account PIN', '4417', { mono: true })]
     }
   ];
   const itemById = (id) => ITEMS.find((it) => it.id === id);
@@ -237,6 +285,7 @@
     { id: 'card', label: 'Card', desc: 'Debit or credit card' },
     { id: 'login', label: 'Password', desc: 'For a website or app' },
     { id: 'devkey', label: 'API key', desc: 'Secrets and access keys' },
+    { id: 'codes', label: 'Recovery codes', desc: 'Backup codes for two-step login' },
     { id: 'bank', label: 'Bank account', desc: 'Account and routing numbers' },
     { id: 'identity', label: 'Identity', desc: 'Passport, licence, ID card' },
     { id: 'note', label: 'Secure note', desc: 'Private text' },
@@ -251,7 +300,8 @@
     identity: [F('Document type', 'e.g. Passport'), F('Full name', 'As printed'), F('Document number', '', { critical: true }), F('Issuing country'), F('Expiry date', 'DD / MM / YYYY')],
     note: [F('Title', 'e.g. Home Wi-Fi and router'), F('Note', 'Only you can read this', { area: true })],
     devkey: [F('Name', 'e.g. Cloud root key'), F('Service'), F('Environment', 'e.g. production'), F('Key ID'), F('Secret', '', { critical: true })],
-    membership: [F('Program', 'e.g. Airline miles'), F('Member number'), F('Tier', 'e.g. Gold')],
+    membership: [F('Program', 'e.g. Airline miles'), F('Member number'), F('Tier', 'e.g. Gold'), F('Tier or membership ends', 'DD / MM / YYYY')],
+    codes: [F('Account', 'e.g. Code hosting'), F('Website', 'example.com'), F('Codes', 'Paste them all, one per line', { area: true, critical: true })],
     other: [F('Title'), F('Field label', 'e.g. Locker code'), F('Value')]
   };
   const RECOVERY_KEY = ['7KQM', '4TXB', 'R9HF', '2WZN', 'D3PV', '8YCJ', 'G5EA'];
@@ -273,13 +323,18 @@
 
   // ---------- State ----------
   // Card finishes are vault settings, so locking does not reset them.
-  const finishes = { 1: 'titanium', 2: 'platinum' };
+  const finishes = { 1: 'titanium', 2: 'platinum', 3: 'platinum', 4: 'champagne', 5: 'obsidian', 6: 'ivory' };
+  // The real app stores these inside the encrypted vault, like every other item detail.
+  const cardFolder = {}; // card id → a folder the user made; otherwise the card sits in its bank's folder
+  const blocked = {}; // card id → true once the user has marked it blocked (a checklist, nothing is sent)
+  const usedCodes = { r1: new Set([1, 4, 7]), r2: new Set([0, 1, 2, 3, 4, 5]) };
   const fresh = () => ({
     pw: '', pwShown: false, verifying: false, unlocking: false,
     query: '', banner: true,
     revealed: null, secs: 30, sheet: null, lastAuth: 0, toast: '',
     addType: null, addPw: '', addVals: {}, addCvv: false,
-    rkStep: 'show', rkA: '', rkB: '', rkErr: false
+    rkStep: 'show', rkA: '', rkB: '', rkErr: false,
+    newFolder: ''
   });
   let S = fresh();
   let current = null;
@@ -352,12 +407,74 @@
   const finishName = (f) => FINISHES.find(([id]) => id === f)[1];
   const meter = ([level, text]) => `<span class="meter" aria-hidden="true">${Array.from({ length: 5 }, (_, i) => `<span class="${i < level ? 'on' : ''}"></span>`).join('')}</span><span class="frow-note">${text}</span>`;
 
-  const platformSwitch = (labelledBy) => `<span class="segmented" role="group" aria-labelledby="${labelledBy}">${Object.keys(PLATFORMS).map((k) =>
-    `<button type="button" id="${labelledBy}-${k}" data-action="platform" data-arg="${k}" aria-pressed="${k === platform}">${PLATFORMS[k].name}</button>`).join('')}</span>`;
+  const segmented = (labelledBy, options, current, action) => `<span class="segmented" role="group" aria-labelledby="${labelledBy}">${Object.keys(options).map((k) =>
+    `<button type="button" id="${labelledBy}-${k}" data-action="${action}" data-arg="${k}" aria-pressed="${k === current}">${options[k]}</button>`).join('')}</span>`;
+  const platformSwitch = (labelledBy) => segmented(labelledBy, { android: 'Android', ios: 'iPhone' }, platform, 'platform');
+  const typefaceSwitch = (labelledBy) => segmented(labelledBy, TYPEFACES, typeface, 'typeface');
+
+  // Folders: cards group by bank unless the user moves one into a folder of their own.
+  const folderOf = (c) => cardFolder[c.id] || c.issuer;
+  const folderHref = (name) => `#/folder/${encodeURIComponent(name)}`;
+  function folders() {
+    const map = new Map();
+    for (const it of ITEMS.filter((x) => x.type === 'card')) {
+      const c = CARDS[it.card];
+      const name = folderOf(c);
+      if (!map.has(name)) map.set(name, []);
+      map.get(name).push(c);
+    }
+    return Array.from(map, ([name, cards]) => ({ name, cards }));
+  }
+  const cardCount = (n) => `${n} ${n === 1 ? 'card' : 'cards'}`;
+  // A folder of two or more cards shows as a fanned deck in the wallet; a lone card shows as itself.
+  function walletEntry(f) {
+    if (f.cards.length === 1) {
+      const c = f.cards[0];
+      return `<a class="wallet-entry" href="#/card/${c.id}" aria-label="Open ${esc(c.nick)}">${cardFace(c, true)}<span class="wallet-caption">${esc(c.nick)}</span></a>`;
+    }
+    const layers = f.cards.slice(0, 3).reverse();
+    const fan = layers.map((c, i) => `<span class="fan-card fan-${layers.length - 1 - i}">${cardFace(c, true)}</span>`).join('');
+    return `<a class="wallet-entry" href="${folderHref(f.name)}" aria-label="Open folder ${esc(f.name)}, ${cardCount(f.cards.length)}">
+      <span class="fan" aria-hidden="true">${fan}</span>
+      <span class="wallet-caption">${icon('folder', 14)}${esc(f.name)} · ${f.cards.length}</span></a>`;
+  }
+  function cardRow(c) {
+    const soon = expiryOf(c);
+    return `<a class="item" href="#/card/${c.id}"><span class="type-tile"><span class="mini finish-${finishes[c.id]}"></span></span>
+      <span class="item-text"><span class="item-title">${esc(c.nick)}${blocked[c.id] ? ' <span class="badge badge-crit">BLOCKED</span>' : ''}</span>
+      <span class="item-sub">${c.network === 'AMEX' ? 'Amex' : c.network.charAt(0) + c.network.slice(1).toLowerCase()} · •••• ${c.last4} · ${soon.days <= 183 ? `<span class="warn-text">exp. ${c.expiry.replace(/\s/g, '')}</span>` : `exp. ${c.expiry.replace(/\s/g, '')}`}</span></span>
+      ${icon('chev', 18, 'chev')}</a>`;
+  }
+
+  // Expiry watch: shown only inside the unlocked app. A notification would have to read the vault while locked.
+  const DAY = 86400000;
+  function expiryOf(c) {
+    const [m, y] = c.expiry.split('/').map((v) => parseInt(v, 10));
+    const date = new Date(2000 + y, m, 0); // cards work until the end of their expiry month
+    return { date, days: Math.ceil((date - Date.now()) / DAY) };
+  }
+  function upcoming() {
+    const list = [];
+    for (const it of ITEMS) {
+      let e = null;
+      if (it.card) e = Object.assign(expiryOf(CARDS[it.card]), { what: 'Card expires' });
+      else if (it.expires) {
+        const date = new Date(it.expires + 'T00:00:00');
+        e = { date, days: Math.ceil((date - Date.now()) / DAY), what: it.expiresWhat || 'Expires' };
+      }
+      if (e && e.days <= 183) list.push(Object.assign(e, { it }));
+    }
+    return list.sort((a, b) => a.days - b.days);
+  }
+  const whenText = (days) => (days < 0 ? 'Expired' : days <= 45 ? `in ${days} days` : `in ${Math.round(days / 30.44)} months`);
+  const monthYear = (d) => d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+
+  const codesLeft = (it) => it.codes.length - usedCodes[it.id].size;
 
   function cardFace(c, small) {
     const f = finishes[c.id];
-    return `<div class="card-face finish-${f}${small ? ' sm' : ''}" role="img" aria-label="${esc(c.nick)}: ${c.network} ending ${c.last4}, ${finishName(f)} finish">
+    return `<div class="card-face finish-${f}${small ? ' sm' : ''}${blocked[c.id] ? ' is-blocked' : ''}" role="img" aria-label="${esc(c.nick)}: ${c.network} ending ${c.last4}, ${finishName(f)} finish${blocked[c.id] ? ', marked blocked' : ''}">
+      ${blocked[c.id] ? '<span class="blocked-band">BLOCKED</span>' : ''}
       <svg class="engrave" viewBox="0 0 350 221" preserveAspectRatio="none" aria-hidden="true"><path d="${CARD_ENGRAVING}"/></svg>
       <div class="card-top"><span>${esc(c.issuer.toUpperCase())}</span>${small ? '' : `<span>${finishName(f).toUpperCase()}</span>`}</div>
       <div class="card-bottom">
@@ -369,7 +486,7 @@
 
   function itemRow(it) {
     const lead = it.card ? `<span class="type-tile"><span class="mini finish-${finishes[it.card]}"></span></span>` : typeTile(it.type);
-    return `<a class="item" href="${hrefOf(it)}">${lead}<span class="item-text"><span class="item-title">${esc(it.title)}</span><span class="item-sub">${esc(it.sub)}</span></span>${it.fav ? icon('star', 14, 'fav', 'fill="currentColor" role="img" aria-label="Favorite"') : ''}${icon('chev', 18, 'chev')}</a>`;
+    return `<a class="item" href="${hrefOf(it)}">${lead}<span class="item-text"><span class="item-title">${esc(it.title)}</span><span class="item-sub">${it.type === 'codes' ? `${codesLeft(it)} of ${it.codes.length} codes left${codesLeft(it) <= 2 ? ' · <span class="warn-text">running low</span>' : ''}` : esc(it.sub)}</span></span>${it.fav ? icon('star', 14, 'fav', 'fill="currentColor" role="img" aria-label="Favorite"') : ''}${icon('chev', 18, 'chev')}</a>`;
   }
 
   // ---------- Screens ----------
@@ -431,15 +548,23 @@
     const section = ({ cat, items }) => {
       const head = `<a class="sec-head" href="#/category/${cat.type}"><h2 class="sec-title">${cat.label}</h2><span class="sec-count">${items.length}</span>${icon('chev', 16, 'chev')}</a>`;
       if (cat.type === 'card' && !q) {
-        return `<section class="sec">${head}<div class="wallet" id="wallet" data-keep-scroll>${items.map((it) => `<a class="wallet-card" href="${hrefOf(it)}" aria-label="Open ${esc(it.title)}">${cardFace(CARDS[it.card], true)}</a>`).join('')}</div></section>`;
+        return `<section class="sec">${head}<div class="wallet" id="wallet" data-keep-scroll>${folders().map(walletEntry).join('')}</div></section>`;
       }
       const shown = q ? items : items.slice(0, 3);
       const more = items.length > shown.length ? `<a class="see-all" href="#/category/${cat.type}">See all ${countLabel(cat, items.length)}${icon('chev', 16)}</a>` : '';
       return `<section class="sec">${head}<div class="group">${shown.map(itemRow).join('')}${more}</div></section>`;
     };
 
+    const soon = q ? [] : upcoming();
+    const comingUp = soon.length
+      ? `<section class="sec"><div class="sec-head static"><h2 class="sec-title">Coming up</h2><span class="sec-count">${soon.length}</span></div><div class="group">${soon.slice(0, 3).map((e) => `<a class="item soon" href="${hrefOf(e.it)}">
+          <span class="type-tile">${icon('calendar')}</span>
+          <span class="item-text"><span class="item-title">${esc(e.it.title)}</span><span class="item-sub">${e.what} ${monthYear(e.date)}</span></span>
+          <span class="soon-when">${whenText(e.days)}</span></a>`).join('')}</div></section>`
+      : '';
+    // Cards stay first; "Coming up" follows them.
     const body = groups.length
-      ? groups.map(section).join('')
+      ? groups.map((g, i) => section(g) + (i === 0 && g.cat.type === 'card' ? comingUp : '')).join('') + (groups[0].cat.type === 'card' ? '' : comingUp)
       : `<div class="empty"><p class="display">Nothing found</p><p class="small muted">No items match “${esc(S.query)}”.</p></div>`;
     const banner = S.banner ? `<div class="banner" role="status">${icon('alert', 20)}<p>3 failed password attempts since your last unlock</p><button type="button" id="dismiss" class="text-btn" data-action="dismissBanner">Dismiss</button></div>` : '';
 
@@ -516,7 +641,10 @@
     const list = !items.length
       ? `<div class="empty"><p class="display">Nothing here yet</p><p class="small muted">Items you add will appear here.</p></div>`
       : cat.type === 'card'
-        ? `<div class="card-stack">${items.map((it) => `<a class="wallet-card" href="${hrefOf(it)}" aria-label="Open ${esc(it.title)}">${cardFace(CARDS[it.card], false)}</a>`).join('')}</div>`
+        ? `<a class="btn btn-secondary lost-btn" href="#/lost">${icon('alert', 20)}Lost your wallet?</a>
+          ${folders().map((f) => `<section class="folder-sec">
+            <a class="folder-head" href="${folderHref(f.name)}">${icon('folder', 18)}<span class="folder-name">${esc(f.name)}</span><span class="sec-count">${f.cards.length}</span>${icon('chev', 16, 'chev')}</a>
+            <div class="group">${f.cards.map(cardRow).join('')}</div></section>`).join('')}`
         : `<div class="group">${items.map(itemRow).join('')}</div>`;
     return `<section class="screen${fx.enter ? ' enter' : ''}" id="scr-cat-${cat.type}" data-keep-scroll>
       ${topbar('#/vault', 'Back to vault')}
@@ -535,6 +663,7 @@
   function item(id) {
     const it = itemById(id) || ITEMS[2];
     const cat = categoryOf(it.type);
+    if (it.type === 'codes') return codesItem(it, cat);
     const rows = it.fields.map((f, i) => {
       const key = `${it.id}-${i}`;
       const on = S.revealed === key;
@@ -560,6 +689,108 @@
         ${rows}
         ${it.foot ? `<p class="faint">${esc(it.foot)}</p>` : ''}
       </div>
+    </section>`;
+  }
+
+  // Two-step login backup codes: all hidden behind one biometric, each ticked off once used.
+  function codesItem(it, cat) {
+    const key = `codes-${it.id}`;
+    const on = S.revealed === key;
+    const left = codesLeft(it);
+    const used = usedCodes[it.id];
+    const warn = left <= 2
+      ? `<p class="assurance warn-note">${icon('alert', 18)}<span>Only ${left} ${left === 1 ? 'code' : 'codes'} left. Sign in to ${esc(it.service)} and make a new set before you run out, or you could be locked out of the account.</span></p>`
+      : '';
+    const list = on
+      ? `<ol class="codes${fx.reveal ? ' fade-in' : ''}">${it.codes.map((c, i) => `<li class="code-row${used.has(i) ? ' used' : ''}">
+          <span class="code-n">${i + 1}</span><span class="code mono">${esc(c)}</span>
+          <button type="button" id="use-${it.id}-${i}" class="text-btn" data-action="toggleCode" data-arg="${it.id}:${i}" aria-pressed="${used.has(i)}" aria-label="Code ${i + 1}: ${used.has(i) ? 'used, mark unused' : 'mark used'}">${used.has(i) ? 'Used' : 'Mark used'}</button></li>`).join('')}</ol>`
+      : `<div class="codes-masked">${icon('lock', 18)}<span>${it.codes.length} codes hidden</span></div>`;
+    return `<section class="screen${fx.enter ? ' enter' : ''}" id="scr-item" data-keep-scroll>
+      ${topbar(`#/category/${it.type}`, `Back to ${cat.label}`)}
+      <div class="title-row">${typeTile(it.type)}<div class="col"><span class="label">${cat.label}</span><h1 class="display">${esc(it.title)}</h1></div></div>
+      <div class="fields">
+        ${frow('Website', esc(it.service))}
+        <div class="frow"><div class="frow-text"><span class="frow-label">Codes ${criticalBadge}</span><span class="frow-value">${left} of ${it.codes.length} unused</span>${timer(on)}</div></div>
+        ${list}
+        <button type="button" id="reveal-${key}" class="btn btn-secondary" data-action="reveal" data-arg="${key}" data-tier="critical" data-label="recovery codes" aria-pressed="${on}">${icon(on ? 'eyeOff' : 'eye', 20)}${on ? 'Hide codes' : 'Show codes'}</button>
+        ${warn}
+        <p class="assurance">${icon('shield', 18)}<span>Each code signs you in once if you lose your authenticator. Tick one off as soon as you use it.</span></p>
+      </div>
+    </section>`;
+  }
+
+  // A folder: every card in it, full size.
+  function folder(param) {
+    let name = '';
+    try { name = decodeURIComponent(param || ''); } catch (e) { /* malformed link: fall through */ }
+    const all = folders();
+    const f = all.find((x) => x.name === name) || all.find((x) => x.cards.length > 1) || all[0];
+    const custom = f.cards.some((c) => cardFolder[c.id] === f.name);
+    return `<section class="screen${fx.enter ? ' enter' : ''}" id="scr-folder" data-keep-scroll>
+      ${topbar('#/category/card', 'Back to Cards')}
+      <div class="gutter cat-head">
+        <span class="label">${custom ? 'Your folder' : 'Bank folder'}</span>
+        <h1 class="display">${esc(f.name)}</h1>
+        <p class="small muted">${cardCount(f.cards.length)}</p>
+      </div>
+      <div class="gutter cat-list"><div class="card-stack">${f.cards.map((c) => `<a class="wallet-card" href="#/card/${c.id}" aria-label="Open ${esc(c.nick)}">${cardFace(c, false)}</a>`).join('')}</div></div>
+      <p class="assurance gutter cat-note">${icon('folder', 18)}<span>${custom ? 'You made this folder. Move cards in or out from each card’s details.' : 'Cards from the same bank are grouped automatically. To use a folder of your own, open a card and choose Folder.'}</span></p>
+    </section>`;
+  }
+
+  // Choose a card's folder: its bank's, one the user made, or a new one.
+  function move(id) {
+    const c = CARDS[id] || CARDS[1];
+    const current = folderOf(c);
+    const names = [c.issuer, ...new Set(Object.values(cardFolder))].filter((n, i, a) => a.indexOf(n) === i);
+    const rows = names.map((n) => `<button type="button" id="to-${encodeURIComponent(n).replace(/%/g, '_')}" class="srow pick-row" data-action="moveCard" data-arg="${c.id}:${esc(n)}" aria-pressed="${n === current}">
+        <span class="srow-main"><span class="srow-label">${esc(n)}</span>${n === c.issuer ? '<span class="srow-sub">Its bank · automatic</span>' : ''}</span>
+        ${n === current ? icon('check', 20, 'accent-icon') : ''}</button>`).join('');
+    const name = S.newFolder.trim();
+    return `<section class="screen${fx.enter ? ' enter' : ''}" id="scr-move" data-keep-scroll>
+      ${topbar(`#/card/${c.id}`, `Back to ${c.nick}`)}
+      <div class="gutter cat-head"><span class="label">${esc(c.nick)} · •••• ${c.last4}</span><h1 class="display">Move to folder</h1></div>
+      <div class="gutter cat-list"><div class="group">${rows}</div></div>
+      <form class="gutter new-folder" data-submit="createFolder" autocomplete="off">
+        <label class="label" for="new-folder">New folder</label>
+        <div class="inline">
+          <input id="new-folder" class="input" type="text" maxlength="30" placeholder="e.g. Business" value="${esc(S.newFolder)}" data-bind="newFolder" spellcheck="false" autocomplete="off">
+          <button type="submit" id="create-folder" class="btn btn-primary btn-small"${name && !names.includes(name) ? '' : ' disabled'}>Create</button>
+        </div>
+      </form>
+    </section>`;
+  }
+
+  // Lost wallet: every card by bank, one call per bank, and a checklist of what is blocked.
+  function lost() {
+    const cards = ITEMS.filter((x) => x.type === 'card').map((x) => CARDS[x.card]);
+    const banks = [...new Set(cards.map((c) => c.issuer))];
+    const done = cards.filter((c) => blocked[c.id]).length;
+    const groups = banks.map((b) => {
+      const list = cards.filter((c) => c.issuer === b);
+      const tel = list[0].hotline.replace(/[^+\d]/g, '');
+      return `<div class="group lost-group">
+        <div class="lost-head"><span class="srow-main"><span class="srow-label">${esc(b)}</span><span class="srow-sub mono">${esc(list[0].hotline)}</span></span>
+          <a class="btn btn-primary btn-small call-btn" href="tel:${tel}" aria-label="Call ${esc(b)} to block cards">${icon('phone', 18)}Call</a></div>
+        ${list.map((c) => `<label class="srow lost-row" for="blocked-${c.id}">
+          <span class="type-tile"><span class="mini finish-${finishes[c.id]}"></span></span>
+          <span class="srow-main"><span class="srow-label">${esc(c.nick)}</span><span class="srow-sub">•••• ${c.last4}</span></span>
+          <span class="lost-state">${blocked[c.id] ? 'Blocked' : ''}</span>
+          <input type="checkbox" role="switch" id="blocked-${c.id}" class="switch" data-action="toggleBlocked" data-arg="${c.id}" aria-label="${esc(c.nick)} blocked"${blocked[c.id] ? ' checked' : ''}></label>`).join('')}
+      </div>`;
+    }).join('');
+    return `<section class="screen${fx.enter ? ' enter' : ''}" id="scr-lost" data-keep-scroll>
+      ${topbar('#/category/card', 'Back to Cards')}
+      <div class="gutter cat-head">
+        <span class="label">Cards</span>
+        <h1 class="display">Lost wallet</h1>
+        <p class="small muted">Call each bank to block your cards, then tick them off here.</p>
+      </div>
+      <div class="gutter progress-line" role="status"><span class="progress-bar"><span class="progress-fill p${Math.round((done / cards.length) * 10)}"></span></span><span class="small">${done} of ${cards.length} blocked</span></div>
+      <div class="gutter cat-list lost-list">${groups}</div>
+      <p class="assurance gutter cat-note">${icon('shield', 18)}<span>This is your own checklist. Vaultaire never contacts your bank, and nothing leaves this phone.</span></p>
+      <p class="assurance gutter cat-note lost-last">${icon('alert', 18)}<span>Next, change the passwords of any accounts that could be opened with what was in the wallet.</span></p>
     </section>`;
   }
 
@@ -595,9 +826,12 @@
           ${secret(onNum, c.number, '•••• •••• •••• ' + c.last4)}
           ${timer(onNum)}
         </div>${revealBtn('card-number', 'card number', 'critical', onNum)}${copyBtn('card-number', 'card number', 'critical')}</div>
-        ${frow('Expiry', `<span class="mono">${c.expiry}</span>`, copyBtn('card-expiry', 'expiry date'))}
+        ${frow('Expiry', `<span class="mono">${c.expiry}</span>${expiryOf(c).days <= 183 ? `<span class="frow-note warn-text">${expiryOf(c).days < 0 ? 'Expired' : `Expires ${whenText(expiryOf(c).days)}`} · ask ${esc(c.issuer)} for a new card</span>` : ''}`, copyBtn('card-expiry', 'expiry date'))}
         ${cvvRow}
         ${frow('Issuer', esc(c.issuer))}
+        <a class="frow frow-link" href="#/move/${c.id}"><div class="frow-text"><span class="frow-label">Folder</span><span class="frow-value">${icon('folder', 16)} ${esc(folderOf(c))}</span></div>${icon('chev', 18, 'chev')}</a>
+        ${frow('If lost or stolen', `<span class="mono">${esc(c.hotline)}</span>${blocked[c.id] ? '<span class="frow-note warn-text">Marked blocked</span>' : ''}`, `<a class="icon-btn accent" href="tel:${c.hotline.replace(/[^+\d]/g, '')}" aria-label="Call ${esc(c.issuer)}">${icon('phone', 20)}</a>`)}
+        <a class="btn btn-secondary lost-btn" href="#/lost">${icon('alert', 20)}Lost your wallet?</a>
         ${note}
         <p class="assurance">${icon('lock', 18)}<span>Card PINs are never stored.</span></p>
       </div>
@@ -730,7 +964,10 @@
           </div>
         </section>
         <section class="section"><h2 class="label">Prototype</h2>
-          <div class="group"><div class="srow"><span class="srow-label" id="plat-label">Show as</span>${platformSwitch('plat-label')}</div></div>
+          <div class="group">
+            <div class="srow"><span class="srow-label" id="plat-label">Show as</span>${platformSwitch('plat-label')}</div>
+            <div class="srow srow-stack"><span class="srow-label" id="type-label">Typeface</span>${typefaceSwitch('type-label')}</div>
+          </div>
         </section>
         <section class="section"><h2 class="label">About</h2>
           <div class="group">${simple('Version', '<span class="mono">0.1 prototype</span>')}<div class="srow"><span class="srow-label">How Vaultaire protects you</span></div>${simple('Licence', 'GPL-3.0-or-later')}</div>
@@ -766,6 +1003,9 @@
     sections: { title: 'Home sections', render: sections },
     category: { title: 'Category · Passwords', render: category, link: '#/category/login' },
     card: { title: 'Card · critical fields', render: card, link: '#/card/1' },
+    folder: { title: 'Card folder', render: folder, link: '#/folder/American%20Express' },
+    move: { title: 'Move to folder', render: move, link: '#/move/5', hidden: true },
+    lost: { title: 'Lost wallet', render: lost },
     item: { title: 'Item · API key', render: item, link: '#/item/k1' },
     add: { title: 'Add item', render: add },
     recovery: { title: 'Recovery Kit', render: recovery },
@@ -779,6 +1019,7 @@
     if (r.name === 'category') return categoryOf(r.param).label;
     if (r.name === 'item') return (itemById(r.param) || {}).title || 'Item';
     if (r.name === 'card') return (CARDS[r.param] || CARDS[1]).nick;
+    if (r.name === 'folder') { try { return decodeURIComponent(r.param || '') || 'Folder'; } catch (e) { return 'Folder'; } }
     return ROUTES[r.name].title;
   }
 
@@ -812,8 +1053,10 @@
   function renderNav(name) {
     nav.innerHTML = `<img class="nav-mark" src="brand/mark.png" alt="" width="48" height="48">
       <p class="label">Vaultaire · UI prototype</p>
-      ${Object.keys(ROUTES).map((k) => `<a href="${ROUTES[k].link || '#/' + k}"${k === name ? ' aria-current="page"' : ''}>${ROUTES[k].title}</a>`).join('')}
+      ${Object.keys(ROUTES).filter((k) => !ROUTES[k].hidden).map((k) => `<a href="${ROUTES[k].link || '#/' + k}"${k === name ? ' aria-current="page"' : ''}>${ROUTES[k].title}</a>`).join('')}
+      <a href="#/item/r2">Recovery codes</a>
       <p class="label nav-plat" id="nav-plat">Show as</p>${platformSwitch('nav-plat')}
+      <p class="label nav-plat" id="nav-type">Typeface</p>${typefaceSwitch('nav-type')}
       <p class="note">Design mockup. No encryption, no storage, sample data only.</p>`;
   }
 
@@ -828,6 +1071,7 @@
       if (prev === 'add') Object.assign(S, { addType: null, addPw: '', addVals: {}, addCvv: false });
       if (prev === 'recovery') Object.assign(S, { rkStep: 'show', rkA: '', rkB: '', rkErr: false });
       if (prev === 'password') Object.assign(S, { verifying: false });
+      if (prev === 'move') S.newFolder = '';
       // "Add password" on a category page opens the form for that type directly.
       if (next.name === 'add' && next.param && TEMPLATES[next.param]) {
         Object.assign(S, { addType: next.param, addPw: next.param === 'login' ? passphrase() : '', addVals: {}, addCvv: false });
@@ -899,6 +1143,30 @@
     rkVerify: () => { fx.step = true; set({ rkStep: 'verify', rkA: '', rkB: '', rkErr: false }); },
     rkShow: () => { fx.step = true; set({ rkStep: 'show' }); },
     platform: (next) => setPlatform(next),
+    typeface: (next) => setTypeface(next),
+    moveCard: (arg) => {
+      const i = arg.indexOf(':');
+      const id = arg.slice(0, i);
+      const name = arg.slice(i + 1);
+      if (!CARDS[id]) return;
+      if (name === CARDS[id].issuer) delete cardFolder[id]; else cardFolder[id] = name;
+      location.hash = `#/card/${id}`;
+      toast(`Moved to ${name}`);
+    },
+    toggleBlocked: (id) => {
+      blocked[id] = !blocked[id];
+      render();
+      announce(`${CARDS[id].nick} ${blocked[id] ? 'marked blocked' : 'no longer marked blocked'}`);
+    },
+    toggleCode: (arg) => {
+      const [id, n] = arg.split(':');
+      const set = usedCodes[id];
+      const i = Number(n);
+      if (!set) return;
+      if (set.has(i)) set.delete(i); else set.add(i);
+      render();
+      announce(`Code ${i + 1} ${set.has(i) ? 'marked used' : 'marked unused'}`);
+    },
     notBuilt: (what) => toast(what + ' is not in the prototype yet')
   };
   // Each returns true when the screen must re-render.
@@ -908,7 +1176,8 @@
     addPw: (v) => { S.addPw = v; return false; },
     addField: (v, el) => { S.addVals[el.dataset.key] = v; return false; },
     rkA: (v) => { S.rkA = v; S.rkErr = false; return true; },
-    rkB: (v) => { S.rkB = v; S.rkErr = false; return true; }
+    rkB: (v) => { S.rkB = v; S.rkErr = false; return true; },
+    newFolder: (v) => { S.newFolder = v; return true; }
   };
   const SUBMITS = {
     // The dial turns while the (simulated) key derivation runs: real progress, not decoration.
@@ -916,6 +1185,12 @@
       if (!S.pw || S.verifying) return;
       set({ verifying: true });
       later(900, () => { location.hash = '#/vault'; });
+    },
+    createFolder: () => {
+      const id = route().param;
+      const name = S.newFolder.trim().slice(0, 30);
+      if (!name || !CARDS[id]) return;
+      ACTIONS.moveCard(`${id}:${name}`);
     },
     rkCheck: () => {
       const ok = normKey(S.rkA) === RECOVERY_KEY[2] && normKey(S.rkB) === RECOVERY_KEY[5];

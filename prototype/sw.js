@@ -3,7 +3,7 @@
 // Network first, so a phone on the same network always gets the latest layout;
 // falls back to the cache when offline. The prototype holds no secrets.
 
-const CACHE = 'vaultaire-prototype-v4';
+const CACHE = 'vaultaire-prototype-v5';
 const FILES = [
   './',
   './index.html',
@@ -13,8 +13,11 @@ const FILES = [
   './manifest.webmanifest',
   './brand/lockup.png',
   './brand/mark.png',
-  './fonts/cormorant-garamond-latin.woff2',
-  './fonts/jetbrains-mono-latin.woff2',
+  './fonts/ibm-plex-sans-latin.woff2',
+  './fonts/ibm-plex-mono-400-latin.woff2',
+  './fonts/ibm-plex-mono-500-latin.woff2',
+  './fonts/newsreader-latin.woff2',
+  './fonts/schibsted-grotesk-latin.woff2',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',
