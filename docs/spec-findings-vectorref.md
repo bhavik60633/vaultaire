@@ -1,6 +1,6 @@
 # Spec findings from writing the reference implementation
 
-Date: 2026-09-30. Writing [`tools/vectorref`](../tools/vectorref/) from the spec text alone turned up the gaps below. Each has a **proposed fix**. The reference implements that fix, so the current vectors already follow it, and each is marked "provisional" until the reviewer agrees and the spec text is updated. If the reviewer chooses differently, the reference changes and the vectors are regenerated.
+Date: 2026-09-30. Writing [`tools/vectorref`](../tools/vectorref/) from the spec text alone turned up the gaps below. Each has a **proposed fix**. The reference implements that fix, and **the spec text was updated to match on 2026-09-30**, with each change marked "pending review" in place. If the reviewer chooses differently, the reference changes and the vectors are regenerated.
 
 | ID | Severity | Where | Problem | Proposed fix |
 |---|---|---|---|---|

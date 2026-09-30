@@ -11,6 +11,7 @@ FORMAT_VERSION = 1
 SCHEMA_VERSION = 1
 
 # §3.3 Label registry
+L_BIO_BLOB = b'vlt/v1/bio-blob'  # AAD inside Keystore (§4.2); not computed by the core
 L_KEK_BIO = b'vlt/v1/kek/bio'
 L_HW_INPUT = b'vlt/v1/hw-input'
 L_KEK_PWD = b'vlt/v1/kek/pwd'

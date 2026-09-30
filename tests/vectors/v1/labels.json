@@ -4,6 +4,11 @@
   "format_version": 1,
   "vectors": [
     {
+      "id": "bio_blob",
+      "ascii": "vlt/v1/bio-blob",
+      "bytes": "766c742f76312f62696f2d626c6f62"
+    },
+    {
       "id": "kek_bio",
       "ascii": "vlt/v1/kek/bio",
       "bytes": "766c742f76312f6b656b2f62696f"

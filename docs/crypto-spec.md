@@ -5,7 +5,7 @@
 | Status | **Draft 0.1, not yet reviewed.** Input to Gate G0 (spec freeze). Values marked **PROVISIONAL** are fixed at G0 after the Phase-0 measurements. |
 | Scope | Format version 1 (`format_version = 1`): key hierarchy, keyslots, record encryption, integrity, Recovery Key encoding and backup encryption |
 | Related | [`threat-model.md`](threat-model.md) (why), `vault-format.md` (byte layouts and schemas; to be written) |
-| Last updated | 2026-09-29 |
+| Last updated | 2026-09-30 (spec findings S-4, S-7 to S-10 applied, pending review) |
 
 This document is normative. The words **must**, **must not** and **should** carry their usual RFC 2119 meaning. An implementation that differs from this document is wrong, even if it "works".
 
@@ -70,7 +70,7 @@ Any other value **must** be rejected. A new algorithm requires a new `format_ver
 - `a ‖ b`: byte concatenation.
 - `u8(x)`, `u16(x)`, `u32(x)`: unsigned integers, **big-endian**, of 1, 2 or 4 bytes.
 - `ascii("…")`: the ASCII bytes of a string, with no terminator and no length prefix. Every label in this document has a fixed, distinct value (§3.3), so labels need no length prefix.
-- `zeros(n)`: `n` zero bytes.
+- `zeros(n)`: `n` zero bytes. `HKDF(…, salt = zeros(0), …)` gives the same result as HKDF with no salt (RFC 5869 then uses HashLen zero bytes, and HMAC treats both keys alike); implementations may pass either *(S-8)*. The RFC 5869 A.3 vector in `tests/vectors/v1/kat/` covers it.
 - `HKDF(ikm, salt, info, L)` = `HKDF-Expand(HKDF-Extract(salt, ikm), info, L)` with SHA-256 (RFC 5869).
 - `Seal(K, N, P, AD)` and `Open(K, N, C, AD)`: XChaCha20-Poly1305. `Seal` returns ciphertext ‖ 16-byte tag. `Open` returns the plaintext **only if** the tag verifies.
 - `Argon2id(P, S, m, t, p)`: 32-byte output. `m` is in KiB. No secret key (`K`) and no associated data (`X`).
@@ -93,6 +93,7 @@ Every label is ASCII and starts with `vlt/v1/`. `vlt` is a fixed protocol identi
 
 | Label | Used in |
 |---|---|
+| `vlt/v1/bio-blob` | §4.2 AAD for SK encrypted inside Keystore *(S-4; pending review)* |
 | `vlt/v1/kek/bio` | §4.2 KEK for KS-BIO |
 | `vlt/v1/hw-input` | §4.3 input to the hardware HMAC |
 | `vlt/v1/kek/pwd` | §4.3 KEK for KS-PWD |
@@ -143,7 +144,7 @@ K_bio : AES-256-GCM, PURPOSE_ENCRYPT | PURPOSE_DECRYPT
         StrongBox first; on StrongBoxUnavailableException, TEE. Record which one in the slot parameters.
 ```
 
-- On creation, `vault-core` generates **SK** (32 bytes). Keystore encrypts it: `bio_blob = AES-GCM(K_bio, iv, SK, AAD = vault_id ‖ ascii("KS-BIO"))`. Keystore picks the 12-byte IV. The IV and `bio_blob` go in the slot parameters.
+- On creation, `vault-core` generates **SK** (32 bytes). Keystore encrypts it: `bio_blob = AES-GCM(K_bio, iv, SK, AAD = ascii("vlt/v1/bio-blob") ‖ vault_id)`. Keystore picks the 12-byte IV. The IV and `bio_blob` go in the slot parameters.
 - SK is then zeroized in both Kotlin and Rust.
 - To unlock, Keystore decrypts `bio_blob` inside `BiometricPrompt.authenticate(CryptoObject(cipher))`. **The biometric result is the key release itself, never a boolean** (threat-model I7).
 - `KEK_bio = HKDF(ikm = SK, salt = vault_id, info = ascii("vlt/v1/kek/bio"), L = 32)`
@@ -322,7 +323,7 @@ The Recovery Key is RS written for humans: 28 Crockford Base32 characters in 7 g
 
 1. Treat RS (16 bytes) as a 128-bit big-endian integer. Prepend two zero bits, giving 130 bits.
 2. Encode those 130 bits as 26 Crockford Base32 symbols (alphabet `0123456789ABCDEFGHJKMNPQRSTVWXYZ`), most significant first. The first symbol is therefore always `0`–`7`.
-3. `c = HKDF(ikm = RS, salt = zeros(0), info = ascii("vlt/v1/rk-checksum"), L = 2)`. Take the **first 10 bits** of `c` and encode them as 2 more symbols.
+3. `c = HKDF(ikm = RS, salt = zeros(0), info = ascii("vlt/v1/rk-checksum"), L = 2)`. Take the **first 10 bits** of `c`, that is `(c[0] << 2) | (c[1] >> 6)`, and encode them as 2 more symbols, most significant first *(S-7)*.
 4. Join the 28 symbols in groups of 4 with `-`.
 
 **Decoding** (restore, reset and verification inputs):
@@ -371,7 +372,7 @@ payload_ct  = Seal(FK, nonce_payload, pad4096(CBOR(payload)), AD_payload)
 
 Every step must pass before the next begins. Any failure aborts, and nothing is written:
 
-1. File size ≤ 64 MiB, checked before reading.
+1. File size ≤ 64 MiB, checked before reading. A file shorter than `12 + hdr_len + 24 + 48 + 24 + 16` bytes is rejected as truncated, before any cryptography *(S-9)*.
 2. Exact magic; known `v`.
 3. Header length ≤ 4 KiB. Strict CBOR: depth ≤ 4, ≤ 16 entries, no indefinite lengths, no tags, unknown keys rejected.
 4. KDF parameters within the range of §4.6.
@@ -403,6 +404,19 @@ A successful periodic check proves two things: the user still knows the password
 - **Unlock failures** show the same message whatever the cause: wrong password, wrong device credential, failed tag or failed header MAC. The app never reveals which factor failed.
 - **Corrupted and tampered data look identical**: "This vault's data could not be verified. Nothing was changed." There is no "repair" path.
 - **Timing:** Argon2id dominates the time of every password path, so how early a failure is detected is not observable at a useful resolution. Secret-dependent comparisons (tags inside the AEAD library, RS, VK in the periodic check) are constant-time.
+- **Error names** *(S-10; pending review)*. The core reports these, and the test vectors check them. **An error may distinguish only failures that do not depend on a secret.**
+
+| Error | Meaning |
+|---|---|
+| `too_large`, `truncated`, `not_a_backup`, `unsupported_version`, `malformed_header` | Structural problems found before any cryptography |
+| `params_out_of_range`, `insufficient_memory` | Argon2id parameters refused before any work (§4.6, Q8) |
+| `wrong_recovery_key` | `rs_id` mismatch: a friendly error before any work (§9.2) |
+| `rk_invalid`, `rk_checksum` | A Recovery Key with wrong characters or length, or a typo (§8) |
+| `password_length` | An empty password, or one over 1024 bytes (§3.2) |
+| `auth_failed` | **Any** failure in import steps 6–7: wrong password, wrong Recovery Key, damaged or tampered data. One error, one message |
+| `unlock_failed` | **Any** unlock failure: wrong password, wrong device credential, failed tag or header MAC. One error, one message |
+| `non_canonical`, `malformed`, `schema_violation` | Authenticated data that breaks the format rules |
+
 - **Zeroization:** VK, subkeys, KEKs, SK, `H_*`, `HW_pwd`, RS, FK and decrypted plaintext buffers are held in `zeroize`-on-drop types, with best-effort `mlock`. On the Kotlin side, passwords are held in `CharArray` or `ByteArray` and cleared after use. **Residual risk:** Compose text fields produce immutable `String` copies that stay in memory until garbage collection (threat-model T10).
 
 ## 12. Test vectors

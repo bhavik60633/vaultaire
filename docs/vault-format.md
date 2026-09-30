@@ -5,7 +5,7 @@
 | Status | **Draft 0.1, not yet reviewed.** Input to Gate G0 (spec freeze). |
 | Scope | `format_version = 1`: the on-device database, the encoding of everything inside it, plaintext preferences, and the `.vaultbackup` file |
 | Related | [`crypto-spec.md`](crypto-spec.md) (how each piece is encrypted and authenticated), [`threat-model.md`](threat-model.md) |
-| Last updated | 2026-09-29 |
+| Last updated | 2026-09-30 (spec findings S-1 to S-3, S-5, S-6 applied, pending review) |
 
 This document is normative, using the RFC 2119 keywords as in the crypto spec. The crypto spec defines keys, associated data (AD) and padding. This document defines **bytes and schemas**. Where the two seem to disagree, stop and report it; do not guess.
 
@@ -25,6 +25,7 @@ All structured data uses CBOR (RFC 8949), restricted as follows. The same rules 
 - **Deterministic encoding** (RFC 8949 §4.2.1): shortest-form integers and lengths; map keys sorted by the bytewise order of their encodings; definite lengths only.
 - **Allowed major types:** unsigned integers, byte strings, UTF-8 text strings, arrays, maps, and the simple values `true` and `false`. **Not allowed:** negative integers, floats, tags, `null`, `undefined`, indefinite lengths.
 - **Map keys** are small unsigned integers, as listed in each schema. Duplicate keys, unknown keys, a missing required key, or a value of the wrong type are all errors.
+- **Required and optional keys** *(spec finding S-1; pending review)*. A key is **required** unless its schema marks it optional. A required key is always present, even when its value is empty (an empty array, map or text). An **optional** key is omitted when it has no value, and **must never** be present with an empty value; a decoder rejects that. This gives every record exactly one encoding, which the canonical check (ADR-006) depends on.
 - **Text** must be valid UTF-8. Text is stored as typed; only passwords are NFC-normalised, and only as KDF input (crypto spec §3.2).
 - **Timestamps** are unsigned integers: whole seconds since 1970-01-01T00:00:00Z.
 - **Ids** are 16-byte byte strings.
@@ -33,7 +34,7 @@ Decoding limits (each context may set tighter ones):
 
 | Limit | Value |
 |---|---|
-| Nesting depth | 4 for headers and keyslot parameters; 6 for records and payloads |
+| Nesting depth | 4 for headers and keyslot parameters; 6 for records and payloads. **Depth counts nested arrays and maps only; plain values do not count** *(S-3; pending review)*. A backup payload is exactly 6 deep, a record at most 3, a header 2 |
 | Entries in one map or array | 16 in headers; 1 000 elsewhere, except the item list in a backup (10 000) and the manifest (20 000) |
 | Text string | 64 KiB |
 | Byte string | 64 KiB |
@@ -208,17 +209,17 @@ Decrypted for every item at unlock, into memory only.
 | 2 | `template_version` | uint | `1` |
 | 3 | `revision` | uint | Must equal the secret envelope's `revision` and the manifest entry |
 | 4 | `title` | text | Required, ≤ 256 bytes |
-| 5 | `subtitle` | text | Derived from normal fields, for example "Visa · •••• 4821" |
-| 6 | `tags` | array of text | ≤ 32 tags, each ≤ 64 bytes |
+| 5 | `subtitle` | text | Optional. Derived from normal fields, for example "Visa · •••• 4821" |
+| 6 | `tags` | array of text | Optional. ≤ 32 tags, each ≤ 64 bytes |
 | 7 | `favorite` | bool | |
 | 8 | `created_at` | uint | |
 | 9 | `updated_at` | uint | |
 | 10 | `last_used_at` | uint | Optional |
-| 11 | `url_hosts` | array of text | Hosts only, for display and future autofill matching |
-| 12 | `card_finish` | uint | Cards only |
-| 13 | `has_cvv` | bool | Cards only. Drives the "Stored at your request" label and the Settings count without opening the secret envelope. |
+| 11 | `url_hosts` | array of text | Optional. Hosts only, for display and future autofill matching |
+| 12 | `card_finish` | uint | Required for cards; absent for every other type |
+| 13 | `has_cvv` | bool | Required for cards; absent for every other type. Drives the "Stored at your request" label and the Settings count without opening the secret envelope. |
 | 14 | `fields` | array of field descriptors | Order is display order; ≤ 100 |
-| 15 | `linked_items` | array of bytes(16) | For example, a bank account linked to its login |
+| 15 | `linked_items` | array of bytes(16) | Optional. For example, a bank account linked to its login |
 
 Field descriptor (a map):
 
@@ -230,7 +231,7 @@ Field descriptor (a map):
 | 4 | `kind` | uint | Field kind |
 | 5 | `sensitivity` | uint | 1, 2 or 3 |
 | 6 | `copyable` | bool | |
-| 7 | `value` | text | **Present only when `sensitivity = 1`.** Concealed and critical values live in the secret envelope. |
+| 7 | `value` | text | **Required when `sensitivity = 1`, absent otherwise.** Concealed and critical values live in the secret envelope. |
 
 ### 5.3 Secret envelope (item)
 
@@ -239,10 +240,10 @@ Opened only on an explicit reveal or copy (crypto spec §6.2).
 | Key | Name | Type | Notes |
 |---|---|---|---|
 | 1 | `revision` | uint | Must equal the index envelope's `revision` |
-| 2 | `values` | map: bytes(16) `field_id` → text | One entry for each field with `sensitivity` 2 or 3. Every such field in the index must have an entry here, and no other entries are allowed. |
+| 2 | `values` | array of `[field_id (bytes 16), value (text)]` pairs, **sorted by `field_id`**, no duplicate ids *(S-2; pending review: a map keyed by byte strings would break the integer-keys rule of §2)* | One entry for each field with `sensitivity` 2 or 3. Every such field in the index must have an entry here, and no other entries are allowed. Required, possibly empty. |
 | 3 | `notes` | text | Optional, concealed |
 
-- An item with no concealed or critical fields still has a secret envelope, with an empty `values` map. So the presence of a secret envelope reveals nothing, and the 256-byte padding bucket hides whether it is empty.
+- An item with no concealed or critical fields still has a secret envelope, with an empty `values` array. So the presence of a secret envelope reveals nothing, and the 256-byte padding bucket hides whether it is empty.
 - **CVV** is stored only if the user switched it on for that card (threat-model I11). It is a field with `key = card.cvv`, `kind = 14`, `sensitivity = 3` and `copyable = true`; its descriptor sets `has_cvv = true` in the index. **There is no card-PIN key**, and a decoder must reject `card.pin`.
 
 ### 5.4 History envelope
@@ -268,7 +269,7 @@ Only security-relevant settings live here, so that weakening them requires the v
 | 5 | `password_check_days` | uint | 14 | 7, 14, 30 |
 | 6 | `password_only` | bool | false | |
 | 7 | `erase_after_failures` | bool | false | |
-| 8 | `last_password_check` | uint | | |
+| 8 | `last_password_check` | uint | The vault's creation time | Required *(S-5; pending review)* |
 | 9 | `last_backup_at` | uint | | Optional |
 | 10 | `backup_reminder_days` | uint | 30 | 7 – 90 |
 | 11 | `home_sections` | array of `[item_type (uint), shown (bool)]` | Every type except Card, in the order Password, API key, Bank account, Identity, Note, Membership, Other; all shown | Each item type except Card appears exactly once |
@@ -284,7 +285,7 @@ Hiding a section only removes it from the home screen. Its items stay in the vau
 | Key | Name | Type |
 |---|---|---|
 | 1 | `rs` | bytes(16): the Recovery Secret |
-| 2 | `rs_id` | bytes(8) (crypto spec §9.2) |
+| 2 | `rs_id` | bytes(8) (crypto spec §9.2). *If reviewer question Q5 is accepted, this key is removed: `rs_id` then depends on each backup's salt and is computed per export (S-6).* |
 | 3 | `created_at` | uint |
 
 RS is kept inside the vault so that exports never require the user to type the Recovery Key, and so the periodic password check can open KS-REC (crypto spec §10).
@@ -297,7 +298,7 @@ An array of at most 500 events, oldest first; the oldest is dropped when full.
 |---|---|---|
 | 1 | `at` | uint |
 | 2 | `event` | uint (below) |
-| 3 | `count` | uint, optional |
+| 3 | `count` | uint. Optional: present only for event 4 |
 
 Events: 1 unlock (biometric), 2 unlock (password), 3 unlock (recovery), 4 failed password attempts (with `count`), 5 biometric invalidated, 6 password changed, 7 Recovery Key regenerated, 8 vault key rotated, 9 backup exported, 10 backup imported, 11 setting weakened, 12 periodic check passed, 13 periodic check failed.
 
@@ -406,7 +407,7 @@ Item map:
 | 1 | `id` | bytes(16) |
 | 2 | `index` | map, as §5.2 |
 | 3 | `secret` | map, as §5.3 |
-| 4 | `history` | array (≤ 10) of maps, as §5.4 |
+| 4 | `history` | array (≤ 10) of maps, as §5.4. Required, possibly empty |
 
 The backup deliberately **leaves out** the Recovery Secret (the user types the Recovery Key to restore, and it stays valid), the security log (it describes this device), the manifest (rebuilt on import) and all keyslots (a restore creates a new VK and new slots).
 
