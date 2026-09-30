@@ -1,7 +1,7 @@
 # ADR-001: Native Android UI over a shared Rust core
 
-- Status: **Proposed.** Confirmed or replaced by the Phase-0 spike (time-boxed to 2 weeks).
-- Date: 2026-09-29
+- Status: **Accepted** (2026-09-30), on the Phase-0 spike's evidence for criteria 1–4. Criterion 5 moved to Gate G2 by the product owner's decision; see below.
+- Date: 2026-09-29 (proposed), 2026-09-30 (accepted)
 
 ## Context
 
@@ -56,7 +56,15 @@ If criteria 1 or 2 cannot be met within two weeks, this ADR is superseded by one
 
 "The developer's phone" is an Android phone the developer can use: their own phone is an iPhone, so this means Firebase Test Lab for unattended checks and a borrowed phone for prompts.
 
-**Progress (2026-09-30):** criterion 1 passes; criterion 2 passes for debug builds on real phones and for the R8 release build on the emulator; criteria 3 and 4 are measured; criterion 5 is partly done. See [Phase-0 results](../spikes/phase0-results.md).
+## Outcome (2026-09-30)
+
+Evidence: [Phase-0 results](../spikes/phase0-results.md).
+
+1. **Pass.** Both ABIs build on Windows, 16 KB page-aligned.
+2. **Pass.** Debug builds call the core on two real arm64 phones (Galaxy A12, Galaxy S20 Ultra). The R8 release build runs on the emulator. A separate real-phone release run was judged unnecessary: the ARM-specific parts (the Rust library and JNA's native library) are identical in both builds, and R8 affects only the bytecode, which the emulator exercised.
+3. **Measured.** JNA costs about 0.3 MB per device and 22–144 ms once at start-up (S20 Ultra to A12). **Decision: keep UniFFI's JNA bindings.** A hand-written JNI layer would add unsafe glue code to save a one-off cost that is hidden by loading the core off the main thread while the lock screen draws.
+4. **Pass.** Argon2id at 64 MiB, t = 3 takes 798 ms on the low-end A12, within the 1 s target.
+5. **Moved to Gate G2.** Security levels were recorded (TEE on the A12, StrongBox on the S20 Ultra). The prompt and invalidation tests exercise Android Keystore, which behaves the same whichever language calls it, so they cannot change the stack decision. G2 already requires "all invalidation scenarios pass on StrongBox + TEE devices" before the vault UI is built, and they run there against the real SecurityModule. The developer has no Android phone, so G2 needs a borrowed or purchased one.
 
 ## Revisit when
 

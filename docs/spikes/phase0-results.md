@@ -1,6 +1,6 @@
 # Phase-0 spike: results
 
-Status: **partial** (2026-09-30). Criteria 1–4 have results. Criterion 5, the prompt and invalidation tests, still needs a real phone with a screen lock and an enrolled fingerprint.
+Status: **complete** (2026-09-30). ADR-001 is accepted on criteria 1–4. Criterion 5's prompt and invalidation tests are **moved to Gate G2** (see §6).
 
 The spike code is throwaway and lives in [`spikes/phase0/`](../../spikes/phase0/). This page records what it measured and what that means for the specs. It feeds research items R3, R5 and R6 ([threat model §11](../threat-model.md#11-open-research-items)), crypto spec §4.6 and [ADR-001](../adr/ADR-001-stack.md).
 
@@ -75,12 +75,12 @@ Neither phone fell back to software keys. Key creation happens once per vault, s
 3. **Lowest supported device class:** Helio P35-class (2020 budget phone), Android 12 or newer, 3 GB RAM or more.
 4. **TEE-only phones are supported;** StrongBox is used when present (R3). The spec already records which one was used in the slot parameters.
 
-## 6. Still to do
+## 6. Moved, skipped and remaining
 
-| Item | Needs |
+| Item | Decision |
 |---|---|
-| Criterion 5: `K_bio` and `K_pwd` with real prompts; the passcode must not release `K_bio`; enrolment invalidation | A borrowed Android phone with a fingerprint and screen lock, about 20 min. Skip the "add a fingerprint" step on someone else's phone |
-| R4: lock-screen removal invalidates the keys | A spare phone only. Never the owner's daily phone: removing the screen lock wipes every app's keys |
-| R8 release build on a real phone | Next Test Lab run |
-| Plain-JNI first call on the A12; StrongBox and TEE latency per operation | Next Test Lab run (test updated) |
-| GPU cost benchmark for the password-policy maths (R5) | Desk research from published Argon2id cracking benchmarks |
+| Criterion 5: `K_bio` and `K_pwd` with real prompts; the passcode must not release `K_bio`; enrolment invalidation | **Moved to G2** (product owner, 2026-09-30). These tests exercise Keystore, not the stack, and G2 already requires them on StrongBox and TEE devices against the real SecurityModule. Needs a borrowed or purchased Android phone with a fingerprint and screen lock |
+| R4: lock-screen removal invalidates the keys | **Moved to G2.** Test only on a spare phone, never an owner's daily phone: removing the screen lock wipes every app's keys |
+| R8 release build on a real phone | **Skipped.** The ARM-specific parts are identical in the debug build, which ran on both phones; R8 was exercised on the emulator |
+| Plain-JNI first call on the A12; StrongBox and TEE latency per operation | **Skipped.** Neither can change a decision. `PhoneBenchmarkTest` can measure both if they are ever needed |
+| GPU cost benchmark for the password-policy maths (R5) | **Remaining** for G0: desk research from published Argon2id cracking benchmarks |

@@ -6,7 +6,7 @@ Every third-party dependency also needs a record before it is added (why it is n
 
 | ADR | Title | Status |
 |---|---|---|
-| [001](ADR-001-stack.md) | Native Android UI over a shared Rust core | Proposed; confirmed or replaced after the Phase-0 spike |
+| [001](ADR-001-stack.md) | Native Android UI over a shared Rust core | **Accepted** 2026-09-30 (Phase-0 spike) |
 | [002](ADR-002-keyslots.md) | One random vault key wrapped in three keyslots | Proposed; for review at Gate G0 |
 
 ## Template

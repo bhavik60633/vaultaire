@@ -33,7 +33,7 @@ All free, installed from official sources with verified hashes (winget, the Grad
 
 ## Exit criteria and results
 
-**Results and findings are written up in [docs/spikes/phase0-results.md](../../docs/spikes/phase0-results.md).** Summary (2026-09-30):
+**ADR-001 accepted on 2026-09-30.** Results and findings are written up in [docs/spikes/phase0-results.md](../../docs/spikes/phase0-results.md).** Summary (2026-09-30):
 
 | # | Criterion (ADR-001) | Status |
 |---|---|---|
@@ -41,7 +41,7 @@ All free, installed from official sources with verified hashes (winget, the Grad
 | 2 | A Compose app calls the library in debug and R8-minified release builds | **Pass** for debug on real phones (Galaxy A12, S20 Ultra) and release on the emulator; release on a real phone pending |
 | 3 | APK size and cold-start cost, JNA versus JNI | Measured: about 0.3 MB; first JNA call 144 ms on the A12, 22 ms on the S20 Ultra. The A12's JNI figure is pending |
 | 4 | Argon2id timed on a phone at the provisional settings | **798 ms** on the A12 (first run), 130 ms on the S20 Ultra, 88 ms on the PC |
-| 5 | `K_bio` and `K_pwd` on a phone: security level, prompts, invalidation | Security level measured (A12: TEE; S20 Ultra: StrongBox). Prompts and invalidation pending (needs a borrowed phone) |
+| 5 | `K_bio` and `K_pwd` on a phone: security level, prompts, invalidation | Security level measured (A12: TEE; S20 Ultra: StrongBox). Prompts and invalidation **moved to Gate G2** |
 
 ## Findings for the specs (emulator stage; the full list is in docs/spikes)
 
