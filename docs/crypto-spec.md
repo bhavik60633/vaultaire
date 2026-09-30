@@ -89,26 +89,26 @@ The strength policy (at least 12 characters **and** a zxcvbn estimate of ≥ 10�
 
 ### 3.3 Label registry
 
-Every label is ASCII and starts with `vaultaire/v1/`.
+Every label is ASCII and starts with `vlt/v1/`. `vlt` is a fixed protocol identifier, like the file magics `VLT1` and `VLTBK` ([vault-format](vault-format.md)). It is deliberately **not** the product name, so the product can be renamed without changing any derived key, associated data or test vector.
 
 | Label | Used in |
 |---|---|
-| `vaultaire/v1/kek/bio` | §4.2 KEK for KS-BIO |
-| `vaultaire/v1/hw-input` | §4.3 input to the hardware HMAC |
-| `vaultaire/v1/kek/pwd` | §4.3 KEK for KS-PWD |
-| `vaultaire/v1/kek/rec` | §4.4 KEK for KS-REC |
-| `vaultaire/v1/slot` | §4.5 associated data for keyslot wraps |
-| `vaultaire/v1/subkey/index` | §6.1 K_idx |
-| `vaultaire/v1/subkey/secret` | §6.1 K_sec |
-| `vaultaire/v1/subkey/meta` | §6.1 K_meta |
-| `vaultaire/v1/subkey/header` | §6.1 K_hdr |
-| `vaultaire/v1/record` | §6.4 associated data for records |
-| `vaultaire/v1/header-mac` | §7.1 header MAC input |
-| `vaultaire/v1/rs-id` | §9.2 Recovery Secret identifier |
-| `vaultaire/v1/rk-checksum` | §8 Recovery Key checksum |
-| `vaultaire/v1/kek/export` | §9.2 backup KEK |
-| `vaultaire/v1/export/wrap` | §9.3 associated data for the FK wrap |
-| `vaultaire/v1/export/payload` | §9.3 associated data for the backup payload |
+| `vlt/v1/kek/bio` | §4.2 KEK for KS-BIO |
+| `vlt/v1/hw-input` | §4.3 input to the hardware HMAC |
+| `vlt/v1/kek/pwd` | §4.3 KEK for KS-PWD |
+| `vlt/v1/kek/rec` | §4.4 KEK for KS-REC |
+| `vlt/v1/slot` | §4.5 associated data for keyslot wraps |
+| `vlt/v1/subkey/index` | §6.1 K_idx |
+| `vlt/v1/subkey/secret` | §6.1 K_sec |
+| `vlt/v1/subkey/meta` | §6.1 K_meta |
+| `vlt/v1/subkey/header` | §6.1 K_hdr |
+| `vlt/v1/record` | §6.4 associated data for records |
+| `vlt/v1/header-mac` | §7.1 header MAC input |
+| `vlt/v1/rs-id` | §9.2 Recovery Secret identifier |
+| `vlt/v1/rk-checksum` | §8 Recovery Key checksum |
+| `vlt/v1/kek/export` | §9.2 backup KEK |
+| `vlt/v1/export/wrap` | §9.3 associated data for the FK wrap |
+| `vlt/v1/export/payload` | §9.3 associated data for the backup payload |
 
 ## 4. Key hierarchy and keyslots
 
@@ -146,7 +146,7 @@ K_bio : AES-256-GCM, PURPOSE_ENCRYPT | PURPOSE_DECRYPT
 - On creation, `vault-core` generates **SK** (32 bytes). Keystore encrypts it: `bio_blob = AES-GCM(K_bio, iv, SK, AAD = vault_id ‖ ascii("KS-BIO"))`. Keystore picks the 12-byte IV. The IV and `bio_blob` go in the slot parameters.
 - SK is then zeroized in both Kotlin and Rust.
 - To unlock, Keystore decrypts `bio_blob` inside `BiometricPrompt.authenticate(CryptoObject(cipher))`. **The biometric result is the key release itself, never a boolean** (threat-model I7).
-- `KEK_bio = HKDF(ikm = SK, salt = vault_id, info = ascii("vaultaire/v1/kek/bio"), L = 32)`
+- `KEK_bio = HKDF(ikm = SK, salt = vault_id, info = ascii("vlt/v1/kek/bio"), L = 32)`
 
 `K_bio` **must not** accept `DEVICE_CREDENTIAL` or any Class 2 biometric. Either one would let the device passcode alone open the vault.
 
@@ -165,9 +165,9 @@ Derivation:
 
 ```
 H_pwd   = Argon2id(password, salt_pwd, m, t, p)                        // §4.6 parameters
-hw_in   = HKDF(ikm = H_pwd, salt = vault_id, info = ascii("vaultaire/v1/hw-input"), L = 32)
+hw_in   = HKDF(ikm = H_pwd, salt = vault_id, info = ascii("vlt/v1/hw-input"), L = 32)
 HW_pwd  = HMAC-SHA256(K_pwd, hw_in)                                    // computed inside Keystore
-KEK_pwd = HKDF(ikm = H_pwd ‖ HW_pwd, salt = vault_id, info = ascii("vaultaire/v1/kek/pwd"), L = 32)
+KEK_pwd = HKDF(ikm = H_pwd ‖ HW_pwd, salt = vault_id, info = ascii("vlt/v1/kek/pwd"), L = 32)
 ```
 
 - Every password guess needs one HMAC operation inside the device's hardware. That operation needs the device credential. So even an attacker who copies `vault.db` cannot run guesses anywhere else (threat-model T14).
@@ -178,7 +178,7 @@ KEK_pwd = HKDF(ikm = H_pwd ‖ HW_pwd, salt = vault_id, info = ascii("vaultaire/
 
 ```
 H_rec   = Argon2id(password, salt_rec, m, t, p)
-KEK_rec = HKDF(ikm = H_rec ‖ RS, salt = vault_id, info = ascii("vaultaire/v1/kek/rec"), L = 32)
+KEK_rec = HKDF(ikm = H_rec ‖ RS, salt = vault_id, info = ascii("vlt/v1/kek/rec"), L = 32)
 ```
 
 - KS-REC is not bound to any device. It needs **both** the vault password and the Recovery Secret: neither secret alone is enough (threat-model I3).
@@ -187,7 +187,7 @@ KEK_rec = HKDF(ikm = H_rec ‖ RS, salt = vault_id, info = ascii("vaultaire/v1/k
 ### 4.5 Associated data for keyslot wraps
 
 ```
-AD_slot = ascii("vaultaire/v1/slot")
+AD_slot = ascii("vlt/v1/slot")
         ‖ u16(format_version)
         ‖ vault_id                      (16)
         ‖ u8(slot_type)                 (0x01 BIO, 0x02 PWD, 0x03 REC)
@@ -241,10 +241,10 @@ The emulator's Keystore is software-backed. It is allowed only in debug builds f
 ### 6.1 Subkeys
 
 ```
-K_idx  = HKDF(ikm = VK, salt = vault_id, info = ascii("vaultaire/v1/subkey/index"),  L = 32)
-K_sec  = HKDF(ikm = VK, salt = vault_id, info = ascii("vaultaire/v1/subkey/secret"), L = 32)
-K_meta = HKDF(ikm = VK, salt = vault_id, info = ascii("vaultaire/v1/subkey/meta"),   L = 32)
-K_hdr  = HKDF(ikm = VK, salt = vault_id, info = ascii("vaultaire/v1/subkey/header"), L = 32)
+K_idx  = HKDF(ikm = VK, salt = vault_id, info = ascii("vlt/v1/subkey/index"),  L = 32)
+K_sec  = HKDF(ikm = VK, salt = vault_id, info = ascii("vlt/v1/subkey/secret"), L = 32)
+K_meta = HKDF(ikm = VK, salt = vault_id, info = ascii("vlt/v1/subkey/meta"),   L = 32)
+K_hdr  = HKDF(ikm = VK, salt = vault_id, info = ascii("vlt/v1/subkey/header"), L = 32)
 ```
 
 All four are derived at unlock and zeroized, together with VK, at lock.
@@ -270,7 +270,7 @@ All four are derived at unlock and zeroized, together with VK, at lock.
 ### 6.4 Associated data for records
 
 ```
-AD_record = ascii("vaultaire/v1/record")
+AD_record = ascii("vlt/v1/record")
           ‖ u16(format_version)
           ‖ vault_id              (16)
           ‖ u8(record_kind)       (0x01 item, 0x02 history entry, 0x03 settings, 0x04 recovery, 0x05 security log, 0x06 manifest)
@@ -296,7 +296,7 @@ This binding means an envelope cannot be moved to another item, another field cl
 The vault header (format version, vault id, algorithm ids) and the **keyslot table** are covered by a MAC:
 
 ```
-header_mac = HMAC-SHA256(K_hdr, ascii("vaultaire/v1/header-mac") ‖ u32(len(header_bytes)) ‖ header_bytes ‖ keyslot_table_bytes)
+header_mac = HMAC-SHA256(K_hdr, ascii("vlt/v1/header-mac") ‖ u32(len(header_bytes)) ‖ header_bytes ‖ keyslot_table_bytes)
 ```
 
 - `keyslot_table_bytes` is the canonical encoding of every slot, **sorted by `slot_id`**, as defined in `vault-format.md`.
@@ -322,7 +322,7 @@ The Recovery Key is RS written for humans: 28 Crockford Base32 characters in 7 g
 
 1. Treat RS (16 bytes) as a 128-bit big-endian integer. Prepend two zero bits, giving 130 bits.
 2. Encode those 130 bits as 26 Crockford Base32 symbols (alphabet `0123456789ABCDEFGHJKMNPQRSTVWXYZ`), most significant first. The first symbol is therefore always `0`–`7`.
-3. `c = HKDF(ikm = RS, salt = zeros(0), info = ascii("vaultaire/v1/rk-checksum"), L = 2)`. Take the **first 10 bits** of `c` and encode them as 2 more symbols.
+3. `c = HKDF(ikm = RS, salt = zeros(0), info = ascii("vlt/v1/rk-checksum"), L = 2)`. Take the **first 10 bits** of `c` and encode them as 2 more symbols.
 4. Join the 28 symbols in groups of 4 with `-`.
 
 **Decoding** (restore, reset and verification inputs):
@@ -345,9 +345,9 @@ A backup needs **two independent secrets**: the vault password and the Recovery 
 ### 9.2 Keys
 
 ```
-rs_id   = HKDF(ikm = RS, salt = zeros(0), info = ascii("vaultaire/v1/rs-id"), L = 8)
+rs_id   = HKDF(ikm = RS, salt = zeros(0), info = ascii("vlt/v1/rs-id"), L = 8)
 H_exp   = Argon2id(password, salt_exp, m_exp, t_exp, p_exp)            // §4.6 export parameters
-KEK_exp = HKDF(ikm = H_exp ‖ RS, salt = salt_exp, info = ascii("vaultaire/v1/kek/export"), L = 32)
+KEK_exp = HKDF(ikm = H_exp ‖ RS, salt = salt_exp, info = ascii("vlt/v1/kek/export"), L = 32)
 FK      = 32 random bytes, fresh for each export
 ```
 
@@ -357,8 +357,8 @@ FK      = 32 random bytes, fresh for each export
 
 ```
 header      = strict CBOR { v, kdf: {id, m, t, p, salt_exp}, rs_id, aead_id }     (≤ 4 KiB; layout in vault-format.md)
-AD_wrap     = ascii("vaultaire/v1/export/wrap")    ‖ magic ‖ u32(len(header)) ‖ header
-AD_payload  = ascii("vaultaire/v1/export/payload") ‖ magic ‖ u32(len(header)) ‖ header
+AD_wrap     = ascii("vlt/v1/export/wrap")    ‖ magic ‖ u32(len(header)) ‖ header
+AD_payload  = ascii("vlt/v1/export/payload") ‖ magic ‖ u32(len(header)) ‖ header
 wrapped_FK  = Seal(KEK_exp, nonce_wrap, FK, AD_wrap)
 payload_ct  = Seal(FK, nonce_payload, pad4096(CBOR(payload)), AD_payload)
 ```
