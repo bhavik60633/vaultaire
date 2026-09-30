@@ -54,6 +54,10 @@ The spike passes when, on the developer's Windows machine:
 
 If criteria 1 or 2 cannot be met within two weeks, this ADR is superseded by one choosing the Kotlin-only fallback.
 
+"The developer's phone" is an Android phone the developer can use: their own phone is an iPhone, so this means Firebase Test Lab for unattended checks and a borrowed phone for prompts.
+
+**Progress (2026-09-30):** criterion 1 passes; criterion 2 passes for debug builds on real phones and for the R8 release build on the emulator; criteria 3 and 4 are measured; criterion 5 is partly done. See [Phase-0 results](../spikes/phase0-results.md).
+
 ## Revisit when
 
 - The spike finishes (confirm or replace).

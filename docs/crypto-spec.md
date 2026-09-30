@@ -197,7 +197,7 @@ AD_slot = ascii("vaultaire/v1/slot")
 
 `slot_params_bytes` is the exact stored encoding of the slot's parameters: KDF id, Argon2id m/t/p, salt, hardware security level, IV and `bio_blob`. The layout is defined in `vault-format.md`. Binding their hash into the AD means a slot's parameters cannot be swapped, downgraded (for example lower Argon2id cost) or moved to another vault without `Open` failing.
 
-### 4.6 Argon2id parameters — PROVISIONAL
+### 4.6 Argon2id parameters — MEASURED, proposed final (pending Q2)
 
 | Use | m (memory) | t (passes) | p (lanes) | Output |
 |---|---|---|---|---|
@@ -205,7 +205,15 @@ AD_slot = ascii("vaultaire/v1/slot")
 | Backup export (§9) | 131 072 KiB (128 MiB) | 4 | 1 | 32 bytes |
 
 - **Accepted range** when opening a slot or importing a backup: m ∈ [65 536, 524 288] KiB, t ∈ [3, 16], p ∈ [1, 4]. Values outside this range **must** be rejected **before** any Argon2id work. This blocks both memory-exhaustion attacks and downgrades (threat-model T17).
-- Final values are fixed at G0 from the Phase-0 measurements on the lowest supported device (threat-model R5). Target: ≤ 1 s for unlock on that device.
+- **Available memory.** Before any Argon2id work, the app also refuses an m that the device cannot afford, with a clear message, instead of letting the system kill it. The threshold is open: see Q8.
+- **Measured** on 2026-09-30 ([Phase-0 results](spikes/phase0-results.md)), first run in a fresh process:
+
+| Device | 64 MiB, t = 3 (device slots) | 128 MiB, t = 4 (backup) |
+|---|---|---|
+| Galaxy A12, Helio P35: low end, the proposed floor | **798 ms** | 2273 ms |
+| Galaxy S20 Ultra, Snapdragon 865 | 130 ms | 353 ms |
+
+- **Proposed final:** the parameters in the first table of this section, unchanged. They meet the ≤ 1 s unlock target on the proposed lowest supported device class (Helio P35-class, Android 12+, 3 GB RAM) with about 200 ms to spare. Slower phones are accepted at roughly 1.1–1.3 s rather than lowering the floor for every user. The G0 reviewer confirms or changes this (Q2).
 
 ## 5. Hardware boundary (Android)
 
@@ -440,9 +448,10 @@ The `argon2` crate has no known independent audit. It is checked against the RFC
 | ID | Question |
 |---|---|
 | Q1 | One secret envelope per item (§6.2), or one per field? |
-| Q2 | Are the provisional Argon2id parameters (§4.6) reasonable, pending device measurements? |
+| Q2 | Measured on 2026-09-30 (§4.6): 798 ms on the low-end A12. Confirm m = 64 MiB, t = 3, p = 1 for device slots and m = 128 MiB, t = 4, p = 1 for backups as final? |
 | Q3 | Adopt the manifest (§7.2)? |
 | Q4 | Is `hw_in = HKDF(H_pwd, …)` as the hardware HMAC input sound (§4.3)? |
 | Q5 | Is `rs_id` linkability between backups (§9.2) acceptable? |
 | Q6 | Is binding `SHA-256(slot_params_bytes)` into the slot AD sufficient to stop parameter downgrade (§4.5), given the separate range check? |
 | Q7 | Card security codes are now storable on an opt-in basis (threat-model §9). Is anything beyond critical-tier handling needed at the cryptographic level? |
+| Q8 | A backup may declare m up to 512 MiB (§4.6). What memory cap relative to device RAM should the app enforce before running Argon2id, so that a low-RAM phone refuses cleanly instead of being killed? |

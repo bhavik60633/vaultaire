@@ -33,15 +33,17 @@ All free, installed from official sources with verified hashes (winget, the Grad
 
 ## Exit criteria and results
 
-| # | Criterion (ADR-001) | Result |
-|---|---|---|
-| 1 | `cargo-ndk` builds the core for `arm64-v8a` and `x86_64` on Windows | **Pass.** Both built on Windows: `arm64-v8a` 405 KB, `x86_64` 460 KB (stripped, LTO). ELF machine types correct (AArch64, x86-64). All `LOAD` segments 16 KB aligned (`0x4000`), and `zipalign -c -P 16` verifies the release APK, so the library meets Android's 16 KB page-size rule. A clean build takes about 4.5 min per ABI; after a change to the crate, about 80 s |
-| 2 | A Compose app calls the library in debug and R8-minified release builds | **Pass on the emulator** (API 36, x86_64): both builds call `coreVersion`, pass the AEAD round trip and tamper check, and run Argon2id. R8 needs the keep rules in `android/app/proguard-rules.pro`. *Still to confirm on the arm64 phone* |
-| 3 | APK size and cold-start cost measured, JNA versus a minimal JNI layer | **Emulator numbers** (10 alternating cold starts each, release build): first native call **20.4 ms with JNA, 2.7 ms with JNI**; full cold start **232 ms versus 219 ms**. Size: JNA adds `libjnidispatch.so` (177 KB arm64, 127 KB x86_64) plus about 104 KB of dex; the UniFFI bindings add about 24 KB. Release APK with both ABIs: 2.9 MB, 1.3 MB download. *Phone numbers pending.* Provisional reading: JNA costs about 15–20 ms once, at start-up, and about 0.3 MB per device. That's small, but the phone may scale it |
-| 4 | Argon2id timed on the phone at the provisional settings | *Pending.* **PC: 88 ms** (64 MiB, t = 3, p = 1; Ryzen 5 5600H, 3 runs: 88 / 89 / 89 ms). **Emulator: 136–142 ms**, which is the PC's CPU through virtualisation, not a phone figure |
-| 5 | `K_bio` and `K_pwd` created on the phone; security level recorded; enrolment invalidation and lock-screen removal behave as specified | *Pending: needs the phone.* The emulator can't test this: the ATD image has no lock screen and its Keystore is software-backed. See finding S1 |
+**Results and findings are written up in [docs/spikes/phase0-results.md](../../docs/spikes/phase0-results.md).** Summary (2026-09-30):
 
-## Findings for the specs
+| # | Criterion (ADR-001) | Status |
+|---|---|---|
+| 1 | `cargo-ndk` builds the core for `arm64-v8a` and `x86_64` on Windows | **Pass**, 16 KB page-aligned |
+| 2 | A Compose app calls the library in debug and R8-minified release builds | **Pass** for debug on real phones (Galaxy A12, S20 Ultra) and release on the emulator; release on a real phone pending |
+| 3 | APK size and cold-start cost, JNA versus JNI | Measured: about 0.3 MB; first JNA call 144 ms on the A12, 22 ms on the S20 Ultra. The A12's JNI figure is pending |
+| 4 | Argon2id timed on a phone at the provisional settings | **798 ms** on the A12 (first run), 130 ms on the S20 Ultra, 88 ms on the PC |
+| 5 | `K_bio` and `K_pwd` on a phone: security level, prompts, invalidation | Security level measured (A12: TEE; S20 Ultra: StrongBox). Prompts and invalidation pending (needs a borrowed phone) |
+
+## Findings for the specs (emulator stage; the full list is in docs/spikes)
 
 - **S1. Keystore enforces the §5.2 preconditions itself.** With no biometric enrolled, creating `K_bio` fails with `InvalidAlgorithmParameterException` ("At least one biometric must be enrolled to create keys requiring user authentication for every use"). With no secure lock screen, `K_pwd` fails ("Secure lock screen must be enabled"). The product must check `BiometricManager.canAuthenticate(BIOMETRIC_STRONG)` and `KeyguardManager.isDeviceSecure()` *before* offering vault creation, and show the reason. **Open question for crypto-spec §4.2:** can a vault be created with no fingerprint enrolled (password and recovery slots only, KS-BIO added later), or is a Class 3 biometric required? Today the spec assumes all three slots exist.
 - **S3. Time the first Argon2id run, not the average.** In a fresh process the first 64 MiB run took 1176 ms on the emulator, then about 300 ms. The memory has to be handed over by the OS the first time. A real unlock is always a first run in a fresh process, so the ≤ 1 s target in crypto-spec §4.6 must be checked against the first run.

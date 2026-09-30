@@ -15,7 +15,9 @@ import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.security.KeyStore
+import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
+import javax.crypto.Mac
 import javax.crypto.SecretKey
 import javax.crypto.SecretKeyFactory
 import org.junit.Assert.assertTrue
@@ -42,6 +44,14 @@ class PhoneBenchmarkTest {
         Log.i(TAG, "RESULT $line")
     }
 
+    /** R6: plain JNI first. It loads the library, so b_coreAndAead's JNA call then shows JNA's own start-up cost. */
+    @Test
+    fun a0_jniFirstCall() {
+        val start = SystemClock.elapsedRealtimeNanos()
+        val r = Jni.noop(41)
+        result("jni first call (loads the library) ${(SystemClock.elapsedRealtimeNanos() - start) / 1_000_000.0} ms, result $r")
+    }
+
     @Test
     fun a_device() {
         val am = context.getSystemService(ActivityManager::class.java)
@@ -56,7 +66,7 @@ class PhoneBenchmarkTest {
     fun b_coreAndAead() {
         val start = SystemClock.elapsedRealtimeNanos()
         val version = coreVersion()
-        result("core $version, first call ${(SystemClock.elapsedRealtimeNanos() - start) / 1_000_000.0} ms")
+        result("core $version, jna first call (library already loaded by JNI) ${(SystemClock.elapsedRealtimeNanos() - start) / 1_000_000.0} ms")
         val ok = aeadRoundtrip()
         result("aead ${if (ok) "PASS" else "FAIL"}")
         assertTrue(ok)
@@ -94,7 +104,8 @@ class PhoneBenchmarkTest {
                     }
                     val start = SystemClock.elapsedRealtimeNanos()
                     val key = KeyGenerator.getInstance(algorithm, "AndroidKeyStore").run { init(builder.build()); generateKey() }
-                    "level ${level(key)}, created in ${(SystemClock.elapsedRealtimeNanos() - start) / 1_000_000.0} ms"
+                    val created = (SystemClock.elapsedRealtimeNanos() - start) / 1_000_000.0
+                    "level ${level(key)}, created in $created ms, per use ${perUse(algorithm, key)}"
                 } catch (e: StrongBoxUnavailableException) {
                     "no StrongBox"
                 } catch (e: Exception) {
@@ -123,6 +134,21 @@ class PhoneBenchmarkTest {
             ks.deleteEntry("probe_k_pwd")
         }
         result("keystore spec K_pwd -> $outcome")
+    }
+
+    /** Median of 10 single operations on 32 bytes, each with a fresh init, as one unlock would do. */
+    private fun perUse(algorithm: String, key: SecretKey): String {
+        val input = ByteArray(32) { it.toByte() }
+        val times = (1..10).map {
+            val start = SystemClock.elapsedRealtimeNanos()
+            if (algorithm == KeyProperties.KEY_ALGORITHM_AES) {
+                Cipher.getInstance("AES/GCM/NoPadding").run { init(Cipher.ENCRYPT_MODE, key); doFinal(input) }
+            } else {
+                Mac.getInstance("HmacSHA256").run { init(key); doFinal(input) }
+            }
+            (SystemClock.elapsedRealtimeNanos() - start) / 1_000_000.0
+        }.sorted()
+        return "median ${"%.1f".format(times[times.size / 2])} ms (max ${"%.1f".format(times.last())} ms)"
     }
 
     private fun level(key: SecretKey): String {
