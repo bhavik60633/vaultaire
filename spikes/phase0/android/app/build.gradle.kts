@@ -16,6 +16,8 @@ android {
         versionName = "0.1-spike"
         // Only the two ABIs cargo-ndk builds (ADR-001 criterion 1).
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
+        // Unattended phone benchmarks for Firebase Test Lab (src/androidTest).
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
@@ -43,4 +45,7 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.13.0")
     // UniFFI's Kotlin bindings call the Rust library through JNA.
     implementation("net.java.dev.jna:jna:5.19.1@aar")
+
+    androidTestImplementation("androidx.test:runner:1.7.0")
+    androidTestImplementation("androidx.test.ext:junit:1.3.0")
 }

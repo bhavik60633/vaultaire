@@ -10,6 +10,7 @@ It tests the exit criteria in [ADR-001](../../docs/adr/ADR-001-stack.md#spike-ex
 |---|---|
 | `core/` | A tiny Rust library, exported through UniFFI: `coreVersion()`, `aeadRoundtrip()` (XChaCha20-Poly1305 round trip plus a tamper check) and `argon2idTiming(m, t, p)`. Also one hand-written JNI export, `Jni.noop`, for the JNA-versus-JNI comparison |
 | `core/examples/pc_timing.rs` | Times Argon2id on the development PC, for comparison |
+| `android/app/src/androidTest/` | `PhoneBenchmarkTest`: an unattended run for Firebase Test Lab. It records the device, the AEAD check, Argon2id timings (64, 128 and 256 MiB), where Keystore puts keys (StrongBox, TEE or software) and how the phone treats the real `K_pwd` definition. Every result is a logcat line tagged `VaultaireSpike` that starts with `RESULT` |
 | `android/` | A minimal Compose app (minSdk 31, no INTERNET permission) that calls the library, times Argon2id, and creates and exercises `K_bio` and `K_pwd` exactly as crypto-spec §4.2–4.3 define them |
 
 ## Toolchain (2026-09-29)
@@ -43,6 +44,7 @@ All free, installed from official sources with verified hashes (winget, the Grad
 ## Findings for the specs
 
 - **S1. Keystore enforces the §5.2 preconditions itself.** With no biometric enrolled, creating `K_bio` fails with `InvalidAlgorithmParameterException` ("At least one biometric must be enrolled to create keys requiring user authentication for every use"). With no secure lock screen, `K_pwd` fails ("Secure lock screen must be enabled"). The product must check `BiometricManager.canAuthenticate(BIOMETRIC_STRONG)` and `KeyguardManager.isDeviceSecure()` *before* offering vault creation, and show the reason. **Open question for crypto-spec §4.2:** can a vault be created with no fingerprint enrolled (password and recovery slots only, KS-BIO added later), or is a Class 3 biometric required? Today the spec assumes all three slots exist.
+- **S3. Time the first Argon2id run, not the average.** In a fresh process the first 64 MiB run took 1176 ms on the emulator, then about 300 ms. The memory has to be handed over by the OS the first time. A real unlock is always a first run in a fresh process, so the ≤ 1 s target in crypto-spec §4.6 must be checked against the first run.
 - **S2. JNA is affordable.** On the emulator it costs about 18 ms once, at start-up, and about 0.3 MB per device. Unless the phone numbers are much worse, UniFFI's default JNA bindings stay, and a hand-written JNI layer is not worth its extra unsafe code.
 
 ## Running it
@@ -73,5 +75,7 @@ Cold start, JNA versus JNI (`adb` from `platform-tools`):
 adb shell am start -W -e bridge jna -n dev.vaultaire.spike/.MainActivity   # or -e bridge jni
 adb logcat -s VaultaireSpike:I
 ```
+
+Firebase Test Lab (instrumentation test): build with `.\gradlew.bat assembleDebug assembleDebugAndroidTest`, then upload `app/build/outputs/apk/debug/app-debug.apk` as the app and `app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk` as the test. Read the results by filtering the logcat for `RESULT`. The same test runs locally with `adb shell am instrument -w dev.vaultaire.spike.test/androidx.test.runner.AndroidJUnitRunner`.
 
 The release build is signed with the local debug key so it installs. That is only acceptable for this spike.
