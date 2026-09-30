@@ -1,0 +1,58 @@
+# Security rules for the Rust core (crypto spec; blueprint §20). Every rule is an ERROR.
+# An exception needs `// nosemgrep: <rule-id>` on the line, plus a comment saying why.
+# Tested by `semgrep --test --config .semgrep/rust.yaml .semgrep/rust.rs`.
+
+rules:
+  - id: no-printing-in-core
+    languages: [rust]
+    severity: ERROR
+    message: >-
+      No printing or debug output in the core: anything printed can end up in logs (threat-model T22).
+      Tests and the test-vector generator may print.
+    paths:
+      exclude: ["**/tests/**", "**/vector-gen/**", "**/examples/**"]
+    pattern-either:
+      - pattern: println!(...)
+      - pattern: eprintln!(...)
+      - pattern: print!(...)
+      - pattern: eprint!(...)
+      - pattern: dbg!(...)
+
+  - id: no-userspace-rng
+    languages: [rust]
+    severity: ERROR
+    message: >-
+      Every key, salt and nonce comes from the OS random source through `getrandom`, with no fallback
+      (crypto spec §2.1). Seeded or user-space generators are banned.
+    pattern-either:
+      - pattern: rand::thread_rng()
+      - pattern: rand::rng()
+      - pattern: $T::seed_from_u64(...)
+      - pattern: $T::from_seed(...)
+      - pattern: fastrand::$F(...)
+
+  - id: no-unsafe-outside-ffi
+    languages: [rust]
+    severity: ERROR
+    message: >-
+      `unsafe` is allowed only in the vault-ffi crate (blueprint §25). Everything else in the core must be
+      safe Rust.
+    paths:
+      exclude: ["**/vault-ffi/**"]
+    pattern-either:
+      - pattern: unsafe { ... }
+      - pattern: unsafe fn $F(...) { ... }
+
+  - id: secret-compared-with-eq
+    languages: [rust]
+    severity: ERROR
+    message: >-
+      Keys, tags, MACs and checksums must be compared in constant time with `subtle::ConstantTimeEq`
+      (ADR-004). `==` can leak through timing how many leading bytes match.
+    patterns:
+      - pattern-either:
+          - pattern: $A == $B
+          - pattern: $A != $B
+      - metavariable-regex:
+          metavariable: $A
+          regex: (?i).*(key|kek|secret|tag|mac|checksum|digest|hmac|hw_pwd|h_pwd|rs\b).*

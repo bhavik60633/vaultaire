@@ -1,0 +1,115 @@
+# Security rules for the Android app (threat model; blueprint §20). Every rule is an ERROR.
+# An exception needs `// nosemgrep: <rule-id>` on the line, plus a comment saying why; reviewers check each one.
+# Rules are tested by `semgrep --test .semgrep/` against kotlin.kt next to this file.
+
+rules:
+  - id: biometric-prompt-without-cryptoobject
+    languages: [kotlin]
+    severity: ERROR
+    message: >-
+      BiometricPrompt used without a CryptoObject. A biometric result must release a Keystore key and must
+      never be treated as a yes/no answer (threat-model I7, T16). Pass a CryptoObject that wraps the Keystore
+      Cipher or Mac. The one allowed exception is the device-credential prompt for K_pwd (crypto spec §4.3):
+      mark that call with nosemgrep and a reason.
+    pattern-either:
+      - pattern: $PROMPT.authenticate($INFO)
+      - pattern: $PROMPT.authenticate($SIGNAL, $EXECUTOR, $CALLBACK)
+
+  - id: no-external-view-intents
+    languages: [kotlin]
+    severity: ERROR
+    message: >-
+      ACTION_VIEW hands a URI to another app (usually a browser). The vault never opens links or external
+      content (threat model: no network, no WebView).
+    pattern-either:
+      - pattern: Intent.ACTION_VIEW
+      - pattern: android.content.Intent.ACTION_VIEW
+      - pattern: '"android.intent.action.VIEW"'
+
+  - id: no-webview
+    languages: [kotlin]
+    severity: ERROR
+    message: WebView is banned (blueprint Appendix A). It brings a browser engine, JavaScript and network access into the vault.
+    pattern-either:
+      - pattern: WebView(...)
+      - pattern: android.webkit.WebView(...)
+      - pattern: import android.webkit.WebView
+
+  - id: no-logging
+    languages: [kotlin]
+    severity: ERROR
+    message: >-
+      No logging in app code: logs are readable by other tools and survive in bug reports (threat-model T22).
+      Remove it. Tests may log.
+    paths:
+      exclude: ["**/test/**", "**/androidTest/**"]
+    pattern-either:
+      - pattern: Log.$METHOD(...)
+      - pattern: android.util.Log.$METHOD(...)
+      - pattern: println(...)
+      - pattern: print(...)
+      - pattern: System.out.println(...)
+      - pattern: System.err.println(...)
+      - pattern: $E.printStackTrace()
+
+  - id: no-secrets-in-saved-state
+    languages: [kotlin]
+    severity: ERROR
+    message: >-
+      rememberSaveable and saved-instance-state survive process death on disk. Secrets must live only in
+      memory and be cleared on lock (threat-model I10). Use remember { } and clear it on lock.
+    patterns:
+      - pattern-either:
+          - pattern: val $NAME = rememberSaveable { ... }
+          - pattern: var $NAME = rememberSaveable { ... }
+          - pattern: val $NAME = rememberSaveable(...) { ... }
+      - metavariable-regex:
+          metavariable: $NAME
+          regex: (?i).*(password|passphrase|secret|pin|cvv|token|key|code|recovery|seed|plaintext).*
+
+  - id: preference-key-not-allowlisted
+    languages: [kotlin]
+    severity: ERROR
+    message: >-
+      Only the keys in vault-format §8 may be written to plaintext preferences (and to Bundles, which are
+      saved state). Anything else belongs inside the encrypted vault.
+    patterns:
+      - pattern-either:
+          - pattern: $E.putBoolean("$KEY", ...)
+          - pattern: $E.putInt("$KEY", ...)
+          - pattern: $E.putLong("$KEY", ...)
+          - pattern: $E.putFloat("$KEY", ...)
+          - pattern: $E.putString("$KEY", ...)
+          - pattern: $E.putStringSet("$KEY", ...)
+      - metavariable-regex:
+          metavariable: $KEY
+          regex: ^(?!(vault_present|onboarding_step|theme|haptics|failed_attempts|delay_started_elapsed_ms|delay_started_boot_count|failures_since_unlock)$).*
+
+  - id: shared-preferences-outside-prefs-module
+    languages: [kotlin]
+    severity: ERROR
+    message: SharedPreferences may be opened only in the one module that enforces the vault-format §8 allowlist.
+    paths:
+      exclude: ["**/security/Prefs.kt", "**/test/**", "**/androidTest/**"]
+    pattern: $C.getSharedPreferences(...)
+
+  - id: no-insecure-random
+    languages: [kotlin]
+    severity: ERROR
+    message: Security values come from the Rust core's OS random source (crypto spec §2.1), never from java.util.Random, kotlin.random.Random or Math.random().
+    pattern-either:
+      - pattern: java.util.Random(...)
+      - pattern: Random(...)
+      - pattern: kotlin.random.Random.$M(...)
+      - pattern: Random.$M(...)
+      - pattern: Math.random()
+
+  - id: clipboard-outside-guard
+    languages: [kotlin]
+    severity: ERROR
+    message: >-
+      Only ClipboardGuard may write to the clipboard: it marks clips as sensitive and clears them after 60 s
+      (threat-model T11).
+    paths:
+      exclude: ["**/security/ClipboardGuard.kt", "**/test/**", "**/androidTest/**"]
+    pattern: $CM.setPrimaryClip(...)

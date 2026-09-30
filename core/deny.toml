@@ -1,0 +1,53 @@
+# cargo-deny policy for the Rust core (blueprint §21; ADRs 003–008). Run: cargo deny check
+# Default answer for a new dependency is no: it needs an ADR before it is added here or in Cargo.toml.
+
+[graph]
+# Check what actually ships (the two Android ABIs) and the CI host.
+targets = ["aarch64-linux-android", "x86_64-linux-android", "x86_64-unknown-linux-gnu"]
+
+[advisories]
+# Any RustSec advisory (vulnerability, unmaintained, unsound) fails the build until it is fixed or
+# explicitly ignored below with a reason and a date.
+yanked = "deny"
+ignore = []
+
+[licenses]
+# Every licence here is compatible with the project's GPL-3.0-or-later (docs/adr/README.md).
+allow = [
+    "GPL-3.0-or-later", # the project itself
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-3-Clause",
+    "MPL-2.0",
+    "Zlib",
+    "Unlicense",
+    "Unicode-3.0",
+    "BlueOak-1.0.0",
+]
+confidence-threshold = 0.93
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+deny = [
+    # No network code of any kind: the app has no INTERNET permission, and its dependencies must not either.
+    { crate = "reqwest", reason = "network client; the vault never uses the network" },
+    { crate = "hyper", reason = "network; the vault never uses the network" },
+    { crate = "ureq", reason = "network client" },
+    { crate = "curl", reason = "network client" },
+    { crate = "isahc", reason = "network client" },
+    { crate = "attohttpc", reason = "network client" },
+    { crate = "rustls", reason = "TLS implies network" },
+    { crate = "native-tls", reason = "TLS implies network" },
+    { crate = "openssl", reason = "C crypto library; RustCrypto is the chosen provider (ADR-003)" },
+    { crate = "openssl-sys", reason = "C crypto library; RustCrypto is the chosen provider (ADR-003)" },
+    { crate = "tokio", reason = "no async runtime is needed; keeps network stacks out" },
+    { crate = "rand", reason = "all randomness comes from getrandom (crypto spec §2.1, ADR-004)" },
+]
+
+[sources]
+# crates.io only: no git dependencies, no other registries.
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

@@ -1,0 +1,62 @@
+# Android app checks (blueprint §26). Runs only when the app or core changes, so it is inert until android/ exists.
+name: android
+
+on:
+  push:
+    paths: ["android/**", "core/**", "tools/manifest_assert.py", ".github/workflows/android.yml"]
+  pull_request:
+    paths: ["android/**", "core/**", "tools/manifest_assert.py", ".github/workflows/android.yml"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  detect:
+    name: Is there code to check yet?
+    runs-on: ubuntu-24.04
+    outputs:
+      present: ${{ steps.check.outputs.present }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: check
+        working-directory: .
+        run: |
+          if [ -f android/settings.gradle.kts ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No android/settings.gradle.kts yet, so the checks are skipped."
+          fi
+
+  build:
+    name: Build, lint, test, manifest rules
+    needs: detect
+    if: needs.detect.outputs.present == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: The Gradle wrapper is the genuine one
+        uses: gradle/actions/wrapper-validation@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Build the Rust core for Android
+        working-directory: core
+        run: |
+          rustup target add aarch64-linux-android x86_64-linux-android
+          cargo install --locked cargo-ndk@4.1.2
+          cargo ndk -t arm64-v8a -t x86_64 -P 31 -o ../android/core-bindings/src/main/jniLibs build --release --locked
+      - name: Lint, unit tests and the R8 release build (dependency verification strict)
+        working-directory: android
+        run: ./gradlew --no-daemon --dependency-verification strict lint testDebugUnitTest assembleRelease
+      - name: Manifest rules on what actually ships
+        run: python3 tools/manifest_assert.py android/app/build/intermediates/merged_manifest/release/processReleaseMainManifest/AndroidManifest.xml

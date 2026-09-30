@@ -1,0 +1,92 @@
+# Rust core checks (blueprint §26). Runs only when the core changes, so it is inert until core/ exists.
+# The toolchain comes from core/rust-toolchain.toml; tools are installed with --locked at pinned versions.
+name: core
+
+on:
+  push:
+    paths: ["core/**", ".github/workflows/core.yml"]
+  pull_request:
+    paths: ["core/**", ".github/workflows/core.yml"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: core-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: core
+
+jobs:
+  detect:
+    name: Is there code to check yet?
+    runs-on: ubuntu-24.04
+    outputs:
+      present: ${{ steps.check.outputs.present }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: check
+        working-directory: .
+        run: |
+          if [ -f core/Cargo.toml ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No core/Cargo.toml yet, so the checks are skipped."
+          fi
+
+  checks:
+    name: Format, lint, test
+    needs: detect
+    if: needs.detect.outputs.present == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Toolchain (from rust-toolchain.toml)
+        run: rustup show active-toolchain || rustup toolchain install
+      - name: Formatting
+        run: cargo fmt --all --check
+      - name: Clippy, warnings are errors
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Tests (known-answer, property and project vectors)
+        run: cargo test --workspace --locked
+
+  supply-chain:
+    name: Dependencies (cargo deny, cargo vet)
+    needs: detect
+    if: needs.detect.outputs.present == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install cargo-deny 0.20.2 and cargo-vet 0.10.2
+        run: cargo install --locked cargo-deny@0.20.2 cargo-vet@0.10.2
+      - name: Advisories, licences, bans, sources
+        run: cargo deny check
+      - name: Every dependency audited or exempted with a reason
+        run: cargo vet --locked
+
+  fuzz-smoke:
+    name: Fuzz smoke test (60 s per target)
+    needs: detect
+    if: needs.detect.outputs.present == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Run each fuzz target briefly
+        run: |
+          if [ ! -d fuzz ]; then echo "No fuzz targets yet."; exit 0; fi
+          rustup toolchain install nightly --profile minimal
+          cargo install --locked cargo-fuzz@0.13.2
+          for t in $(cargo +nightly fuzz list); do
+            cargo +nightly fuzz run "$t" -- -max_total_time=60
+          done

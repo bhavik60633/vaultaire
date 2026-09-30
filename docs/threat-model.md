@@ -172,7 +172,7 @@ Risk is likelihood × impact: **L**ow, **M**edium or **H**igh. "Verified by" nam
 | T07 | Copy of `vault.db` | ADV-6, ADV-7 | M | Per-record AEAD. Keys in hardware. KS-REC needs the password **and** a 128-bit secret. | Item count, padded record sizes and keyslot KDF parameters are visible | DB extraction and canary grep (G1, G4) |
 | T08 | Reading app preferences and other files | ADV-6 | M | Preferences hold only the theme, onboarding state, failure counter and lockout time | Root can reset the failure counter (see T14) | File review (G3) |
 | T09 | Extraction through OS backups | ADV-7 | M | `allowBackup=false`. `dataExtractionRules` exclude everything, for both cloud and device-to-device transfer. Vault in `noBackupFilesDir`. | If an OS bug copies files anyway, they are ciphertext, and hardware keys never migrate | `adb backup`, `bmgr`, transfer simulation (G3) |
-| T11 | Clipboard harvesting | ADV-5 | M | Copy only on an explicit tap. `EXTRA_IS_SENSITIVE`. Cleared after 60 s. Autofill in V1.1 reduces clipboard use. | Keyboard clipboard histories (OEM-dependent). Exposure lasts as long as the clip. **Background clearing is unreliable on some devices** (R1). | Device matrix (G3) |
+| T11 | Clipboard harvesting | ADV-5 | M | Copy only on an explicit tap. `EXTRA_IS_SENSITIVE`. Cleared after 60 s. Autofill in V1.1 reduces clipboard use. | Keyboard and OEM clipboard histories: **Samsung reportedly keeps every clip in plain text with no expiry, ignoring the sensitive flag** (R2), which outlives anything the app can clear. Background `clearPrimaryClip()` alone can be a no-op, so ClipboardGuard overwrites with an empty sensitive clip first (R1). | Device matrix (G3) |
 | T12 | Screenshots, recording, casting | ADV-5 | M | FLAG_SECURE on **every** window, including dialogs and sheets. `setRecentsScreenshotEnabled(false)`. | A second camera cannot be stopped | Every screen and dialog (G3) |
 | T22 | Secrets in logs | ADV-5, ADV-6 | M | Logging stripped from release builds. Lint bans. Redacted `toString` and `Debug`. Canary sweeps. | System logs written by keyboards and other apps | Canary sweep of logcat, bugreport and tombstones (every gate) |
 | T23 | Secrets in crash reports | ADV-10 | L–M | No crash-reporting SDK. Sanitised exception messages. | OS crash reports contain stack traces, not heap contents | Forced crashes during reveal (every gate) |
@@ -251,6 +251,8 @@ To be resolved, or explicitly accepted as risks, at Gate G0:
 | R6 | UniFFI and JNA footprint, R8 compatibility and startup cost versus a minimal JNI layer | T20 |
 | R7 | How assistants, Circle to Search and on-device AI treat FLAG_SECURE windows | T30 |
 | R8–R11 | iOS items: `kSecAccessControlApplicationPassword`, AutoFill extension memory, screenshot blanking, SQLite file locking in App Groups | §10 |
+
+**Status (2026-09-30):** R1, R2, R7 and the cracking-cost part of R5 are answered in [G0 desk research](research/g0-desk-research.md). R3, R5 (timing) and R6 are answered in the [Phase-0 results](spikes/phase0-results.md). R4 moved to Gate G2. Device confirmation of R1, R2 and R7 stays on the G3 device matrix.
 
 ## 12. Change control
 

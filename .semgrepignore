@@ -1,0 +1,8 @@
+# Not scanned by the security rules:
+# the rule test fixtures (they contain the bad patterns on purpose),
+# the throwaway Phase-0 spike (not product code; deleted after G0),
+# the design prototype (web mockup) and the docs.
+.semgrep/
+spikes/
+prototype/
+docs/
