@@ -1,0 +1,57 @@
+{
+  "construction": "slot/pwd",
+  "spec": "crypto-spec \u00a74.3, \u00a74.5; vault-format \u00a74.4",
+  "format_version": 1,
+  "vectors": [
+    {
+      "id": "pwd-001",
+      "comment": "hw_hmac_key stands in for K_pwd inside Keystore",
+      "inputs": {
+        "password_utf8": "636f727265637420686f727365206261747465727920737461706c65",
+        "salt_pwd": "572c86cf2143e108368578260a0a88af",
+        "vault_id": "c02d0398fef621befda395fa43e2f1e5",
+        "argon2": {
+          "m": 65536,
+          "t": 3,
+          "p": 1
+        },
+        "hw_hmac_key": "8295872f6f9e24a24d5cf3f1123fe5ccbff02afde4fdf35272d6a5b92a2f513b",
+        "slot_id": "29e55a567409dcaaea56955aa3ac73e2",
+        "vk": "18d1d7b89ea03d3645975f557beecc7661e8107a815d722e38647a24e11cf9f5",
+        "nonce": "ef10f64d5e279274a2d6d24fe28cd03dc43d3d18ff997c1b"
+      },
+      "intermediates": {
+        "h_pwd": "95fc51b9f19b010b6d2738b0fafe0e10c9af22e65855002c8f45b61a22a95e2f",
+        "hw_in": "b98de2d3133cea3577e6018096087fb21109606d683b2a7ebc35b343ae762602",
+        "hw_pwd": "894b6e7e4fc871933c5899571667bc19a18ed320199288644e12f7ff38a1ac42",
+        "params_cbor": "a40102020103782b766c742e76312e7077642e323965353561353637343039646361616561353639353561613361633733653206a50101021a00010000030304010550572c86cf2143e108368578260a0a88af",
+        "kek_pwd": "33d884819dd1156f49b981eea5435caf8e3d8785f5a4f4a9f61407cd8a5a6da0",
+        "ad_slot": "766c742f76312f736c6f740001c02d0398fef621befda395fa43e2f1e50229e55a567409dcaaea56955aa3ac73e2a3cdcc84fc9622ad8cc32ea04cb5ef9f784213b4bff0c94d2d451bc74a50d27d"
+      },
+      "output": {
+        "wrapped_vk": "6384e5e84308bdae20ec93643d663b71847f5bdde28308f20753ec889dfdefdb92fa495510d6f65dbf5d4dd31af91bd6"
+      },
+      "expect": "ok"
+    },
+    {
+      "id": "pwd-002-wrong-password",
+      "inputs": {
+        "password_utf8": "636f727265637420686f727365206261747465727920737461706c6521"
+      },
+      "expect": "error:unlock_failed"
+    },
+    {
+      "id": "pwd-003-params-changed-within-range",
+      "comment": "Stored m raised to 131072: still in range, but the slot AD no longer matches",
+      "inputs": {
+        "params_cbor": "a40102020103782b766c742e76312e7077642e323965353561353637343039646361616561353639353561613361633733653206a50101021a00020000030304010550572c86cf2143e108368578260a0a88af"
+      },
+      "expect": "error:unlock_failed"
+    },
+    {
+      "id": "pwd-004-slot-type-swapped",
+      "comment": "The same wrap presented as a REC slot",
+      "expect": "error:unlock_failed"
+    }
+  ]
+}

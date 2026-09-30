@@ -32,6 +32,7 @@ jniLibs/
 # --- Python ---
 __pycache__/
 *.pyc
+.venv/
 
 # --- IDEs ---
 .idea/

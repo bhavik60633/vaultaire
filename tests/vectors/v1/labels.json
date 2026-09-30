@@ -1,0 +1,87 @@
+{
+  "construction": "labels",
+  "spec": "crypto-spec \u00a73.3",
+  "format_version": 1,
+  "vectors": [
+    {
+      "id": "kek_bio",
+      "ascii": "vlt/v1/kek/bio",
+      "bytes": "766c742f76312f6b656b2f62696f"
+    },
+    {
+      "id": "hw_input",
+      "ascii": "vlt/v1/hw-input",
+      "bytes": "766c742f76312f68772d696e707574"
+    },
+    {
+      "id": "kek_pwd",
+      "ascii": "vlt/v1/kek/pwd",
+      "bytes": "766c742f76312f6b656b2f707764"
+    },
+    {
+      "id": "kek_rec",
+      "ascii": "vlt/v1/kek/rec",
+      "bytes": "766c742f76312f6b656b2f726563"
+    },
+    {
+      "id": "slot",
+      "ascii": "vlt/v1/slot",
+      "bytes": "766c742f76312f736c6f74"
+    },
+    {
+      "id": "sub_index",
+      "ascii": "vlt/v1/subkey/index",
+      "bytes": "766c742f76312f7375626b65792f696e646578"
+    },
+    {
+      "id": "sub_secret",
+      "ascii": "vlt/v1/subkey/secret",
+      "bytes": "766c742f76312f7375626b65792f736563726574"
+    },
+    {
+      "id": "sub_meta",
+      "ascii": "vlt/v1/subkey/meta",
+      "bytes": "766c742f76312f7375626b65792f6d657461"
+    },
+    {
+      "id": "sub_header",
+      "ascii": "vlt/v1/subkey/header",
+      "bytes": "766c742f76312f7375626b65792f686561646572"
+    },
+    {
+      "id": "record",
+      "ascii": "vlt/v1/record",
+      "bytes": "766c742f76312f7265636f7264"
+    },
+    {
+      "id": "header_mac",
+      "ascii": "vlt/v1/header-mac",
+      "bytes": "766c742f76312f6865616465722d6d6163"
+    },
+    {
+      "id": "rs_id",
+      "ascii": "vlt/v1/rs-id",
+      "bytes": "766c742f76312f72732d6964"
+    },
+    {
+      "id": "rk_checksum",
+      "ascii": "vlt/v1/rk-checksum",
+      "bytes": "766c742f76312f726b2d636865636b73756d"
+    },
+    {
+      "id": "kek_export",
+      "ascii": "vlt/v1/kek/export",
+      "bytes": "766c742f76312f6b656b2f6578706f7274"
+    },
+    {
+      "id": "export_wrap",
+      "ascii": "vlt/v1/export/wrap",
+      "bytes": "766c742f76312f6578706f72742f77726170"
+    },
+    {
+      "id": "export_payload",
+      "ascii": "vlt/v1/export/payload",
+      "bytes": "766c742f76312f6578706f72742f7061796c6f6164"
+    }
+  ]
+}

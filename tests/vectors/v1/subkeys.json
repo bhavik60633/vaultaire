@@ -1,0 +1,21 @@
+{
+  "construction": "subkeys",
+  "spec": "crypto-spec \u00a76.1",
+  "format_version": 1,
+  "vectors": [
+    {
+      "id": "subkeys-001",
+      "inputs": {
+        "vk": "18d1d7b89ea03d3645975f557beecc7661e8107a815d722e38647a24e11cf9f5",
+        "vault_id": "c02d0398fef621befda395fa43e2f1e5"
+      },
+      "output": {
+        "k_idx": "48b0b28a7986bdcc63d2d33070992644bd884148dff6ad6d7062026b34b2c5b8",
+        "k_sec": "ab5e6712c5f2effeb2f58a4e66784980b19c9071ecef007f9ad4dc80dc424a4d",
+        "k_meta": "c7c0ed9baaa8dd33627ca22ea77640560e1523c1fe54235cc5e91811451f2fb6",
+        "k_hdr": "b85e7dafc8af95bba8395da33197f5e4c1290573144fee58ca76d17f70ee1958"
+      },
+      "expect": "ok"
+    }
+  ]
+}

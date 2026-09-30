@@ -1,0 +1,87 @@
+{
+  "construction": "argon2id-parameter-range",
+  "spec": "crypto-spec \u00a74.6",
+  "format_version": 1,
+  "vectors": [
+    {
+      "id": "floor",
+      "inputs": {
+        "m": 65536,
+        "t": 3,
+        "p": 1
+      },
+      "comment": "Checked before any Argon2id work",
+      "expect": "ok"
+    },
+    {
+      "id": "ceiling",
+      "inputs": {
+        "m": 524288,
+        "t": 16,
+        "p": 4
+      },
+      "comment": "Checked before any Argon2id work",
+      "expect": "ok"
+    },
+    {
+      "id": "m-below",
+      "inputs": {
+        "m": 65535,
+        "t": 3,
+        "p": 1
+      },
+      "comment": "Checked before any Argon2id work",
+      "expect": "error:params_out_of_range"
+    },
+    {
+      "id": "m-above",
+      "inputs": {
+        "m": 524289,
+        "t": 3,
+        "p": 1
+      },
+      "comment": "Checked before any Argon2id work",
+      "expect": "error:params_out_of_range"
+    },
+    {
+      "id": "t-below",
+      "inputs": {
+        "m": 65536,
+        "t": 2,
+        "p": 1
+      },
+      "comment": "Checked before any Argon2id work",
+      "expect": "error:params_out_of_range"
+    },
+    {
+      "id": "t-above",
+      "inputs": {
+        "m": 65536,
+        "t": 17,
+        "p": 1
+      },
+      "comment": "Checked before any Argon2id work",
+      "expect": "error:params_out_of_range"
+    },
+    {
+      "id": "p-below",
+      "inputs": {
+        "m": 65536,
+        "t": 3,
+        "p": 0
+      },
+      "comment": "Checked before any Argon2id work",
+      "expect": "error:params_out_of_range"
+    },
+    {
+      "id": "p-above",
+      "inputs": {
+        "m": 65536,
+        "t": 3,
+        "p": 5
+      },
+      "comment": "Checked before any Argon2id work",
+      "expect": "error:params_out_of_range"
+    }
+  ]
+}

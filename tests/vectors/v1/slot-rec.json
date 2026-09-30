@@ -1,0 +1,41 @@
+{
+  "construction": "slot/rec",
+  "spec": "crypto-spec \u00a74.4, \u00a74.5; vault-format \u00a74.4",
+  "format_version": 1,
+  "vectors": [
+    {
+      "id": "rec-001",
+      "inputs": {
+        "password_utf8": "636f727265637420686f727365206261747465727920737461706c65",
+        "salt_rec": "f1f4ef391155d370e53329b66099adf6",
+        "rs": "1a828984b9d388bcb12a33351fb1c160",
+        "vault_id": "c02d0398fef621befda395fa43e2f1e5",
+        "argon2": {
+          "m": 65536,
+          "t": 3,
+          "p": 1
+        },
+        "slot_id": "0042a9e42a274cb66afdf0ad98c2a0e6",
+        "vk": "18d1d7b89ea03d3645975f557beecc7661e8107a815d722e38647a24e11cf9f5",
+        "nonce": "d70be4b9dd3c78a6ba8e41f6965618e3aca73e3cc2354c2d"
+      },
+      "intermediates": {
+        "h_rec": "38eff6ebe2c21ef6c22d64ec7f69fb35d66a329d77b9f02f8e9ffc18aed87c90",
+        "params_cbor": "a2010306a50101021a00010000030304010550f1f4ef391155d370e53329b66099adf6",
+        "kek_rec": "719966bd8f20991bbb5046a37063639ae99e21a4a9d29c392ba3327c311a4406",
+        "ad_slot": "766c742f76312f736c6f740001c02d0398fef621befda395fa43e2f1e5030042a9e42a274cb66afdf0ad98c2a0e669303880db00b77a1e9d119d35f5869eadf7cc1dfe3c794c55e6d767c8735a3a"
+      },
+      "output": {
+        "wrapped_vk": "1250161bfe12d96fdc2565e0f4a9de82e9ca9840e6282b7807cefab6cbcc5f8477d49dafadd92e705b55bf3b931dcc1c"
+      },
+      "expect": "ok"
+    },
+    {
+      "id": "rec-002-wrong-recovery-secret",
+      "inputs": {
+        "rs": "4c92a06a234ed429b2d005eea43c5388"
+      },
+      "expect": "error:unlock_failed"
+    }
+  ]
+}

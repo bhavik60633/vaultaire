@@ -39,8 +39,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Install Semgrep 1.178.0
-        run: python3 -m pip install --user "semgrep==1.178.0"
+      - name: Install Semgrep 1.178.0 (in a venv; Ubuntu blocks system-wide pip, PEP 668)
+        run: |
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install "semgrep==1.178.0"
+          echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
       - name: Test the rules themselves
         run: |
           semgrep --test --metrics=off --config .semgrep/kotlin.yaml .semgrep/kotlin.kt
@@ -57,3 +60,25 @@ jobs:
           persist-credentials: false
       - name: Manifest checker tests
         run: python3 -m unittest discover -s tools -p "test_*.py"
+
+  vectors:
+    name: Reference implementation and test vectors
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned, hash-checked dependencies (in a venv, PEP 668)
+        working-directory: tools/vectorref
+        run: |
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install --require-hashes -r requirements.txt
+          echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
+      - name: Published vectors, reproducibility, label use, round trips
+        working-directory: tools/vectorref
+        run: python -m unittest -v
+      - name: Committed vectors match a fresh generation
+        working-directory: tools/vectorref
+        run: |
+          python generate.py
+          git diff --exit-code -- ../../tests/vectors/

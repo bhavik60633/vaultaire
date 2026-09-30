@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Proposed** for G0 (2026-09-30) |
+| Status | **Proposed** for G0 (2026-09-30). **Python reference done:** [`tools/vectorref`](../tools/vectorref/) writes 132 composition vectors and 11 published ones; writing it produced ten [spec findings](spec-findings-vectorref.md) |
 | Implements | [crypto spec §12](crypto-spec.md#12-test-vectors) |
 | Vectors | `tests/vectors/v1/` (JSON; synthetic data only) |
 

@@ -1,0 +1,182 @@
+{
+  "construction": "cbor-profile",
+  "spec": "vault-format \u00a72",
+  "format_version": 1,
+  "vectors": [
+    {
+      "id": "uint-0",
+      "expect": "ok",
+      "output": {
+        "cbor": "00"
+      }
+    },
+    {
+      "id": "uint-23",
+      "expect": "ok",
+      "output": {
+        "cbor": "17"
+      }
+    },
+    {
+      "id": "uint-24",
+      "expect": "ok",
+      "output": {
+        "cbor": "1818"
+      }
+    },
+    {
+      "id": "uint-255",
+      "expect": "ok",
+      "output": {
+        "cbor": "18ff"
+      }
+    },
+    {
+      "id": "uint-256",
+      "expect": "ok",
+      "output": {
+        "cbor": "190100"
+      }
+    },
+    {
+      "id": "uint-65536",
+      "expect": "ok",
+      "output": {
+        "cbor": "1a00010000"
+      }
+    },
+    {
+      "id": "uint-2^32",
+      "expect": "ok",
+      "output": {
+        "cbor": "1b0000000100000000"
+      }
+    },
+    {
+      "id": "bytes-empty",
+      "expect": "ok",
+      "output": {
+        "cbor": "40"
+      }
+    },
+    {
+      "id": "text-utf8",
+      "expect": "ok",
+      "output": {
+        "cbor": "65636166c3a9"
+      }
+    },
+    {
+      "id": "bool-true",
+      "expect": "ok",
+      "output": {
+        "cbor": "f5"
+      }
+    },
+    {
+      "id": "bool-false",
+      "expect": "ok",
+      "output": {
+        "cbor": "f4"
+      }
+    },
+    {
+      "id": "array",
+      "expect": "ok",
+      "output": {
+        "cbor": "8201820203"
+      }
+    },
+    {
+      "id": "map-sorted-keys",
+      "expect": "ok",
+      "output": {
+        "cbor": "a4010302020a01181804"
+      }
+    },
+    {
+      "id": "uint-not-shortest",
+      "inputs": {
+        "cbor": "1801"
+      },
+      "expect": "error:non_canonical"
+    },
+    {
+      "id": "length-not-shortest",
+      "inputs": {
+        "cbor": "5800"
+      },
+      "expect": "error:non_canonical"
+    },
+    {
+      "id": "indefinite-array",
+      "inputs": {
+        "cbor": "9f01ff"
+      },
+      "expect": "error:malformed"
+    },
+    {
+      "id": "negative-int",
+      "inputs": {
+        "cbor": "20"
+      },
+      "expect": "error:malformed"
+    },
+    {
+      "id": "float",
+      "inputs": {
+        "cbor": "fa3fc00000"
+      },
+      "expect": "error:malformed"
+    },
+    {
+      "id": "tag",
+      "inputs": {
+        "cbor": "c101"
+      },
+      "expect": "error:malformed"
+    },
+    {
+      "id": "null",
+      "inputs": {
+        "cbor": "f6"
+      },
+      "expect": "error:malformed"
+    },
+    {
+      "id": "map-unsorted-keys",
+      "inputs": {
+        "cbor": "a202010101"
+      },
+      "expect": "error:non_canonical"
+    },
+    {
+      "id": "map-duplicate-keys",
+      "inputs": {
+        "cbor": "a201010102"
+      },
+      "expect": "error:non_canonical"
+    },
+    {
+      "id": "map-text-key",
+      "inputs": {
+        "cbor": "a1616101"
+      },
+      "expect": "error:malformed"
+    },
+    {
+      "id": "trailing-bytes",
+      "inputs": {
+        "cbor": "0101"
+      },
+      "expect": "error:malformed"
+    },
+    {
+      "id": "invalid-utf8",
+      "inputs": {
+        "cbor": "62c328"
+      },
+      "expect": "error:malformed"
+    }
+  ]
+}

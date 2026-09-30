@@ -1,0 +1,39 @@
+{
+  "construction": "slot/bio",
+  "spec": "crypto-spec \u00a74.2, \u00a74.5; vault-format \u00a74.4",
+  "format_version": 1,
+  "vectors": [
+    {
+      "id": "bio-001",
+      "comment": "SK stands in for the value Keystore releases after a biometric",
+      "inputs": {
+        "sk": "82680c6868e999f5d5f5c5537869721365ce7c50ba24c39955503a3a6f2f38f1",
+        "vault_id": "c02d0398fef621befda395fa43e2f1e5",
+        "slot_id": "f38918b102ddbbb2fda45227599bd6b1",
+        "vk": "18d1d7b89ea03d3645975f557beecc7661e8107a815d722e38647a24e11cf9f5",
+        "nonce": "f4a42710c38c0f89e21dca1374b87ac418b2067ff197918d"
+      },
+      "intermediates": {
+        "params_cbor": "a50101020103782b766c742e76312e62696f2e6633383931386231303264646262623266646134353232373539396264366231044c14ccdb0c865ebeccc62a2f610558306989f3a7199b48a05a417e875a5d8fced1eeae7ce168996f0b4ec2eb3aeeabefb7c6fdb88499f30eeb7bc425b8329eef",
+        "kek_bio": "67e281d04f67446b18fd6ba8f8633b7d936d4b6904e983137261198cd948ef30",
+        "ad_slot": "766c742f76312f736c6f740001c02d0398fef621befda395fa43e2f1e501f38918b102ddbbb2fda45227599bd6b1748d26a35204d804d3df25b58ab01262c0dfa7cc7125b40fe7b74b7cf50b0dd4"
+      },
+      "output": {
+        "wrapped_vk": "339507e68959dd37bc1e58dd29058fa54671c759697b719694fc3bc0fc840b809c3c7e64f9bf29990a7f9d2f3f045725"
+      },
+      "expect": "ok"
+    },
+    {
+      "id": "bio-002-wrong-sk",
+      "inputs": {
+        "sk": "9e0aa98567616aa34e8b6d8209d09f723010b3291a86b6a2ab36722b891c366f",
+        "vault_id": "c02d0398fef621befda395fa43e2f1e5",
+        "slot_id": "f38918b102ddbbb2fda45227599bd6b1",
+        "params_cbor": "a50101020103782b766c742e76312e62696f2e6633383931386231303264646262623266646134353232373539396264366231044c14ccdb0c865ebeccc62a2f610558306989f3a7199b48a05a417e875a5d8fced1eeae7ce168996f0b4ec2eb3aeeabefb7c6fdb88499f30eeb7bc425b8329eef",
+        "nonce": "f4a42710c38c0f89e21dca1374b87ac418b2067ff197918d",
+        "wrapped_vk": "339507e68959dd37bc1e58dd29058fa54671c759697b719694fc3bc0fc840b809c3c7e64f9bf29990a7f9d2f3f045725"
+      },
+      "expect": "error:unlock_failed"
+    }
+  ]
+}

@@ -1,0 +1,148 @@
+{
+  "construction": "recovery-key",
+  "spec": "crypto-spec \u00a78",
+  "format_version": 1,
+  "vectors": [
+    {
+      "id": "encode-a",
+      "inputs": {
+        "rs": "d96b690101289d4aa303a96a6a1d9687"
+      },
+      "output": {
+        "recovery_key": "6SDD-MG20-98KN-5A60-X9D9-N1V5-M70W"
+      },
+      "intermediates": {
+        "checksum_10_bits": 28
+      },
+      "expect": "ok"
+    },
+    {
+      "id": "encode-b",
+      "inputs": {
+        "rs": "e60b73960f5b2b522b48c78c954fa5c2"
+      },
+      "output": {
+        "recovery_key": "761D-SSC3-TV5D-92PJ-67HJ-AMZ9-E2RE"
+      },
+      "intermediates": {
+        "checksum_10_bits": 782
+      },
+      "expect": "ok"
+    },
+    {
+      "id": "encode-00",
+      "inputs": {
+        "rs": "00000000000000000000000000000000"
+      },
+      "output": {
+        "recovery_key": "0000-0000-0000-0000-0000-0000-007H"
+      },
+      "expect": "ok"
+    },
+    {
+      "id": "encode-ff",
+      "inputs": {
+        "rs": "ffffffffffffffffffffffffffffffff"
+      },
+      "output": {
+        "recovery_key": "7ZZZ-ZZZZ-ZZZZ-ZZZZ-ZZZZ-ZZZZ-ZZG5"
+      },
+      "expect": "ok"
+    },
+    {
+      "id": "decode-exact",
+      "inputs": {
+        "text": "6SDD-MG20-98KN-5A60-X9D9-N1V5-M70W"
+      },
+      "output": {
+        "rs": "d96b690101289d4aa303a96a6a1d9687"
+      },
+      "expect": "ok"
+    },
+    {
+      "id": "decode-lowercase",
+      "inputs": {
+        "text": "6sdd-mg20-98kn-5a60-x9d9-n1v5-m70w"
+      },
+      "output": {
+        "rs": "d96b690101289d4aa303a96a6a1d9687"
+      },
+      "expect": "ok"
+    },
+    {
+      "id": "decode-no-dashes",
+      "inputs": {
+        "text": "6SDDMG2098KN5A60X9D9N1V5M70W"
+      },
+      "output": {
+        "rs": "d96b690101289d4aa303a96a6a1d9687"
+      },
+      "expect": "ok"
+    },
+    {
+      "id": "decode-spaces",
+      "inputs": {
+        "text": "6SDD MG20 98KN 5A60 X9D9 N1V5 M70W"
+      },
+      "output": {
+        "rs": "d96b690101289d4aa303a96a6a1d9687"
+      },
+      "expect": "ok"
+    },
+    {
+      "id": "decode-letter-O-for-zero",
+      "inputs": {
+        "text": "6SDD-MG2O-98KN-5A6O-X9D9-N1V5-M7OW"
+      },
+      "output": {
+        "rs": "d96b690101289d4aa303a96a6a1d9687"
+      },
+      "expect": "ok"
+    },
+    {
+      "id": "decode-letters-I-L-for-one",
+      "inputs": {
+        "text": "6SDD-MG20-98KN-5A60-X9D9-NIV5-M70W"
+      },
+      "output": {
+        "rs": "d96b690101289d4aa303a96a6a1d9687"
+      },
+      "expect": "ok"
+    },
+    {
+      "id": "decode-typo-in-checksum",
+      "inputs": {
+        "text": "6SDD-MG20-98KN-5A60-X9D9-N1V5-M700"
+      },
+      "expect": "error:rk_checksum"
+    },
+    {
+      "id": "decode-swapped-symbols",
+      "inputs": {
+        "text": "6SDD-GM20-98KN-5A60-X9D9-N1V5-M70W"
+      },
+      "expect": "error:rk_checksum"
+    },
+    {
+      "id": "decode-too-short",
+      "inputs": {
+        "text": "6SDD-MG20-98KN-5A60-X9D9-N1V5-M7"
+      },
+      "expect": "error:rk_invalid"
+    },
+    {
+      "id": "decode-letter-U",
+      "inputs": {
+        "text": "USDD-MG20-98KN-5A60-X9D9-N1V5-M70W"
+      },
+      "expect": "error:rk_invalid"
+    },
+    {
+      "id": "decode-first-symbol-above-7",
+      "inputs": {
+        "text": "8SDD-MG20-98KN-5A60-X9D9-N1V5-M70W"
+      },
+      "expect": "error:rk_invalid"
+    }
+  ]
+}
