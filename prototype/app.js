@@ -19,6 +19,7 @@
     copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h8"/>',
     eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>',
     eyeOff: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/><path d="M4 4l16 16"/>',
+    face: '<path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M9 9v1.5M15 9v1.5M12.5 9v4h-1"/><path d="M9 15.5c1.7 1.3 4.3 1.3 6 0"/>',
     finger: '<path d="M7.5 19c1.2-2 1.5-4 1.5-7a3 3 0 0 1 6 0c0 1.5-.1 3-.4 4.3"/><path d="M12 12c0 3-.6 5.6-2 8"/><path d="M5 15.5c.5-1.3.5-2.3.5-3.5a6.5 6.5 0 0 1 11.6-4"/><path d="M18.3 10.5c.2.5.2 1 .2 1.5 0 2.2-.3 4.2-.9 6"/>',
     shield: '<path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/>',
     alert: '<path d="M12 4l9 16H3z"/><path d="M12 10v4.5M12 17.5v.01"/>',
@@ -81,13 +82,62 @@
   const DONE_ROSETTE = rosette(160, [{ base: 70, amp: 5, k: 22, lines: 7 }]);
   const CARD_ENGRAVING = engraving();
 
+  // ---------- Platform: the Android or the iPhone version of the design ----------
+  // The two apps differ only where the platforms do (threat-model §10): Face ID instead of a fingerprint,
+  // the passcode instead of the screen lock, and no screenshot blocking on iPhone. The first visit follows
+  // the device; the choice is then remembered in this browser.
+  const PLATFORM_KEY = 'vaultaire-prototype-platform';
+  function loadPlatform() {
+    const asked = new URLSearchParams(location.search).get('platform'); // e.g. ?platform=ios, for review links
+    if (asked === 'ios' || asked === 'android') return asked;
+    try {
+      const saved = localStorage.getItem(PLATFORM_KEY);
+      if (saved === 'ios' || saved === 'android') return saved;
+    } catch (e) { /* storage unavailable: detect */ }
+    const ua = navigator.userAgent;
+    return /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) ? 'ios' : 'android';
+  }
+  let platform = loadPlatform();
+  document.documentElement.dataset.platform = platform;
+  const PLATFORMS = {
+    android: {
+      name: 'Android', bio: 'fingerprint', Bio: 'Fingerprint', bioIcon: 'finger', device: 'phone', credential: 'screen lock',
+      prompt: (verb, what) => `Touch the sensor to ${verb} the ${what}.`,
+      shots: 'Screenshots, PDF and printing are blocked on this screen.',
+      checks: [
+        ['Screen lock', 'On', true], ['Class 3 biometric', 'Enrolled', true], ['Key storage', 'StrongBox', true],
+        ['Security patch', '41 days old', true], ['USB debugging', 'On', false, 'Turn it off when you are not developing.'],
+        ['Third-party keyboard', 'None', true], ['Last backup', '12 days ago', true]
+      ]
+    },
+    ios: {
+      name: 'iPhone', bio: 'Face ID', Bio: 'Face ID', bioIcon: 'face', device: 'iPhone', credential: 'passcode',
+      prompt: (verb, what) => `Look at your iPhone to ${verb} the ${what}.`,
+      shots: 'iPhone cannot block screenshots. Vaultaire hides this screen while it is recorded or mirrored.',
+      checks: [
+        ['Passcode', 'On', true], ['Face ID', 'Enrolled', true], ['Key storage', 'Secure Enclave', true],
+        ['iOS version', 'Up to date', true], ['Screen recording', 'Not active', true],
+        ['Third-party keyboards', 'Blocked in Vaultaire', true], ['Last backup', '12 days ago', false, 'Back up after adding important items.']
+      ]
+    }
+  };
+  const P = () => PLATFORMS[platform];
+  function setPlatform(next) {
+    if (!PLATFORMS[next] || next === platform) return;
+    platform = next;
+    document.documentElement.dataset.platform = next;
+    try { localStorage.setItem(PLATFORM_KEY, next); } catch (e) { /* not persisted; fine for a prototype */ }
+    render();
+    announce(`Showing the ${PLATFORMS[next].name} version`);
+  }
+
   // ---------- Categories, in the order the vault shows them ----------
   const CATEGORIES = [
-    { type: 'card', label: 'Cards', one: 'card', many: 'cards', add: 'Add card', note: 'Card numbers and security codes need your fingerprint to show or copy.' },
+    { type: 'card', label: 'Cards', one: 'card', many: 'cards', add: 'Add card', note: 'Card numbers and security codes need your {bio} to show or copy.' },
     { type: 'login', label: 'Passwords', one: 'password', many: 'passwords', add: 'Add password', note: 'Passwords stay masked until you tap. Copies clear after 60 seconds.' },
-    { type: 'devkey', label: 'API keys', one: 'key', many: 'keys', add: 'Add API key', note: 'Secrets need your fingerprint to show or copy.' },
-    { type: 'bank', label: 'Bank accounts', one: 'account', many: 'accounts', add: 'Add bank account', note: 'Account numbers need your fingerprint to show or copy.' },
-    { type: 'identity', label: 'Identity', one: 'document', many: 'documents', add: 'Add document', note: 'Document numbers need your fingerprint to show or copy.' },
+    { type: 'devkey', label: 'API keys', one: 'key', many: 'keys', add: 'Add API key', note: 'Secrets need your {bio} to show or copy.' },
+    { type: 'bank', label: 'Bank accounts', one: 'account', many: 'accounts', add: 'Add bank account', note: 'Account numbers need your {bio} to show or copy.' },
+    { type: 'identity', label: 'Identity', one: 'document', many: 'documents', add: 'Add document', note: 'Document numbers need your {bio} to show or copy.' },
     { type: 'note', label: 'Notes', one: 'note', many: 'notes', add: 'Add note', note: 'Notes stay hidden until you tap.' },
     { type: 'membership', label: 'Memberships', one: 'membership', many: 'memberships', add: 'Add membership', note: 'Membership PINs stay masked until you tap.' },
     { type: 'other', label: 'Other', one: 'item', many: 'items', add: 'Add item', note: 'Your own fields, protected at the level you choose.' }
@@ -125,7 +175,7 @@
     1: { id: '1', nick: 'Travel card', network: 'VISA', issuer: 'Northbridge Bank', holder: 'Alex Morgan', number: '4929 1845 7720 4821', last4: '4821', expiry: '08 / 29', cvv: '317' },
     2: { id: '2', nick: 'Everyday debit', network: 'MASTERCARD', issuer: 'Harbour Mutual', holder: 'Alex Morgan', number: '5412 7534 9021 1177', last4: '1177', expiry: '11 / 27', cvv: null }
   };
-  // Field tiers follow blueprint §17: normal (shown), concealed (tap), critical (fingerprint).
+  // Field tiers follow blueprint §17: normal (shown), concealed (tap), critical (biometric).
   const N = (label, value, extra) => Object.assign({ label, value, tier: 'normal', copy: false }, extra);
   const C = (label, value, extra) => Object.assign({ label, value, tier: 'concealed', copy: true }, extra);
   const X = (label, value, extra) => Object.assign({ label, value, tier: 'critical', copy: true }, extra);
@@ -282,8 +332,14 @@
   }
 
   // ---------- Shared fragments ----------
+  // On iPhone the back button names where it goes, as iOS navigation does.
+  const backLink = (href, label) => {
+    const to = label.replace(/^Back to /, '');
+    const text = platform === 'ios' ? `<span class="back-text">${esc(to.charAt(0).toUpperCase() + to.slice(1))}</span>` : '';
+    return `<a class="icon-btn strong back-btn" href="${href}" aria-label="${label}">${icon('back', 24)}${text}</a>`;
+  };
   const topbar = (back, label) => `<div class="topbar">
-    <a class="icon-btn strong" href="${back}" aria-label="${label}">${icon('back', 24)}</a>
+    ${backLink(back, label)}
     <a class="icon-btn accent" href="#/lock" aria-label="Lock now">${icon('lock')}</a>
   </div>`;
   // `key` identifies the field; `tier` decides the gate; `label` names it in prompts.
@@ -295,6 +351,9 @@
   const secret = (on, shown, masked, cls = '') => `<span class="secret${cls}${on && fx.reveal ? ' fade-in' : ''}">${on ? shown : masked}</span>`;
   const finishName = (f) => FINISHES.find(([id]) => id === f)[1];
   const meter = ([level, text]) => `<span class="meter" aria-hidden="true">${Array.from({ length: 5 }, (_, i) => `<span class="${i < level ? 'on' : ''}"></span>`).join('')}</span><span class="frow-note">${text}</span>`;
+
+  const platformSwitch = (labelledBy) => `<span class="segmented" role="group" aria-labelledby="${labelledBy}">${Object.keys(PLATFORMS).map((k) =>
+    `<button type="button" id="${labelledBy}-${k}" data-action="platform" data-arg="${k}" aria-pressed="${k === platform}">${PLATFORMS[k].name}</button>`).join('')}</span>`;
 
   function cardFace(c, small) {
     const f = finishes[c.id];
@@ -323,7 +382,7 @@
         <span class="ring-core">${icon('lock', 36)}</span>
       </div></div>
       <div class="stack actions">
-        <button type="button" id="bio-unlock" class="btn btn-primary" data-action="bioUnlock">${icon('finger')}Unlock with fingerprint</button>
+        <button type="button" id="bio-unlock" class="btn btn-primary" data-action="bioUnlock">${icon(P().bioIcon)}Unlock with ${P().bio}</button>
         <a class="btn btn-secondary" href="#/password">Use vault password</a>
         <p class="beta">UNAUDITED BETA · DO NOT STORE REAL CREDENTIALS</p>
       </div>
@@ -335,9 +394,9 @@
       ? `<button class="btn btn-primary" type="button" disabled aria-live="polite"><svg class="dial" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity="0.25" stroke-width="1.5"/><path d="M12 3a9 9 0 0 1 9 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Verifying…</button>`
       : `<button class="btn btn-primary" type="submit"${S.pw ? '' : ' disabled'}>Unlock</button>`;
     return `<section class="screen${fx.enter ? ' enter' : ''}">
-      <div class="topbar"><a class="icon-btn strong" href="#/lock" aria-label="Back">${icon('back', 24)}</a></div>
+      <div class="topbar">${backLink('#/lock', 'Back to lock')}</div>
       <form class="pad grow col pw-form" data-submit="unlock" autocomplete="off">
-        <div class="stack intro"><h1 class="display-l">Enter vault password</h1><p class="body muted">Your phone will then ask for its screen lock. Both are needed to open the vault this way.</p></div>
+        <div class="stack intro"><h1 class="display-l">Enter vault password</h1><p class="body muted">Your ${P().device} will then ask for its ${P().credential}. Both are needed to open the vault this way.</p></div>
         <div class="field pw-field">
           <label class="label" for="vault-pw">Vault password</label>
           <div class="inline">
@@ -388,6 +447,7 @@
       <div class="vault-head">
         <div class="col"><span class="label">Vault</span><h1 class="display">${greeting()}</h1></div>
         <div class="inline">
+          ${platform === 'ios' ? `<a class="icon-btn" href="#/add" aria-label="Add item">${icon('plus')}</a>` : ''}
           <a class="icon-btn" href="#/settings" aria-label="Settings">${icon('sliders')}</a>
           <a class="icon-btn accent" href="#/lock" aria-label="Lock now">${icon('lock')}</a>
         </div>
@@ -406,7 +466,7 @@
         ${q ? '' : `<div class="organise"><a class="btn btn-secondary btn-small" href="#/sections">${icon('sliders', 18)}Organise sections</a></div>`}
         <p class="list-foot">Kept only on this phone. Never synced, never uploaded.</p>
       </div>
-      <a class="fab" href="#/add" aria-label="Add item">${icon('plus', 24, '', 'stroke-width="1.75"')}</a>
+      ${platform === 'ios' ? '' : `<a class="fab" href="#/add" aria-label="Add item">${icon('plus', 24, '', 'stroke-width="1.75"')}</a>`}
     </section>`;
   }
 
@@ -465,13 +525,13 @@
         <h1 class="display">${cat.label}</h1>
         <p class="small muted">${countLabel(cat, items.length)}</p>
       </div>
-      <p class="assurance gutter cat-note">${icon('shield', 18)}<span>${cat.note}</span></p>
+      <p class="assurance gutter cat-note">${icon('shield', 18)}<span>${cat.note.replace('{bio}', P().bio)}</span></p>
       <div class="gutter cat-list">${list}</div>
       <div class="gutter cat-add"><a class="btn btn-secondary" href="#/add/${cat.type}">${icon('plus', 20)}${cat.add}</a></div>
     </section>`;
   }
 
-  // Any non-card item. Each field follows its tier: shown, tap to reveal, or fingerprint to reveal.
+  // Any non-card item. Each field follows its tier: shown, tap to reveal, or biometric to reveal.
   function item(id) {
     const it = itemById(id) || ITEMS[2];
     const cat = categoryOf(it.type);
@@ -573,7 +633,7 @@
           <span class="col"><span class="srow-label">Also store the security code</span><span class="faint">Off by default. Most people don't need it here.</span></span>
           <input id="cvv-optin" type="checkbox" role="switch" class="switch" data-action="toggleCvv"${S.addCvv ? ' checked' : ''}>
         </label>
-        ${S.addCvv ? `<div class="notice${fx.reveal ? ' fade-in' : ''}">${icon('alert', 20)}<p>Card number, expiry and CVV together are everything needed to shop online with this card. It is kept as a critical field, needs your fingerprint to show, and is never autofilled.</p></div>
+        ${S.addCvv ? `<div class="notice${fx.reveal ? ' fade-in' : ''}">${icon('alert', 20)}<p>Card number, expiry and CVV together are everything needed to shop online with this card. It is kept as a critical field, needs your ${P().bio} to show, and is never autofilled.</p></div>
         <div class="field"><label class="label" for="field-cvv">Security code (CVV) ${criticalBadge}</label>${input('field-cvv', 'mono inputmode="numeric" maxlength="4" placeholder="3 or 4 digits"')}</div>` : ''}
         <p class="assurance">${icon('lock', 18)}<span>There is no field for the card PIN. It is never stored.</span></p>
       </div>` : '';
@@ -628,7 +688,7 @@
       </div>
       <p class="faint sample">Sample key for this prototype.</p>
       <div class="notice">${icon('alert', 20)}<p>Keep this away from your phone and your cloud photos. We will never ask you for it.</p></div>
-      <p class="faint after">Screenshots, PDF and printing are blocked on this screen.</p>
+      <p class="faint after">${P().shots}</p>
       <div class="grow"></div>
       <button type="button" id="rk-verify" class="btn btn-primary" data-action="rkVerify">I have written it down</button>
     </section>`;
@@ -637,15 +697,11 @@
   function settings() {
     const cvvCount = Object.values(CARDS).filter((c) => c.cvv).length;
     const protection = [
-      ['Unlock methods', 'Fingerprint + password'], ['Auto-lock', 'After 2 min'], ['Clear clipboard', 'After 60 s'],
-      ['Critical fields', 'Fingerprint after 60 s'], ['Card security codes', `Stored for ${cvvCount} of ${Object.keys(CARDS).length} cards`],
+      ['Unlock methods', `${P().Bio} + password`], ['Auto-lock', 'After 2 min'], ['Clear clipboard', 'After 60 s'],
+      ['Critical fields', `${P().Bio} after 60 s`], ['Card security codes', `Stored for ${cvvCount} of ${Object.keys(CARDS).length} cards`],
       ['Password check', 'Every 14 days'], ['Security log', '3 failed attempts']
     ];
-    const device = [
-      ['Screen lock', 'On', true], ['Class 3 biometric', 'Enrolled', true], ['Key storage', 'StrongBox', true],
-      ['Security patch', '41 days old', true], ['USB debugging', 'On', false, 'Turn it off when you are not developing.'],
-      ['Third-party keyboard', 'None', true], ['Last backup', '12 days ago', true]
-    ];
+    const device = P().checks;
     const simple = (label, value) => `<div class="srow"><span class="srow-label">${label}</span><span class="srow-value">${value}</span></div>`;
     return `<section class="screen${fx.enter ? ' enter' : ''}" id="scr-settings" data-keep-scroll>
       ${topbar('#/vault', 'Back to vault')}
@@ -673,6 +729,9 @@
             ${simple('Theme', 'Dark · Obsidian')}${simple('Haptics', 'On')}
           </div>
         </section>
+        <section class="section"><h2 class="label">Prototype</h2>
+          <div class="group"><div class="srow"><span class="srow-label" id="plat-label">Show as</span>${platformSwitch('plat-label')}</div></div>
+        </section>
         <section class="section"><h2 class="label">About</h2>
           <div class="group">${simple('Version', '<span class="mono">0.1 prototype</span>')}<div class="srow"><span class="srow-label">How Vaultaire protects you</span></div>${simple('Licence', 'GPL-3.0-or-later')}</div>
         </section>
@@ -690,10 +749,10 @@
     if (S.sheet) {
       const verb = S.sheet.kind === 'copy' ? 'copy' : 'show';
       html += `<div class="backdrop${fx.sheet ? ' fade-in' : ''}" data-action="cancelSheet"><div class="sheet${fx.sheet ? ' rise' : ''}" role="dialog" aria-modal="true" aria-labelledby="bio-title">
-        ${icon('finger', 52, '', 'stroke-width="1.2"')}
+        ${icon(P().bioIcon, 52, '', 'stroke-width="1.2"')}
         <h2 id="bio-title">Confirm it's you</h2>
-        <p class="body muted">Touch the sensor to ${verb} the ${esc(S.sheet.label.toLowerCase())}.</p>
-        <button type="button" id="bio-confirm" class="btn btn-primary" data-action="confirmSheet">Simulate fingerprint</button>
+        <p class="body muted">${P().prompt(verb, esc(S.sheet.label.toLowerCase()))}</p>
+        <button type="button" id="bio-confirm" class="btn btn-primary" data-action="confirmSheet">Simulate ${P().bio}</button>
         <button type="button" id="bio-cancel" class="btn btn-ghost" data-action="cancelSheet">Cancel</button>
       </div></div>`;
     }
@@ -754,6 +813,7 @@
     nav.innerHTML = `<img class="nav-mark" src="brand/mark.png" alt="" width="48" height="48">
       <p class="label">Vaultaire · UI prototype</p>
       ${Object.keys(ROUTES).map((k) => `<a href="${ROUTES[k].link || '#/' + k}"${k === name ? ' aria-current="page"' : ''}>${ROUTES[k].title}</a>`).join('')}
+      <p class="label nav-plat" id="nav-plat">Show as</p>${platformSwitch('nav-plat')}
       <p class="note">Design mockup. No encryption, no storage, sample data only.</p>`;
   }
 
@@ -838,6 +898,7 @@
     generate: () => set({ addPw: passphrase() }),
     rkVerify: () => { fx.step = true; set({ rkStep: 'verify', rkA: '', rkB: '', rkErr: false }); },
     rkShow: () => { fx.step = true; set({ rkStep: 'show' }); },
+    platform: (next) => setPlatform(next),
     notBuilt: (what) => toast(what + ' is not in the prototype yet')
   };
   // Each returns true when the screen must re-render.
@@ -863,13 +924,15 @@
     }
   };
 
-  app.addEventListener('click', (e) => {
+  function onClick(e) {
     const el = e.target.closest('[data-action]');
-    if (!el || !app.contains(el)) return;
+    if (!el || !e.currentTarget.contains(el)) return;
     if (el.classList.contains('backdrop') && e.target !== el) return; // clicks inside the sheet
     const fn = ACTIONS[el.dataset.action];
     if (fn) fn(el.dataset.arg, el);
-  });
+  }
+  app.addEventListener('click', onClick);
+  nav.addEventListener('click', onClick);
   app.addEventListener('input', (e) => {
     const el = e.target.closest('[data-bind]');
     if (!el) return;

@@ -303,6 +303,24 @@ a.item:hover { background: rgba(255, 245, 230, 0.03); }
 .switch:checked { background: var(--accent-soft); border-color: var(--accent); }
 .switch:checked::after { transform: translateX(18px); background: var(--accent); }
 
+/* Platform picker (Settings and the desktop side panel) */
+.segmented { display: inline-flex; padding: 2px; border-radius: 10px; border: 1px solid var(--hair2); background: var(--bg); flex-shrink: 0; }
+.segmented button { height: 36px; min-width: 76px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: var(--text2); font: inherit; font-size: 14px; cursor: pointer; }
+.segmented button[aria-pressed="true"] { background: var(--elev); color: var(--accent); font-weight: 600; }
+.nav-plat { margin: 20px 0 8px 12px; }
+.screens .segmented { margin-left: 8px; align-self: flex-start; }
+
+/* iPhone version: iOS conventions where they differ from Android */
+.back-btn { width: auto; min-width: 44px; }
+[data-platform="ios"] .back-btn { padding: 0 8px 0 2px; gap: 0; color: var(--accent); }
+.back-text { font-size: 17px; line-height: 22px; }
+[data-platform="ios"] .backdrop { justify-content: center; align-items: center; padding: 24px; }
+[data-platform="ios"] .sheet { width: 100%; max-width: 300px; padding: 28px 20px 16px; border-radius: 20px; border: 1px solid var(--hair); }
+[data-platform="ios"] .switch { width: 51px; height: 31px; border-radius: 16px; }
+[data-platform="ios"] .switch::after { top: 2px; left: 2px; width: 25px; height: 25px; background: var(--text2); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35); }
+[data-platform="ios"] .switch:checked { background: var(--accent); }
+[data-platform="ios"] .switch:checked::after { transform: translateX(20px); background: var(--text); }
+
 /* Recovery Kit */
 .rk { padding: 28px 24px calc(32px + var(--safe-bottom)); }
 .steps { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin-top: 10px; }

@@ -26,6 +26,14 @@ The server prints an address such as `http://192.168.1.2:8000/`; open it on the 
 - LAN mode answers only devices with private (home-network) addresses.
 - Over plain HTTP, the phone shows it as a web page or a home-screen bookmark, not a full-screen installed app. Installation and offline mode (`manifest.webmanifest`, `sw.js`) need HTTPS or `localhost`.
 
+### Android or iPhone version
+
+The prototype shows either platform's version of the design. It follows the device on first visit (an iPhone gets the iPhone version) and remembers the choice. Switch with **Settings → Prototype → Show as**, the **Show as** control in the desktop side panel, or a link such as `http://…:8000/?platform=ios`.
+
+The iPhone version uses Face ID, the passcode, iOS-style back buttons that name their destination, a + in the top bar instead of a floating button, a centred Face ID dialog, iOS-shaped switches, and the iOS device checks. It also states what iPhone cannot do: **screenshots cannot be blocked** there (threat-model §10), so the Recovery Kit screen says so instead of claiming protection.
+
+The real iPhone app is deferred (it needs a Mac). This version only lets the design be judged on an iPhone.
+
 ## What it shows
 
 | Screen | Behaviour worth checking |
@@ -51,6 +59,6 @@ Blueprint §13 left CVV out. On 2026-09-29 the product owner asked for it. The p
 
 - Dark "Obsidian" theme only; the light "Ivory" theme is not drawn.
 - The passphrase generator uses a 64-word list (~36 bits). The app must use the 7,776-word EFF list (~77 bits).
-- The fingerprint prompt is a stand-in. On Android it is the system `BiometricPrompt`.
+- The fingerprint and Face ID prompts are stand-ins. The apps use the system prompts (`BiometricPrompt` on Android, `LocalAuthentication` on iPhone).
 - "Copied" is simulated; nothing touches the clipboard.
 - Most Settings rows and the bank, passport, key, note and membership items have no screens yet.
