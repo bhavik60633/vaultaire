@@ -20,7 +20,7 @@ No install or build step is needed: plain HTML, CSS and JavaScript, with no depe
 python prototype/serve.py --lan
 ```
 
-The server prints an address such as `http://192.168.1.2:8000/`; open it on the phone.
+The server prints an address such as `http://192.168.0.10:8000/`; open it on the phone.
 
 - Windows must treat the Wi-Fi as a **Private** network, and Windows Firewall must allow Python on **Private** networks only. Never allow it on Public networks.
 - LAN mode answers only devices with private (home-network) addresses.

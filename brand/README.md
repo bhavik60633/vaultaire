@@ -8,4 +8,7 @@ The name "Vaultaire" and the logo are **not** covered by the GPL licence that ap
 
 - Vector (SVG) version of the V mark, needed for the Android launcher icon (foreground, background and monochrome layers) and for small sizes.
 - Confirm the logo's origin and that its creation tool's terms allow commercial use.
-- Name clearance: another open-source project has used the name "Vaultaire".
+- **Name clearance: conflict found (2026-09-30).** A web search, which is not legal clearance, found:
+  - **"Vaultaire: Private Photo Vault"**, an iPhone app on the App Store (vaultaire.app): a local-first, encrypted vault. That is the **same product category**, and it holds the `.app` domain. App Store names must be unique, so the iOS version could not use this name, and its owner may have trademark rights from use even without a registration.
+  - An older open-source document organiser named Vaultaire on GitHub (different category, lower risk).
+  - Decide before publishing: rename (recommended), or get a trademark opinion. The V mark can survive a rename if the new name also starts with V.

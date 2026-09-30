@@ -1,0 +1,14 @@
+# Secret scanning (gitleaks). Runs before publishing and, later, in CI.
+# Default rules, plus an allowlist for fictional sample values only. Every entry is an exact
+# string that is known to be fake; never allowlist a path, a rule or a pattern.
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Fictional sample data in the UI prototype (prototype/app.js): not real credentials"
+regexTarget = "secret"
+regexes = [
+  '''^pay_live_9fK2mQ7xR4vT1nB8wZ3cY6hJ$''',
+  '''^tidal-cobalt-meadow-41$''',
+]
