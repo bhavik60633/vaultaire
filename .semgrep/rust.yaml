@@ -55,4 +55,5 @@ rules:
           - pattern: $A != $B
       - metavariable-regex:
           metavariable: $A
-          regex: (?i).*(key|kek|secret|tag|mac|checksum|digest|hmac|hw_pwd|h_pwd|rs\b).*
+          # Whole words only, so a map's `keys()` or a `tags` list is not mistaken for a secret.
+          regex: (?i)(^|[^a-z])(key|kek|vk|sk|secret|tag|mac|checksum|digest|hmac|hw_pwd|h_pwd|rs|rs_id)([^a-z]|$)

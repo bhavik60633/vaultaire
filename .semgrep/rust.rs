@@ -30,4 +30,8 @@ fn compare(expected_mac: &[u8], computed_mac: &[u8], count: usize) {
     if count == 3 {}
     // ok: secret-compared-with-eq
     let same: bool = expected_mac.ct_eq(computed_mac).into();
+    // ok: secret-compared-with-eq
+    if header.keys() != [1, 2, 3, 4] {}
+    // ruleid: secret-compared-with-eq
+    if stored_rs_id == rs_id {}
 }

@@ -3,6 +3,7 @@
   "spec": "crypto-spec \u00a76.2-\u00a76.5; vault-format \u00a74.5, \u00a75",
   "format_version": 1,
   "notes": [
+    "A vector with \"base\" takes every input from the named vector and overrides only the inputs it lists; its \"expect\" is the result of that one change.",
     "Empty optional values are omitted (proposed rule, spec finding S-1).",
     "The manifest lists items and history entries only, as the spec is written today (reviewer question Q3 proposes adding settings and recovery)."
   ],
@@ -51,6 +52,7 @@
     },
     {
       "id": "record-secret-moved-to-another-item",
+      "base": "record-item-secret",
       "inputs": {
         "record_id": "27cbaecb4ff08c3a0aad6b6d214bc795"
       },
@@ -58,6 +60,7 @@
     },
     {
       "id": "record-secret-presented-as-index",
+      "base": "record-item-secret",
       "inputs": {
         "envelope_kind": 1
       },
@@ -65,6 +68,7 @@
     },
     {
       "id": "record-non-canonical-cbor",
+      "base": "record-item-secret",
       "inputs": {
         "nonce": "9d548931b2f16f30134fdd953b61fb7865dbab8f0ade5ff9",
         "ct": "1f237a755e4a632ad100a44fa38a10ff504cadb5f769f895dffdfea2a4b080a01f6f78ba496fed28f814ed762308ad3e23b6dc62bdbbe5c75a3390471d6f020dee2be22de7a7fb827053a8fab15026a738b80e0bdb474575ff479fb5db549ea79b5b3297281886d218a58610f848e7e8c4ec38f76a56a3fb6c6f5f44a6c9a4f7f1d6cb14a1d050628a481e1e37268403d447b9b5b363c60f2dedda4769b10111b6231b1159891a46b1aab78a2121aebf3c0975de8c4613e78e759c3794c18a8b6954a810621d11f825cc85831c1e971e08afbc2b97948884acab6fa6c71b7ddb307f0d0bde8cf6d1b6a1cdc47bdb3cb97ae02fe74563f8937a112dc07bd97077c5387bc4274ad36bbf102119aeb731fd",

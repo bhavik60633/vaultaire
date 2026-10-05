@@ -2,6 +2,9 @@
   "construction": "header-mac",
   "spec": "crypto-spec \u00a77.1; vault-format \u00a74.3",
   "format_version": 1,
+  "notes": [
+    "A vector with \"base\" takes every input from the named vector and overrides only the inputs it lists; its \"expect\" is the result of that one change."
+  ],
   "vectors": [
     {
       "id": "header-mac-001",
@@ -17,6 +20,7 @@
     },
     {
       "id": "header-mac-flip-header-byte-0",
+      "base": "header-mac-001",
       "inputs": {
         "header_cbor": "a401010250c02d0398fef621befda395fa43e2f1e5030104010501"
       },
@@ -28,6 +32,7 @@
     },
     {
       "id": "header-mac-flip-header-byte-26",
+      "base": "header-mac-001",
       "inputs": {
         "header_cbor": "a501010250c02d0398fef621befda395fa43e2f1e5030104010500"
       },
@@ -39,6 +44,7 @@
     },
     {
       "id": "header-mac-slot-removed",
+      "base": "header-mac-001",
       "inputs": {
         "keyslot_table_cbor": "8285500042a9e42a274cb66afdf0ad98c2a0e6035823a2010306a50101021a00010000030304010550f1f4ef391155d370e53329b66099adf65818d70be4b9dd3c78a6ba8e41f6965618e3aca73e3cc2354c2d58301250161bfe12d96fdc2565e0f4a9de82e9ca9840e6282b7807cefab6cbcc5f8477d49dafadd92e705b55bf3b931dcc1c855029e55a567409dcaaea56955aa3ac73e2025853a40102020103782b766c742e76312e7077642e323965353561353637343039646361616561353639353561613361633733653206a50101021a00010000030304010550572c86cf2143e108368578260a0a88af5818ef10f64d5e279274a2d6d24fe28cd03dc43d3d18ff997c1b58306384e5e84308bdae20ec93643d663b71847f5bdde28308f20753ec889dfdefdb92fa495510d6f65dbf5d4dd31af91bd6"
       },

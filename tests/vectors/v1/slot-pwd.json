@@ -2,6 +2,9 @@
   "construction": "slot/pwd",
   "spec": "crypto-spec \u00a74.3, \u00a74.5; vault-format \u00a74.4",
   "format_version": 1,
+  "notes": [
+    "A vector with \"base\" takes every input from the named vector and overrides only the inputs it lists; its \"expect\" is the result of that one change."
+  ],
   "vectors": [
     {
       "id": "pwd-001",
@@ -35,6 +38,7 @@
     },
     {
       "id": "pwd-002-wrong-password",
+      "base": "pwd-001",
       "inputs": {
         "password_utf8": "636f727265637420686f727365206261747465727920737461706c6521"
       },
@@ -43,6 +47,7 @@
     {
       "id": "pwd-003-params-changed-within-range",
       "comment": "Stored m raised to 131072: still in range, but the slot AD no longer matches",
+      "base": "pwd-001",
       "inputs": {
         "params_cbor": "a40102020103782b766c742e76312e7077642e323965353561353637343039646361616561353639353561613361633733653206a50101021a00020000030304010550572c86cf2143e108368578260a0a88af"
       },
@@ -50,7 +55,11 @@
     },
     {
       "id": "pwd-004-slot-type-swapped",
+      "base": "pwd-001",
       "comment": "The same wrap presented as a REC slot",
+      "inputs": {
+        "slot_type": 3
+      },
       "expect": "error:unlock_failed"
     }
   ]

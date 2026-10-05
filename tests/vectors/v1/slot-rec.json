@@ -2,6 +2,9 @@
   "construction": "slot/rec",
   "spec": "crypto-spec \u00a74.4, \u00a74.5; vault-format \u00a74.4",
   "format_version": 1,
+  "notes": [
+    "A vector with \"base\" takes every input from the named vector and overrides only the inputs it lists; its \"expect\" is the result of that one change."
+  ],
   "vectors": [
     {
       "id": "rec-001",
@@ -32,6 +35,7 @@
     },
     {
       "id": "rec-002-wrong-recovery-secret",
+      "base": "rec-001",
       "inputs": {
         "rs": "4c92a06a234ed429b2d005eea43c5388"
       },

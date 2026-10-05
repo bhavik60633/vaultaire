@@ -45,8 +45,15 @@ def expect_error(fn):
     return 'ok'
 
 
+BASE_NOTE = ('A vector with "base" takes every input from the named vector and overrides only the inputs it '
+             'lists; its "expect" is the result of that one change.')
+
+
 def write(name, construction, spec, vectors, notes=None):
     doc = {'construction': construction, 'spec': spec, 'format_version': 1}
+    notes = list(notes or [])
+    if any('base' in v for v in vectors):
+        notes.insert(0, BASE_NOTE)
     if notes:
         doc['notes'] = notes
     doc['vectors'] = vectors
@@ -113,7 +120,7 @@ def gen_slots():
         'inputs': {'sk': sk, 'vault_id': VAULT_ID, 'slot_id': slot_id, 'vk': VK, 'nonce': nonce},
         'intermediates': {'params_cbor': params, 'kek_bio': kek, 'ad_slot': ad},
         'output': {'wrapped_vk': wrapped}, 'expect': 'ok'},
-        {'id': 'bio-002-wrong-sk', 'inputs': {'sk': rnd('other sk', 32), 'vault_id': VAULT_ID, 'slot_id': slot_id,
+        {'id': 'bio-002-wrong-sk', 'base': 'bio-001', 'inputs': {'sk': rnd('other sk', 32), 'vault_id': VAULT_ID, 'slot_id': slot_id,
                                               'params_cbor': params, 'nonce': nonce, 'wrapped_vk': wrapped},
          'expect': expect_error(lambda: core.unwrap_vk(core.kek_bio(rnd('other sk', 32), VAULT_ID), nonce, wrapped, ad))},
     ])
@@ -135,13 +142,13 @@ def gen_slots():
                    'hw_hmac_key': HW_KEY, 'slot_id': slot_id, 'vk': VK, 'nonce': nonce},
         'intermediates': dict(mid, params_cbor=params, kek_pwd=kek, ad_slot=ad),
         'output': {'wrapped_vk': wrapped}, 'expect': 'ok'},
-        {'id': 'pwd-002-wrong-password', 'inputs': {'password_utf8': (PASSWORD + '!').encode()},
+        {'id': 'pwd-002-wrong-password', 'base': 'pwd-001', 'inputs': {'password_utf8': (PASSWORD + '!').encode()},
          'expect': expect_error(lambda: core.unwrap_vk(kek_wrong, nonce, wrapped, ad))},
         {'id': 'pwd-003-params-changed-within-range',
          'comment': 'Stored m raised to 131072: still in range, but the slot AD no longer matches',
-         'inputs': {'params_cbor': raised},
+         'base': 'pwd-001', 'inputs': {'params_cbor': raised},
          'expect': expect_error(lambda: core.unwrap_vk(kek, nonce, wrapped, core.ad_slot(VAULT_ID, core.SLOT_PWD, slot_id, raised)))},
-        {'id': 'pwd-004-slot-type-swapped', 'comment': 'The same wrap presented as a REC slot',
+        {'id': 'pwd-004-slot-type-swapped', 'base': 'pwd-001', 'comment': 'The same wrap presented as a REC slot', 'inputs': {'slot_type': core.SLOT_REC},
          'expect': expect_error(lambda: core.unwrap_vk(kek, nonce, wrapped, core.ad_slot(VAULT_ID, core.SLOT_REC, slot_id, params)))},
     ])
 
@@ -161,7 +168,7 @@ def gen_slots():
                    'argon2': DEVICE, 'slot_id': slot_id, 'vk': VK, 'nonce': nonce},
         'intermediates': dict(mid, params_cbor=params, kek_rec=kek, ad_slot=ad),
         'output': {'wrapped_vk': wrapped}, 'expect': 'ok'},
-        {'id': 'rec-002-wrong-recovery-secret', 'inputs': {'rs': rnd('other rs', 16)},
+        {'id': 'rec-002-wrong-recovery-secret', 'base': 'rec-001', 'inputs': {'rs': rnd('other rs', 16)},
          'expect': expect_error(lambda: core.unwrap_vk(kek_wrong_rs, nonce, wrapped, ad))},
     ])
     return rows
@@ -247,17 +254,17 @@ def gen_records():
             'output': {'ct': ct}, 'expect': 'ok'})
         if name == 'item-secret':
             other = rnd('item other', 16)
-            vectors.append({'id': 'record-secret-moved-to-another-item', 'inputs': {'record_id': other},
+            vectors.append({'id': 'record-secret-moved-to-another-item', 'base': 'record-item-secret', 'inputs': {'record_id': other},
                             'expect': expect_error(lambda: core.open_record(key_for[env], nonce, ct, env,
                                                                             core.ad_record(VAULT_ID, kind, other, parent, env)))})
-            vectors.append({'id': 'record-secret-presented-as-index', 'inputs': {'envelope_kind': core.ENV_INDEX},
+            vectors.append({'id': 'record-secret-presented-as-index', 'base': 'record-item-secret', 'inputs': {'envelope_kind': core.ENV_INDEX},
                             'expect': expect_error(lambda: core.open_record(key_for[env], nonce, ct, env,
                                                                             core.ad_record(VAULT_ID, kind, rid, parent, core.ENV_INDEX)))})
             # Authentic but non-canonical plaintext: the integer 1 encoded in two bytes (0x18 0x01).
             noncanon = b'\xa2\x01\x18\x01\x02\xa0'
             nn = rnd('nonce noncanonical', 24)
             ct2 = seal(key_for[env], nn, core.pad(noncanon, 256), ad)
-            vectors.append({'id': 'record-non-canonical-cbor', 'inputs': {'nonce': nn, 'ct': ct2, 'cbor': noncanon},
+            vectors.append({'id': 'record-non-canonical-cbor', 'base': 'record-item-secret', 'inputs': {'nonce': nn, 'ct': ct2, 'cbor': noncanon},
                             'expect': expect_error(lambda: core.open_record(key_for[env], nn, ct2, env, ad))})
     write('records', 'records', 'crypto-spec §6.2-§6.5; vault-format §4.5, §5', vectors,
           notes=['Empty optional values are omitted (proposed rule, spec finding S-1).',
@@ -274,11 +281,11 @@ def gen_header_mac(rows):
     for i in (0, len(header) - 1):
         bad = bytearray(header)
         bad[i] ^= 1
-        vectors.append({'id': f'header-mac-flip-header-byte-{i}', 'inputs': {'header_cbor': bytes(bad)},
+        vectors.append({'id': f'header-mac-flip-header-byte-{i}', 'base': 'header-mac-001', 'inputs': {'header_cbor': bytes(bad)},
                         'output': {'header_mac': core.header_mac(keys['k_hdr'], bytes(bad), table)},
                         'expect': 'error:unlock_failed', 'comment': 'MAC differs from the stored one'})
     without_bio = core.keyslot_table(rows[1:])
-    vectors.append({'id': 'header-mac-slot-removed', 'inputs': {'keyslot_table_cbor': without_bio},
+    vectors.append({'id': 'header-mac-slot-removed', 'base': 'header-mac-001', 'inputs': {'keyslot_table_cbor': without_bio},
                     'output': {'header_mac': core.header_mac(keys['k_hdr'], header, without_bio)},
                     'expect': 'error:unlock_failed', 'comment': 'KS-BIO row removed'})
     write('header-mac', 'header-mac', 'crypto-spec §7.1; vault-format §4.3', vectors)
@@ -331,8 +338,10 @@ def gen_backup():
     body = 12 + hdr_len
 
     def tamper(cid, new, comment, **kw):
-        vectors.append({'id': f'backup-{cid}', 'comment': comment, 'inputs': {'file': new},
-                        'expect': expect_error(lambda: core.backup_import(new, kw.get('pw', PASSWORD), kw.get('rs', rs), kw.get('ram')))})
+        pw, r, ram = kw.get('pw', PASSWORD), kw.get('rs', rs), kw.get('ram')
+        vectors.append({'id': f'backup-{cid}', 'comment': comment,
+                        'inputs': {'file': new, 'password_utf8': pw.encode(), 'rs': r, 'total_ram': ram},
+                        'expect': expect_error(lambda: core.backup_import(new, pw, r, ram))})
 
     def flip(i):
         b = bytearray(data)

@@ -2,6 +2,9 @@
   "construction": "slot/bio",
   "spec": "crypto-spec \u00a74.2, \u00a74.5; vault-format \u00a74.4",
   "format_version": 1,
+  "notes": [
+    "A vector with \"base\" takes every input from the named vector and overrides only the inputs it lists; its \"expect\" is the result of that one change."
+  ],
   "vectors": [
     {
       "id": "bio-001",
@@ -25,6 +28,7 @@
     },
     {
       "id": "bio-002-wrong-sk",
+      "base": "bio-001",
       "inputs": {
         "sk": "9e0aa98567616aa34e8b6d8209d09f723010b3291a86b6a2ab36722b891c366f",
         "vault_id": "c02d0398fef621befda395fa43e2f1e5",
