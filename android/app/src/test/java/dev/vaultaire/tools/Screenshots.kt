@@ -8,9 +8,16 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.test.core.app.ApplicationProvider
+import dev.vaultaire.core.BankAccountInput
+import dev.vaultaire.core.PinInput
+import dev.vaultaire.core.PinPurpose
+import dev.vaultaire.core.SecretInput
 import dev.vaultaire.ui.FakeGateway
+import dev.vaultaire.ui.RealVault
 import dev.vaultaire.ui.VaultaireApp
 import java.io.File
+import java.nio.file.Files
 import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Rule
@@ -89,5 +96,49 @@ class Screenshots {
         val gateway = FakeGateway(refusalValue = dev.vaultaire.security.Refusal.NO_SCREEN_LOCK)
         compose.setContent { VaultaireApp(gateway, testBuild = true) }
         save("10-refusal-test-build")
+    }
+
+    @Test
+    fun vault() {
+        val dir = Files.createTempDirectory("vaultaire-shots").toFile()
+        val vault = RealVault(ApplicationProvider.getApplicationContext(), dir)
+        try {
+            val ids = vault.fixture()
+            val session = vault.session()
+            session.setFavourite(ids[0], true)
+            session.setFavourite(ids[5], true)
+            session.addPin(
+                PinInput(PinPurpose.ATM_PIN, "SBI Cashback ATM PIN", SecretInput.Set("4321".toCharArray()), linkedTo = ids[0]),
+                RealVault.NOW,
+            )
+            session.addBankAccount(
+                BankAccountInput(
+                    bankId = "in.sbi", holder = "ASHA RAO",
+                    accountNumber = SecretInput.Set("00000012345678".toCharArray()), ifsc = "SBIN0001234",
+                ),
+                RealVault.NOW,
+            )
+            compose.setContent { VaultaireApp(vault, testBuild = false) }
+            save("11-home")
+            click("bank:in.sbi")
+            save("12-bank-sbi")
+            click("filter:credit")
+            save("13-bank-sbi-credit")
+            click("entry:${ids[0].hex}")
+            save("14-card")
+            click("reveal:card.number")
+            click("copy:card.number")
+            save("15-card-revealed-copied")
+            click("back")
+            click("back")
+            click("addCard")
+            save("16-add-card")
+            click("back")
+            click("settings")
+            save("17-settings")
+        } finally {
+            vault.lock()
+            dir.deleteRecursively()
+        }
     }
 }
