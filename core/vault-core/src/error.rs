@@ -56,6 +56,15 @@ pub enum VaultError {
     /// The vault file could not be read or written.
     #[error("storage_failed")]
     StorageFailed,
+    /// A new vault password fails the strength policy (crypto spec §3.2).
+    #[error("weak_password")]
+    WeakPassword,
+    /// A settings change that weakens protection, sent without the vault password.
+    #[error("password_required")]
+    PasswordRequired,
+    /// A setting outside its allowed values (vault-format §5.5).
+    #[error("invalid_setting")]
+    InvalidSetting,
 }
 
 /// Result type used throughout the core.

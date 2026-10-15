@@ -15,6 +15,7 @@ pub mod item;
 pub mod keyslot;
 pub mod labels;
 pub mod organisation;
+pub mod password_policy;
 pub mod prims;
 pub mod record;
 pub mod recovery_key;

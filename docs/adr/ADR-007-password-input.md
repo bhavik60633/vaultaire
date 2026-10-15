@@ -38,6 +38,10 @@ Drop `zxcvbn` and enforce: at least 12 characters, **plus** rejection against a 
 
 - **If compromised:** either crate could see the password as it is typed during set-up or change. Mitigations: pinned versions, manual review, the no-network app, and the password never being passed to them on unlock.
 
+## Status of the fallback
+
+Milestone M2 (2026-10-15) ships the fallback rule in `vault_core::password_policy`, with a small bundled list of common passwords and words, so `zxcvbn` is **not** a dependency yet. It is added only if its review passes.
+
 ## Revisit when
 
 The `zxcvbn` review is done (record the result here), the crate changes maintainers, or its dependency count grows.

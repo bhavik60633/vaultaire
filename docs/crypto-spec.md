@@ -87,6 +87,8 @@ Nothing else is changed: no trimming, no case folding.
 
 The strength policy (at least 12 characters **and** a zxcvbn estimate of ≥ 10¹² guesses) is enforced when a password is **set or changed**, never when it is checked. A policy change must never lock out an existing user.
 
+**In force now (milestone M2):** ADR-007's fallback rule, until the `zxcvbn` review is done: at least 12 characters after NFC; not a common password or a common word wrapped in digits and symbols; not mostly repeats or runs (`aaaa`, `abcd`, `1234`, `qwer`); and a character-set estimate of at least 10¹² guesses (`vault_core::password_policy`).
+
 ### 3.3 Label registry
 
 Every label is ASCII and starts with `vlt/v1/`. `vlt` is a fixed protocol identifier, like the file magics `VLT1` and `VLTBK` ([vault-format](vault-format.md)). It is deliberately **not** the product name, so the product can be renamed without changing any derived key, associated data or test vector.

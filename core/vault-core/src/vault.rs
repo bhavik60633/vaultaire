@@ -6,12 +6,15 @@
 //! [`BioHardware`] (`K_bio`, which seals the slot key at creation and releases it after a strong
 //! biometric). Only the values listed in crypto spec §5.1 cross them; VK and its subkeys never do.
 //!
-//! Not yet built: the manifest (crypto spec §7.2, PROPOSED pending reviewer question Q3) and the
-//! security-log events (milestone M2). The empty security-log record is created so that the file
-//! layout is complete.
+//! The session also keeps the security log (vault-format §5.7), the security settings
+//! (§5.5: stricter freely, weaker only with the vault password) and the periodic password check
+//! (crypto spec §10).
+//!
+//! Not yet built: the manifest (crypto spec §7.2, PROPOSED pending reviewer question Q3).
 
 use std::collections::BTreeMap;
 use std::path::Path;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use rusqlite::{Connection, OpenFlags, OptionalExtension, params};
 use zeroize::Zeroizing;
@@ -23,6 +26,7 @@ use crate::integrity::{self, KeyslotRow};
 use crate::item;
 use crate::keyslot::{self, HwLevel, KdfParams, SlotParams, SlotType};
 use crate::organisation;
+use crate::password_policy;
 use crate::prims::{self, Key32};
 use crate::record::{self, EnvelopeKind, RecordKind, Subkeys};
 use crate::recovery_key;
@@ -38,6 +42,9 @@ const SLOT_T: u64 = 3;
 /// Argon2id for backups: 128 MiB, t = 4, p = 1 (crypto spec §4.6).
 const EXPORT_M: u64 = 131_072;
 const EXPORT_T: u64 = 4;
+/// The security log keeps the newest this many events (vault-format §5.7).
+pub const LOG_MAX: usize = 500;
+const DAY_S: u64 = 86_400;
 
 const SCHEMA: &str = "
 CREATE TABLE vault_meta (
@@ -138,6 +145,127 @@ pub struct ItemEntry {
     pub index: Value,
 }
 
+/// What a security-log event records (vault-format §5.7).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LogEvent {
+    UnlockBiometric = 1,
+    UnlockPassword = 2,
+    UnlockRecovery = 3,
+    FailedAttempts = 4,
+    BiometricInvalidated = 5,
+    PasswordChanged = 6,
+    RecoveryKeyRegenerated = 7,
+    VaultKeyRotated = 8,
+    BackupExported = 9,
+    BackupImported = 10,
+    SettingWeakened = 11,
+    PeriodicCheckPassed = 12,
+    PeriodicCheckFailed = 13,
+}
+
+impl LogEvent {
+    const ALL: [LogEvent; 13] = [
+        LogEvent::UnlockBiometric,
+        LogEvent::UnlockPassword,
+        LogEvent::UnlockRecovery,
+        LogEvent::FailedAttempts,
+        LogEvent::BiometricInvalidated,
+        LogEvent::PasswordChanged,
+        LogEvent::RecoveryKeyRegenerated,
+        LogEvent::VaultKeyRotated,
+        LogEvent::BackupExported,
+        LogEvent::BackupImported,
+        LogEvent::SettingWeakened,
+        LogEvent::PeriodicCheckPassed,
+        LogEvent::PeriodicCheckFailed,
+    ];
+
+    fn from_code(code: u64) -> Option<LogEvent> {
+        LogEvent::ALL.into_iter().find(|e| *e as u64 == code)
+    }
+}
+
+/// One security-log event: when (seconds since the epoch), what, and for failed attempts how many.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LogEntry {
+    pub at: u64,
+    pub event: LogEvent,
+    pub count: Option<u64>,
+}
+
+/// The security settings a user can change (vault-format §5.5).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Settings {
+    pub auto_lock_s: u64,
+    pub background_lock_s: u64,
+    pub clipboard_ttl_s: u64,
+    pub critical_window_s: u64,
+    pub password_check_days: u64,
+    pub password_only: bool,
+    pub erase_after_failures: bool,
+    pub backup_reminder_days: u64,
+}
+
+impl Settings {
+    fn from_value(v: &Value) -> Settings {
+        let uint = |k: u64, default: u64| v.get(k).and_then(Value::as_uint).unwrap_or(default);
+        let flag = |k: u64| matches!(v.get(k), Some(Value::Bool(true)));
+        Settings {
+            auto_lock_s: uint(1, 120),
+            background_lock_s: uint(2, 30),
+            clipboard_ttl_s: uint(3, 30),
+            critical_window_s: uint(4, 60),
+            password_check_days: uint(5, 14),
+            password_only: flag(6),
+            erase_after_failures: flag(7),
+            backup_reminder_days: uint(10, 30),
+        }
+    }
+
+    fn in_range(&self) -> bool {
+        (30..=900).contains(&self.auto_lock_s)
+            && self.background_lock_s <= 300
+            && [30, 60, 120].contains(&self.clipboard_ttl_s)
+            && self.critical_window_s <= 300
+            && [7, 14, 30].contains(&self.password_check_days)
+            && (7..=90).contains(&self.backup_reminder_days)
+    }
+
+    /// True if any change lowers protection (vault-format §5.5, "Weakening").
+    fn weakens(&self, old: &Settings) -> bool {
+        self.auto_lock_s > old.auto_lock_s
+            || self.background_lock_s > old.background_lock_s
+            || self.clipboard_ttl_s > old.clipboard_ttl_s
+            || self.critical_window_s > old.critical_window_s
+            || self.password_check_days > old.password_check_days
+            || (old.password_only && !self.password_only)
+            || (old.erase_after_failures && !self.erase_after_failures)
+    }
+
+    /// The settings record with these values written over it; every other key is kept.
+    fn apply_to(&self, record: &Value) -> Value {
+        let mut entries: Vec<(u64, Value)> = match record {
+            Value::Map(entries) => entries
+                .iter()
+                .filter(|(k, _)| ![1, 2, 3, 4, 5, 6, 7, 10].contains(k))
+                .cloned()
+                .collect(),
+            _ => Vec::new(),
+        };
+        entries.extend([
+            (1, Value::Uint(self.auto_lock_s)),
+            (2, Value::Uint(self.background_lock_s)),
+            (3, Value::Uint(self.clipboard_ttl_s)),
+            (4, Value::Uint(self.critical_window_s)),
+            (5, Value::Uint(self.password_check_days)),
+            (6, Value::Bool(self.password_only)),
+            (7, Value::Bool(self.erase_after_failures)),
+            (10, Value::Uint(self.backup_reminder_days)),
+        ]);
+        Value::map(entries)
+    }
+}
+
 /// Opens and creates vaults.
 #[derive(Debug)]
 pub struct Vault;
@@ -152,6 +280,7 @@ impl Vault {
         bio: Option<&dyn BioHardware>,
         options: &CreateOptions,
     ) -> Result<Created> {
+        password_policy::check(password)?;
         let rs: [u8; 16] = prims::random()?;
         let session = create_vault(
             path,
@@ -184,7 +313,9 @@ impl Vault {
         let sk = Zeroizing::new(bio.open_sk(&SealedSk { iv, blob })?);
         let kek = keyslot::kek_bio(&sk, &stored.vault_id);
         let vk = slot.unwrap(&kek, &stored.vault_id)?;
-        stored.into_session(vk)
+        let session = stored.into_session(vk)?;
+        session.append_log(LogEvent::UnlockBiometric, None)?;
+        Ok(session)
     }
 
     /// Unlocks with the vault password and this phone's `K_pwd` (KS-PWD): one hardware HMAC per
@@ -208,7 +339,9 @@ impl Vault {
         let hw_pwd = Zeroizing::new(pwd.hmac(&hw_in)?);
         let kek = keyslot::kek_pwd(&h_pwd, &hw_pwd, &stored.vault_id);
         let vk = slot.unwrap(&kek, &stored.vault_id)?;
-        stored.into_session(vk)
+        let session = stored.into_session(vk)?;
+        session.append_log(LogEvent::UnlockPassword, None)?;
+        Ok(session)
     }
 
     /// Unlocks with the vault password and the Recovery Key (KS-REC), without this phone's hardware.
@@ -224,7 +357,9 @@ impl Vault {
             .slot(SlotType::Rec)
             .ok_or(VaultError::IntegrityFailed)?;
         let vk = open_rec_slot(slot, password, &rs, &stored.vault_id)?;
-        stored.into_session(vk)
+        let session = stored.into_session(vk)?;
+        session.append_log(LogEvent::UnlockRecovery, None)?;
+        Ok(session)
     }
 
     /// Restores a backup onto this phone (vault-format §10.4): a new vault key, the same Recovery
@@ -271,6 +406,7 @@ impl Vault {
                     session.put_item(id, index, secret)?;
                 }
             }
+            session.append_log(LogEvent::BackupImported, None)?;
             Ok(session)
         });
         if result.is_err() {
@@ -291,6 +427,7 @@ pub struct Session {
     settings: Value,
     organisation: Value,
     items: BTreeMap<[u8; 16], Value>,
+    allow_software_keys: bool,
 }
 
 impl core::fmt::Debug for Session {
@@ -414,6 +551,7 @@ impl Session {
         pwd: &dyn PwdHardware,
     ) -> Result<()> {
         self.verify_password(current)?;
+        password_policy::check(new)?;
         let rows = read_slots(&self.conn)?;
         let mut updated = Vec::new();
         for row in &rows {
@@ -488,7 +626,8 @@ impl Session {
             params![mac.as_slice()],
         )
         .map_err(storage)?;
-        tx.commit().map_err(storage)
+        tx.commit().map_err(storage)?;
+        self.append_log(LogEvent::PasswordChanged, None)
     }
 
     /// An encrypted backup (crypto spec §9) of every entry, the settings and the custom banks.
@@ -520,7 +659,153 @@ impl Session {
             p: 1,
             salt: prims::random()?,
         };
-        backup::export(&payload, password, &self.rs, &kdf, &ExportRandom::fresh()?)
+        let file = backup::export(&payload, password, &self.rs, &kdf, &ExportRandom::fresh()?)?;
+        self.append_log(LogEvent::BackupExported, None)?;
+        Ok(file)
+    }
+
+    /// The security log, oldest first (vault-format §5.7).
+    pub fn security_log(&self) -> Vec<LogEntry> {
+        self.read_log().unwrap_or_default()
+    }
+
+    /// Moves the wrong-password count kept while locked (plaintext preferences, vault-format §8)
+    /// into the log as one event. Zero adds nothing.
+    pub fn record_failed_attempts(&mut self, count: u64) -> Result<()> {
+        if count == 0 {
+            return Ok(());
+        }
+        self.append_log(LogEvent::FailedAttempts, Some(count))
+    }
+
+    /// The security settings.
+    pub fn settings(&self) -> Settings {
+        Settings::from_value(&self.settings)
+    }
+
+    /// Saves new settings. Values outside their ranges are refused; a weaker value needs the
+    /// vault password and is logged (threat-model I6). Turning on password-only mode deletes the
+    /// fingerprint slot.
+    pub fn update_settings(&mut self, new: &Settings, password: Option<&str>) -> Result<()> {
+        if !new.in_range() {
+            return Err(VaultError::InvalidSetting);
+        }
+        let old = self.settings();
+        let weaker = new.weakens(&old);
+        if weaker {
+            self.verify_password(password.ok_or(VaultError::PasswordRequired)?)?;
+        }
+        let record = new.apply_to(&self.settings);
+        let drop_bio = new.password_only && !old.password_only;
+        let tx = self.conn.transaction().map_err(storage)?;
+        if drop_bio {
+            let rows: Vec<KeyslotRow> = read_slots(&tx)?
+                .into_iter()
+                .filter(|r| r.slot_type != SlotType::Bio as u8)
+                .collect();
+            tx.execute(
+                "DELETE FROM keyslot WHERE slot_type = ?1",
+                params![SlotType::Bio as u8],
+            )
+            .map_err(storage)?;
+            update_header_mac(&tx, &self.keys, &self.vault_id, &rows)?;
+        }
+        write_meta(
+            &tx,
+            &self.keys,
+            &self.vault_id,
+            RecordKind::Settings,
+            &record,
+        )?;
+        tx.commit().map_err(storage)?;
+        self.settings = record;
+        if weaker {
+            self.append_log(LogEvent::SettingWeakened, None)?;
+        }
+        Ok(())
+    }
+
+    /// True when the periodic password check is due at `now` (crypto spec §10).
+    pub fn periodic_check_due(&self, now: u64) -> bool {
+        let last = self.settings.get(8).and_then(Value::as_uint).unwrap_or(0);
+        let days = self.settings().password_check_days;
+        now >= last.saturating_add(days.saturating_mul(DAY_S))
+    }
+
+    /// The periodic password check: the typed password must open the recovery slot. Either way
+    /// the result is logged; a pass restarts the interval from `now`.
+    pub fn periodic_check(&mut self, password: &str, now: u64) -> Result<()> {
+        if let Err(e) = self.verify_password(password) {
+            self.append_log(LogEvent::PeriodicCheckFailed, None)?;
+            return Err(e);
+        }
+        let mut entries: Vec<(u64, Value)> = match &self.settings {
+            Value::Map(entries) => entries.iter().filter(|(k, _)| *k != 8).cloned().collect(),
+            _ => Vec::new(),
+        };
+        entries.push((8, Value::Uint(now)));
+        let record = Value::map(entries);
+        self.write_meta(RecordKind::Settings, &record)?;
+        self.settings = record;
+        self.append_log(LogEvent::PeriodicCheckPassed, None)
+    }
+
+    /// Adds a fingerprint slot, or replaces it after a new fingerprint was enrolled on the phone
+    /// (crypto spec §10, "Re-create biometric key"). Needs the vault password.
+    pub fn enrol_biometric(&mut self, bio: &dyn BioHardware, password: &str) -> Result<()> {
+        self.verify_password(password)?;
+        if self.settings().password_only {
+            return Err(VaultError::InvalidSetting);
+        }
+        if bio.level() == KeyLevel::Software && !self.allow_software_keys {
+            return Err(VaultError::InsecureDevice);
+        }
+        let new_row = bio_slot(bio, &self.vault_id, &self.vk)?;
+        let rows = read_slots(&self.conn)?;
+        let replaced = rows.iter().any(|r| r.slot_type == SlotType::Bio as u8);
+        let mut updated: Vec<KeyslotRow> = rows
+            .into_iter()
+            .filter(|r| r.slot_type != SlotType::Bio as u8)
+            .collect();
+        updated.push(new_row.clone());
+
+        let tx = self.conn.transaction().map_err(storage)?;
+        tx.execute(
+            "DELETE FROM keyslot WHERE slot_type = ?1",
+            params![SlotType::Bio as u8],
+        )
+        .map_err(storage)?;
+        insert_slot(&tx, &new_row)?;
+        update_header_mac(&tx, &self.keys, &self.vault_id, &updated)?;
+        tx.commit().map_err(storage)?;
+        if replaced {
+            self.append_log(LogEvent::BiometricInvalidated, None)?;
+        }
+        Ok(())
+    }
+
+    fn read_log(&self) -> Result<Vec<LogEntry>> {
+        match read_meta(
+            &self.conn,
+            &self.keys,
+            &self.vault_id,
+            RecordKind::SecurityLog,
+        )? {
+            Some(value) => parse_log(&value),
+            None => Ok(Vec::new()),
+        }
+    }
+
+    fn append_log(&self, event: LogEvent, count: Option<u64>) -> Result<()> {
+        let mut entries = self.read_log()?;
+        entries.push(LogEntry {
+            at: now_s(),
+            event,
+            count,
+        });
+        let excess = entries.len().saturating_sub(LOG_MAX);
+        entries.drain(..excess);
+        self.write_meta(RecordKind::SecurityLog, &log_value(&entries))
     }
 
     /// Locks the vault: the write-ahead log is folded back and every key is zeroized.
@@ -602,27 +887,7 @@ fn create_vault(
     // Every key is derived, and every hardware call made, before anything touches the disk.
     let mut rows = Vec::new();
     if let Some(bio) = bio {
-        let slot_id: [u8; 16] = prims::random()?;
-        let sk: Key32 = Zeroizing::new(prims::random()?);
-        let sealed = bio.seal_sk(&sk)?;
-        let bio_blob: [u8; 48] = sealed
-            .blob
-            .as_slice()
-            .try_into()
-            .map_err(|_| VaultError::InsecureDevice)?;
-        let params = SlotParams::Bio {
-            hw_level: bio.level().hw_level(),
-            alias: keyslot::keystore_alias(SlotType::Bio, &slot_id),
-            iv: sealed.iv,
-            bio_blob,
-        };
-        rows.push(wrap_slot(
-            &vault_id,
-            slot_id,
-            &params,
-            &keyslot::kek_bio(&sk, &vault_id),
-            &vk,
-        )?);
+        rows.push(bio_slot(bio, &vault_id, &vk)?);
     }
     {
         let slot_id: [u8; 16] = prims::random()?;
@@ -680,11 +945,7 @@ fn create_vault(
         )
         .map_err(storage)?;
         for row in &rows {
-            tx.execute(
-                "INSERT INTO keyslot (slot_id, slot_type, params, nonce, wrapped_vk) VALUES (?1, ?2, ?3, ?4, ?5)",
-                params![row.slot_id.as_slice(), row.slot_type, row.params, row.nonce.as_slice(), row.wrapped_vk],
-            )
-            .map_err(storage)?;
+            insert_slot(&tx, row)?;
         }
         write_meta(&tx, &keys, &vault_id, RecordKind::Settings, &settings)?;
         write_meta(&tx, &keys, &vault_id, RecordKind::Recovery, &recovery)?;
@@ -722,6 +983,7 @@ fn create_vault(
         settings,
         organisation: organisation_record.clone(),
         items: BTreeMap::new(),
+        allow_software_keys: options.allow_software_keys,
     })
 }
 
@@ -736,6 +998,109 @@ fn check_levels(
         return Err(VaultError::InsecureDevice);
     }
     Ok(())
+}
+
+/// A KS-BIO slot: a fresh slot key, sealed by `K_bio`, wraps VK (crypto spec §4.2).
+fn bio_slot(bio: &dyn BioHardware, vault_id: &[u8; 16], vk: &[u8; 32]) -> Result<KeyslotRow> {
+    let slot_id: [u8; 16] = prims::random()?;
+    let sk: Key32 = Zeroizing::new(prims::random()?);
+    let sealed = bio.seal_sk(&sk)?;
+    let bio_blob: [u8; 48] = sealed
+        .blob
+        .as_slice()
+        .try_into()
+        .map_err(|_| VaultError::InsecureDevice)?;
+    let params = SlotParams::Bio {
+        hw_level: bio.level().hw_level(),
+        alias: keyslot::keystore_alias(SlotType::Bio, &slot_id),
+        iv: sealed.iv,
+        bio_blob,
+    };
+    wrap_slot(
+        vault_id,
+        slot_id,
+        &params,
+        &keyslot::kek_bio(&sk, vault_id),
+        vk,
+    )
+}
+
+fn insert_slot(conn: &Connection, row: &KeyslotRow) -> Result<()> {
+    conn.execute(
+        "INSERT INTO keyslot (slot_id, slot_type, params, nonce, wrapped_vk) VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![row.slot_id.as_slice(), row.slot_type, row.params, row.nonce.as_slice(), row.wrapped_vk],
+    )
+    .map_err(storage)?;
+    Ok(())
+}
+
+/// Recomputes the header MAC over `rows`, the complete new keyslot table (crypto spec §7.1).
+fn update_header_mac(
+    conn: &Connection,
+    keys: &Subkeys,
+    vault_id: &[u8; 16],
+    rows: &[KeyslotRow],
+) -> Result<()> {
+    let header = integrity::vault_header(vault_id);
+    let mac = integrity::header_mac(&keys.k_hdr, &header, &integrity::keyslot_table(rows));
+    conn.execute(
+        "UPDATE vault_meta SET header_mac = ?1 WHERE id = 1",
+        params![mac.as_slice()],
+    )
+    .map_err(storage)?;
+    Ok(())
+}
+
+fn now_s() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+}
+
+fn log_value(entries: &[LogEntry]) -> Value {
+    Value::Array(
+        entries
+            .iter()
+            .map(|e| {
+                let mut fields = vec![(1, Value::Uint(e.at)), (2, Value::Uint(e.event as u64))];
+                if let Some(count) = e.count {
+                    fields.push((3, Value::Uint(count)));
+                }
+                Value::map(fields)
+            })
+            .collect(),
+    )
+}
+
+/// vault-format §5.7, decoded strictly.
+fn parse_log(value: &Value) -> Result<Vec<LogEntry>> {
+    let Value::Array(items) = value else {
+        return Err(VaultError::SchemaViolation);
+    };
+    if items.len() > LOG_MAX {
+        return Err(VaultError::SchemaViolation);
+    }
+    items
+        .iter()
+        .map(|item| {
+            let event = item
+                .get(2)
+                .and_then(Value::as_uint)
+                .and_then(LogEvent::from_code)
+                .ok_or(VaultError::SchemaViolation)?;
+            let count = item.get(3).and_then(Value::as_uint);
+            let keys_ok = match count {
+                Some(_) => event == LogEvent::FailedAttempts && item.keys() == [1, 2, 3],
+                None => item.keys() == [1, 2],
+            };
+            let at = item.get(1).and_then(Value::as_uint);
+            match (keys_ok, at) {
+                (true, Some(at)) => Ok(LogEntry { at, event, count }),
+                _ => Err(VaultError::SchemaViolation),
+            }
+        })
+        .collect()
 }
 
 fn slot_kdf() -> Result<KdfParams> {
@@ -798,6 +1163,7 @@ struct Stored {
     header_mac: Vec<u8>,
     rows: Vec<KeyslotRow>,
     slots: Vec<Slot>,
+    allow_software_keys: bool,
 }
 
 struct Slot {
@@ -879,6 +1245,7 @@ impl Stored {
             header_mac,
             rows,
             slots,
+            allow_software_keys,
         })
     }
 
@@ -902,7 +1269,8 @@ impl Stored {
         };
         let settings = read(RecordKind::Settings)?.ok_or(VaultError::IntegrityFailed)?;
         let recovery = read(RecordKind::Recovery)?.ok_or(VaultError::IntegrityFailed)?;
-        read(RecordKind::SecurityLog)?.ok_or(VaultError::IntegrityFailed)?;
+        let log = read(RecordKind::SecurityLog)?.ok_or(VaultError::IntegrityFailed)?;
+        parse_log(&log).map_err(|_| VaultError::IntegrityFailed)?;
         let rs: [u8; 16] = recovery
             .get(1)
             .and_then(Value::as_bytes)
@@ -952,6 +1320,7 @@ impl Stored {
             settings,
             organisation,
             items,
+            allow_software_keys: self.allow_software_keys,
         })
     }
 }
