@@ -385,7 +385,7 @@ A template fixes each field's `key`, `kind`, default `sensitivity` and `copyable
 | `card.user_note` | Your note | text | 1 | Optional, ≤ 500 bytes. Shown on the card and searched, for example "Check this card for Amazon offers". The app labels it as the user's own note, never as a verified benefit |
 | `card.customer_care` | Customer care | phone | 1 | Optional |
 
-- `title` is `card.nickname` if present, else `card.product` if present, else the bank's display name followed by " card". At least one of `card.nickname` and `card.product` is required.
+- `title` is `card.nickname` if present, else `card.product` if present, else the bank's display name followed by " card". At least one of `card.nickname` and `card.product` is required. `card.number` is required.
 - `subtitle` is "<card kind> · <network> · •••• <last4>", leaving out the network when unknown, for example "Credit · Visa · •••• 1234".
 - Two cards may share a bank and a product name; nickname and `last4` tell them apart.
 
@@ -420,7 +420,7 @@ Every field is optional except `bank.account_number`. Phone fields offer **Call*
 | `pin.value` | PIN | pin | 3, or **4** when `pin_purpose = 4` (ATM or card PIN) |
 | `pin.label` | Used for | text | 1, for example "SBI locker 214" or "CDSL Easiest" |
 
-- `title` is `pin.label`.
+- `title` is `pin.label`. `pin.value` is required.
 - When `pin_purpose = 4`, `pin.value` is critical-strict (4) and may not be lowered: every reveal and every copy needs a fresh biometric.
 - A PIN item may link to the card or bank account it belongs to (`linked_items`). The linked card's screen shows only "PIN stored separately", which opens the PIN item; it never shows, copies or counts the PIN's digits.
 
