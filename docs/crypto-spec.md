@@ -411,6 +411,8 @@ Auto-backup re-exports to the user's chosen file (for example in Google Drive, t
 
 A successful periodic check proves two things: the user still knows the password, and the recovery slot still opens.
 
+**Waiting times after wrong vault passwords** (threat-model T14; counters in plaintext preferences, vault-format §8). The first four wrong passwords cost nothing. After the 5th the user waits 30 s, after the 6th 1 min, the 7th 5 min, the 8th 15 min, the 9th 1 h, and after the 10th and every later one 3 h. The wait is measured with `elapsedRealtime`; if the boot count has changed since it began, the full wait starts again, so a reboot never shortens it. A successful unlock resets the count and moves `failures_since_unlock` into the security log (vault-format §5.7).
+
 ## 11. Errors and side channels
 
 - **Unlock failures** show the same message whatever the cause: wrong password, wrong device credential, failed tag or failed header MAC. The app never reveals which factor failed.
@@ -428,6 +430,10 @@ A successful periodic check proves two things: the user still knows the password
 | `auth_failed` | **Any** failure in import steps 6–7: wrong password, wrong Recovery Key, damaged or tampered data. One error, one message |
 | `unlock_failed` | **Any** unlock failure: wrong password, wrong device credential, failed tag or header MAC. One error, one message |
 | `non_canonical`, `malformed`, `schema_violation` | Authenticated data that breaks the format rules |
+| `weak_password` | A new password fails the strength policy (§3.2). Only when a password is set or changed |
+| `password_required`, `invalid_setting` | A settings change that weakens protection without the vault password, or a value outside its range (vault-format §5.5) |
+| `vault_exists`, `not_found`, `insecure_device`, `integrity_failed`, `storage_failed` | No vault to open, one already there, a refused device (§5.2), a vault that fails its checks at unlock, or a storage error |
+| `locked` | A call on a session that was already locked (bridge only) |
 
 - **Zeroization:** VK, subkeys, KEKs, SK, `H_*`, `HW_pwd`, RS, FK and decrypted plaintext buffers are held in `zeroize`-on-drop types, with best-effort `mlock`. On the Kotlin side, passwords are held in `CharArray` or `ByteArray` and cleared after use. **Residual risk:** Compose text fields produce immutable `String` copies that stay in memory until garbage collection (threat-model T10).
 

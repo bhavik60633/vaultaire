@@ -162,7 +162,7 @@ Vaultaire does **not** fill in checkout forms by itself in this version. It does
 | Phase | What gets built | Status |
 |---|---|---|
 | 1. Specs | This plan; changes to the threat model, crypto spec and vault format; ADR-009 to ADR-011 | **Written 2026-10-15; waiting for review at G0** |
-| 2. Core (Rust) | Test-freeze guard; bank catalogue and name normaliser; card, PIN and bank-account record rules; Organisation record; backup carrying bank groups; the auto-backup key | **Started:** components 1 (test-freeze guard), 2 (bank catalogue and name matching) and 3 (card, PIN and bank-account rules) are done |
+| 2. Core (Rust) | Test-freeze guard; bank catalogue and name normaliser; card, PIN and bank-account record rules; Organisation record; backup carrying bank groups; the auto-backup key | **Done 2026-10-15:** components 1–7, every frozen test green (milestone M1) |
 | 3. App shell (Android) | Unlock and auto-lock; home page with bank tiles, search and favourites; bank page with filters; card page with copy rows; adding and editing; PIN and bank-account entries; returning to the same place after unlock | Not started |
 | 4. Backup and restore | Saving to Google Drive, automatic re-saving, restoring on a new phone; real-phone checks (R12) | Not started |
 | 5. Scanner | Camera scanning of the card front; checks that it keeps nothing and uses no network (R13) | Not started |
@@ -180,7 +180,7 @@ Vaultaire does **not** fill in checkout forms by itself in this version. It does
 | Milestone | Contents | Tests |
 |---|---|---|
 | **M1. Core complete** (Rust) | Components 4–6 (organisation record, backup bank groups, auto-backup key) and 7 (the encrypted vault store in SQLite: create, unlock through the three keyslots, lock, add, edit, delete, list and reveal entries, change password, back up and restore onto a new phone) | 51 Rust integration tests, frozen 2026-10-15. **Done: all green** |
-| **M2. App foundation** (Android) | The Rust–Kotlin bridge (UniFFI); Gradle project with the Rust core built in; the security log; hardware keys and fingerprint unlock (`BiometricPrompt` with `CryptoObject`); create vault with password and Recovery Key; auto-lock; screenshot blocking; clipboard rules | JVM unit tests and Compose UI tests (Robolectric), run in CI without a phone |
+| **M2. App foundation** (Android) | The Rust–Kotlin bridge (UniFFI); Gradle project with the Rust core built in; the security log; hardware keys and fingerprint unlock (`BiometricPrompt` with `CryptoObject`); create vault with password and Recovery Key; auto-lock; screenshot blocking; clipboard rules | 109 tests (22 Rust, 87 Kotlin on Robolectric, run in CI without a phone), **proposed 2026-10-15** |
 | **M3. Screens** | Home with bank tiles and favourites; bank page with filters; card page with copy rows; add and edit card, PIN and bank account; search; settings; returning to the last bank after unlock; the owner's ten acceptance checks (§8) | Compose UI tests |
 | **M4. Backup and restore** | Save to Google Drive through the file picker; auto-backup; restore on a new phone | Unit and UI tests; R12 waits for real phones at G2 |
 | **M5. Scanner** | CameraX and ML Kit (bundled), card-front parser | Parser unit tests; manifest check |

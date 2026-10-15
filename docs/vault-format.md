@@ -287,7 +287,7 @@ Only security-relevant settings live here, so that weakening them requires the v
 | 3 | `clipboard_ttl_s` | uint | 30 | 30, 60, 120. Applies to normal and concealed values. **Critical and critical-strict values (card numbers, CVVs, PINs, account numbers, banking passwords) are always cleared after a fixed 15 s**, which no setting changes |
 | 4 | `critical_window_s` | uint | 60 | 0 – 300 (0 = every time) |
 | 5 | `password_check_days` | uint | 14 | 7, 14, 30 |
-| 6 | `password_only` | bool | false | |
+| 6 | `password_only` | bool | false | Turning it on deletes the KS-BIO slot. Turning it off again needs the vault password, and the fingerprint is then enrolled afresh |
 | 7 | `erase_after_failures` | bool | false | |
 | 8 | `last_password_check` | uint | The vault's creation time | Required *(S-5; pending review)* |
 | 9 | `last_backup_at` | uint | | Optional |
@@ -297,6 +297,8 @@ Only security-relevant settings live here, so that weakening them requires the v
 | 13 | `auto_backup` | bool | false | Re-export to `backup_uri` after changes, while unlocked (crypto spec §9.5). Turning it on needs the vault password, because that is when the export key is derived |
 
 "Never auto-lock" is not a representable value.
+
+**Weakening** (threat-model I6) means: a longer `auto_lock_s`, `background_lock_s`, `clipboard_ttl_s`, `critical_window_s` or `password_check_days`, or turning `password_only` or `erase_after_failures` off. Any such change needs the vault password and is logged as event 11. Stricter values need no password. `backup_reminder_days` and `home_sections` are not protections and never need it.
 
 `home_sections` is **layout, not protection**, the one exception to this record's rule. It sets the order of the home screen's category sections and which ones are shown. Cards are always first and cannot be hidden, so Card never appears in the array. Changing it never needs the vault password, because it weakens nothing. It lives in the encrypted vault rather than in plaintext preferences because the categories a person uses say something about what they keep.
 

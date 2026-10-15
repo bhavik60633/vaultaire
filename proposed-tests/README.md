@@ -17,6 +17,13 @@ written. From then on `python tools/frozen_tests.py check` (run in CI) fails if 
 | 6. Cached export key for auto-backup | [`core/vault-core/tests/export_key.rs`](../core/vault-core/tests/export_key.rs) | **Frozen 2026-10-15** by the owner; code written (`vault_core::backup::ExportKey`); 6/6 green |
 | 7. Vault store and session (milestone M1) | [`core/vault-core/tests/vault_store.rs`](../core/vault-core/tests/vault_store.rs) | **Frozen 2026-10-15** by the owner; code written (`vault_core::vault`, SQLite via `rusqlite`, ADR-005); 17/17 green |
 
+| 8. The core's own security rules (milestone M2) | [`component-8/session_security.rs`](component-8/session_security.rs), moves to `core/vault-core/tests/` | **Waiting for the owner's review.** 22 tests: password strength, security log, protected settings, periodic password check, adding or replacing the fingerprint |
+| 9. Android security building blocks (milestone M2) | [`component-9/`](component-9/) (9 files), move to `android/app/src/test/java/dev/vaultaire/security/` | **Waiting for the owner's review.** 51 tests: auto-lock, fingerprint gate, re-masking, clipboard, password waiting times, preferences allow-list, Keystore key settings, fingerprint prompts, refused phones |
+| 10. Bridge from Kotlin to the Rust engine (milestone M2) | [`component-10/VaultEngineTest.kt`](component-10/VaultEngineTest.kt), moves to `android/core-bindings/src/test/java/dev/vaultaire/core/` | **Waiting for the owner's review.** 11 tests, run against the real Rust core |
+| 11. First screens (milestone M2) | [`component-11/`](component-11/) (5 files, one of them the stand-in vault `FakeGateway.kt`), move to `android/app/src/test/java/dev/vaultaire/ui/` | **Waiting for the owner's review.** 25 tests: creating a vault, the lock screen, the beta and test-build warnings, screenshot blocking |
+
 **Milestone M1** is components 4–7 together (51 tests), frozen in one go (owner decision: batches per milestone). **M1 is complete: all 51 tests green, none changed.**
 
 The Semgrep rule `secret-compared-with-eq` now skips `tests/`, like `no-printing-in-core`: the fake fingerprint hardware in the frozen `vault_store.rs` compares a tag with `!=`, tests never ship, and a frozen test cannot be edited.
+
+**Milestone M2** is components 8–11 together (109 tests), to be frozen in one go. Checked before sending: the Rust tests are rustfmt and clippy clean; every test compiles against stub code and fails against it, except three that guard behaviour the stubs already get right (a new vault's empty log, good passphrases accepted, and no "Test build" warning in a real build). The Android tests run on Robolectric, so CI needs no phone.
