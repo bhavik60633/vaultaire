@@ -45,10 +45,8 @@ struct Place {
 
 impl Place {
     fn new(name: &str) -> Place {
-        let dir = std::env::temp_dir().join(format!(
-            "vaultaire-entries-{name}-{}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("vaultaire-entries-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).expect("temp dir");
         Place { dir }
@@ -88,7 +86,9 @@ fn card(bank: &str, kind: CardKind, product: &str, number: &str) -> Card {
 }
 
 fn add(session: &mut Session, card: Card) -> [u8; 16] {
-    session.add_entry(&Entry::Card(card), NOW).expect("add card")
+    session
+        .add_entry(&Entry::Card(card), NOW)
+        .expect("add card")
 }
 
 /// The owner's fixture (product plan §8): 5 SBI (3 credit, 2 debit), 2 HDFC (1 credit, 1 debit)
@@ -132,7 +132,12 @@ fn a_card_is_saved_with_its_title_subtitle_and_last_four() {
     let mut session = open(&place);
     let id = add(
         &mut session,
-        card("in.sbi", CardKind::Credit, "SBI Cashback", "4111 1111 1111 1234"),
+        card(
+            "in.sbi",
+            CardKind::Credit,
+            "SBI Cashback",
+            "4111 1111 1111 1234",
+        ),
     );
     let summary = session.summary(&id).expect("summary");
     assert_eq!(summary.kind, EntryKind::Card);
@@ -145,7 +150,10 @@ fn a_card_is_saved_with_its_title_subtitle_and_last_four() {
     assert_eq!(summary.bank_id.as_deref(), Some("in.sbi"));
     assert_eq!(summary.card_kind, Some(CardKind::Credit));
     assert_eq!(
-        session.reveal_key(&id, "card.number").expect("reveal").as_str(),
+        session
+            .reveal_key(&id, "card.number")
+            .expect("reveal")
+            .as_str(),
         "4111111111111234",
         "stored without spaces"
     );
@@ -159,7 +167,12 @@ fn the_title_is_the_nickname_else_the_card_name_and_one_is_required() {
         &mut session,
         Card {
             nickname: Some("Amazon card".to_string()),
-            ..card("in.hdfc", CardKind::Credit, "HDFC Millennia", "5555555555554444")
+            ..card(
+                "in.hdfc",
+                CardKind::Credit,
+                "HDFC Millennia",
+                "5555555555554444",
+            )
         },
     );
     let nickname_only = add(
@@ -171,7 +184,10 @@ fn the_title_is_the_nickname_else_the_card_name_and_one_is_required() {
         },
     );
     assert_eq!(session.summary(&nicknamed).expect("s").title, "Amazon card");
-    assert_eq!(session.summary(&nickname_only).expect("s").title, "Travel card");
+    assert_eq!(
+        session.summary(&nickname_only).expect("s").title,
+        "Travel card"
+    );
 
     let nameless = Card {
         product: None,
@@ -199,7 +215,12 @@ fn a_card_needs_a_valid_number() {
     }
     let no_number = Card {
         number: Secret::Empty,
-        ..card("in.sbi", CardKind::Credit, "SBI Cashback", "4111111111111234")
+        ..card(
+            "in.sbi",
+            CardKind::Credit,
+            "SBI Cashback",
+            "4111111111111234",
+        )
     };
     assert_eq!(
         session.add_entry(&Entry::Card(no_number), NOW),
@@ -214,7 +235,12 @@ fn the_cvv_is_kept_only_when_the_user_gives_it() {
     let mut session = open(&place);
     let id = add(
         &mut session,
-        card("in.sbi", CardKind::Credit, "SBI Cashback", "4111111111111234"),
+        card(
+            "in.sbi",
+            CardKind::Credit,
+            "SBI Cashback",
+            "4111111111111234",
+        ),
     );
     assert!(!session.summary(&id).expect("s").has_cvv);
     assert!(session.reveal_key(&id, "card.cvv").is_err());
@@ -228,7 +254,10 @@ fn the_cvv_is_kept_only_when_the_user_gives_it() {
         .update_entry(&id, &Entry::Card(with_cvv), NOW + 1)
         .expect("add cvv");
     assert!(session.summary(&id).expect("s").has_cvv);
-    assert_eq!(session.reveal_key(&id, "card.cvv").expect("cvv").as_str(), "123");
+    assert_eq!(
+        session.reveal_key(&id, "card.cvv").expect("cvv").as_str(),
+        "123"
+    );
 
     let without = Card {
         number: Secret::Keep,
@@ -247,7 +276,12 @@ fn an_edit_keeps_secrets_it_does_not_change() {
     let mut session = open(&place);
     let id = add(
         &mut session,
-        card("in.sbi", CardKind::Credit, "SBI Cashback", "4111111111111234"),
+        card(
+            "in.sbi",
+            CardKind::Credit,
+            "SBI Cashback",
+            "4111111111111234",
+        ),
     );
     let renamed = Card {
         nickname: Some("Flipkart card".to_string()),
@@ -290,7 +324,12 @@ fn details_show_normal_values_and_hide_secret_ones() {
         Card {
             cvv: Secret::Set("123".to_string()),
             user_note: Some("Check this card for Amazon offers".to_string()),
-            ..card("in.sbi", CardKind::Credit, "SBI Cashback", "4111111111111234")
+            ..card(
+                "in.sbi",
+                CardKind::Credit,
+                "SBI Cashback",
+                "4111111111111234",
+            )
         },
     );
     let details = session.details(&id).expect("details");
@@ -308,7 +347,10 @@ fn details_show_normal_values_and_hide_secret_ones() {
         Some("SBI")
     );
     let number = field("card.number").expect("number row");
-    assert_eq!(number.value, None, "secret values never come with the details");
+    assert_eq!(
+        number.value, None,
+        "secret values never come with the details"
+    );
     assert_eq!(number.sensitivity, 3);
     assert!(number.copyable);
     assert_eq!(field("card.cvv").map(|f| f.sensitivity), Some(3));
@@ -322,7 +364,12 @@ fn summaries_and_details_never_contain_a_secret() {
         &mut session,
         Card {
             cvv: Secret::Set("987".to_string()),
-            ..card("in.sbi", CardKind::Credit, "SBI Cashback", "4111111111111234")
+            ..card(
+                "in.sbi",
+                CardKind::Credit,
+                "SBI Cashback",
+                "4111111111111234",
+            )
         },
     );
     let pin_id = session
@@ -356,7 +403,12 @@ fn an_atm_pin_is_its_own_entry_and_needs_a_fresh_fingerprint() {
     let mut session = open(&place);
     let card_id = add(
         &mut session,
-        card("in.sbi", CardKind::Debit, "SBI Classic Debit", "6074000000002002"),
+        card(
+            "in.sbi",
+            CardKind::Debit,
+            "SBI Classic Debit",
+            "6074000000002002",
+        ),
     );
     let pin_id = session
         .add_entry(
@@ -376,13 +428,25 @@ fn an_atm_pin_is_its_own_entry_and_needs_a_fresh_fingerprint() {
     assert_eq!(pin.pin_purpose, Some(PinPurpose::AtmPin));
     assert_eq!(pin.linked_to, vec![card_id]);
     let value = session.details(&pin_id).expect("details");
-    let field = value.fields.iter().find(|f| f.key == "pin.value").expect("row");
+    let field = value
+        .fields
+        .iter()
+        .find(|f| f.key == "pin.value")
+        .expect("row");
     assert_eq!(field.sensitivity, 4, "critical-strict");
-    assert_eq!(session.reveal_key(&pin_id, "pin.value").expect("pin").as_str(), "4321");
+    assert_eq!(
+        session
+            .reveal_key(&pin_id, "pin.value")
+            .expect("pin")
+            .as_str(),
+        "4321"
+    );
 
     let card_fields = session.details(&card_id).expect("card").fields;
     assert!(
-        card_fields.iter().all(|f| !f.key.contains("pin") && f.kind != 15),
+        card_fields
+            .iter()
+            .all(|f| !f.key.contains("pin") && f.kind != 15),
         "a card never carries a PIN"
     );
 }
@@ -403,7 +467,11 @@ fn other_pins_are_critical_and_need_four_to_twelve_digits() {
         )
         .expect("pin");
     let details = session.details(&id).expect("details");
-    let field = details.fields.iter().find(|f| f.key == "pin.value").expect("row");
+    let field = details
+        .fields
+        .iter()
+        .find(|f| f.key == "pin.value")
+        .expect("row");
     assert_eq!(field.sensitivity, 3);
 
     for bad in ["123", "1234567890123", "12a4", ""] {
@@ -531,7 +599,10 @@ fn check_1_the_groups_show_sbi_5_hdfc_2_axis_3_and_all_10() {
         ],
         "most cards first"
     );
-    assert_eq!(group(&groups, Some("in.sbi")).map(|g| g.name.as_str()), Some("SBI"));
+    assert_eq!(
+        group(&groups, Some("in.sbi")).map(|g| g.name.as_str()),
+        Some("SBI")
+    );
     assert_eq!(session.cards(&Scope::All, CardFilter::All).len(), 10);
 }
 
@@ -570,7 +641,10 @@ fn check_4_two_cards_with_the_same_name_stay_distinguishable() {
     let a = session.summary(first).expect("a");
     let b = session.summary(second).expect("b");
     assert_eq!(a.product, b.product, "both are SBI Cashback");
-    assert_ne!(a.subtitle, b.subtitle, "the last four digits tell them apart");
+    assert_ne!(
+        a.subtitle, b.subtitle,
+        "the last four digits tell them apart"
+    );
 
     let nicknamed = Card {
         nickname: Some("Amazon one".to_string()),
@@ -607,8 +681,12 @@ fn check_6_deleting_the_last_card_of_a_bank_removes_its_tile() {
     let place = Place::new("check6");
     let mut session = open(&place);
     let all = fixture(&mut session);
-    session.delete_item(all.get(5).expect("hdfc 1")).expect("delete");
-    session.delete_item(all.get(6).expect("hdfc 2")).expect("delete");
+    session
+        .delete_item(all.get(5).expect("hdfc 1"))
+        .expect("delete");
+    session
+        .delete_item(all.get(6).expect("hdfc 2"))
+        .expect("delete");
     let groups = session.bank_groups();
     assert!(group(&groups, Some("in.hdfc")).is_none());
     assert_eq!(groups.len(), 2);
@@ -633,16 +711,28 @@ fn check_7_search_finds_cards_by_bank_nickname_card_name_or_last_four() {
         )
         .expect("edit");
 
-    assert_eq!(session.search("state bank").len(), 5, "by the bank's full name");
+    assert_eq!(
+        session.search("state bank").len(),
+        5,
+        "by the bank's full name"
+    );
     assert_eq!(session.search("SBI").len(), 5);
-    assert_eq!(ids(&session.search("flipkart")), vec![axis_ace], "by nickname");
+    assert_eq!(
+        ids(&session.search("flipkart")),
+        vec![axis_ace],
+        "by nickname"
+    );
     assert_eq!(session.search("millennia").len(), 1, "by card name");
     assert_eq!(
         ids(&session.search("1234")),
         vec![*all.first().expect("first")],
         "by last four"
     );
-    assert_eq!(ids(&session.search("amazon offers")), vec![axis_ace], "by note");
+    assert_eq!(
+        ids(&session.search("amazon offers")),
+        vec![axis_ace],
+        "by note"
+    );
     assert!(
         session.search("41111111").is_empty(),
         "never by the hidden digits of a card number"
@@ -686,7 +776,12 @@ fn cards_without_a_bank_are_grouped_last_as_unassigned() {
     let mut session = open(&place);
     add(
         &mut session,
-        card("in.hdfc", CardKind::Credit, "HDFC Millennia", "5555555555554444"),
+        card(
+            "in.hdfc",
+            CardKind::Credit,
+            "HDFC Millennia",
+            "5555555555554444",
+        ),
     );
     for number in ["4000000000009001", "4000000000009002"] {
         add(
@@ -699,7 +794,10 @@ fn cards_without_a_bank_are_grouped_last_as_unassigned() {
     }
     let groups = session.bank_groups();
     let last = groups.last().expect("groups");
-    assert_eq!(last.bank_id, None, "unassigned is last, even with more cards");
+    assert_eq!(
+        last.bank_id, None,
+        "unassigned is last, even with more cards"
+    );
     assert_eq!(last.name, "Other / Unassigned");
     assert_eq!(last.total, 2);
     assert_eq!(session.cards(&Scope::Unassigned, CardFilter::All).len(), 2);
@@ -740,7 +838,12 @@ fn equal_sized_groups_are_sorted_by_name() {
     let mut session = open(&place);
     add(
         &mut session,
-        card("in.icici", CardKind::Credit, "ICICI Amazon Pay", "4000000000008001"),
+        card(
+            "in.icici",
+            CardKind::Credit,
+            "ICICI Amazon Pay",
+            "4000000000008001",
+        ),
     );
     add(
         &mut session,
@@ -754,7 +857,10 @@ fn equal_sized_groups_are_sorted_by_name() {
 fn a_typed_bank_name_finds_the_catalogue_bank_or_adds_one_once() {
     let place = Place::new("add-bank");
     let mut session = open(&place);
-    assert_eq!(session.add_bank("State Bank of India").expect("sbi"), "in.sbi");
+    assert_eq!(
+        session.add_bank("State Bank of India").expect("sbi"),
+        "in.sbi"
+    );
     assert_eq!(session.add_bank("hdfc bank ltd").expect("hdfc"), "in.hdfc");
     let custom = session.add_bank("Saraswat Co-op Bank").expect("new");
     assert!(custom.starts_with("u:"));
@@ -763,7 +869,10 @@ fn a_typed_bank_name_finds_the_catalogue_bank_or_adds_one_once() {
         custom,
         "a second spelling finds the same bank"
     );
-    assert_eq!(session.bank_name(&custom).as_deref(), Some("Saraswat Co-op Bank"));
+    assert_eq!(
+        session.bank_name(&custom).as_deref(),
+        Some("Saraswat Co-op Bank")
+    );
     assert_eq!(session.bank_name("in.sbi").as_deref(), Some("SBI"));
     assert_eq!(session.add_bank("   "), Err(VaultError::SchemaViolation));
 }
@@ -780,6 +889,17 @@ fn the_last_bank_and_filter_are_kept_inside_the_vault() {
     let session =
         Vault::unlock_with_password(&place.vault(), PASSWORD, &FakePwd, false).expect("unlock");
     assert_eq!(session.last_card_view(), Some((sbi(), CardFilter::Credit)));
+}
+
+#[test]
+fn going_back_home_forgets_the_last_bank() {
+    let place = Place::new("last-view-clear");
+    let mut session = open(&place);
+    session
+        .set_last_card_view(&Scope::All, CardFilter::Debit)
+        .expect("remember");
+    session.clear_last_card_view().expect("forget");
+    assert_eq!(session.last_card_view(), None);
 }
 
 // ---------- lifetime ----------
@@ -807,12 +927,20 @@ fn a_missing_entry_is_reported_as_not_found() {
         session.reveal_key(&ghost, "card.number").err(),
         Some(VaultError::NotFound)
     );
-    let any = card("in.sbi", CardKind::Credit, "SBI Cashback", "4111111111111234");
+    let any = card(
+        "in.sbi",
+        CardKind::Credit,
+        "SBI Cashback",
+        "4111111111111234",
+    );
     assert_eq!(
         session.update_entry(&ghost, &Entry::Card(any), NOW),
         Err(VaultError::NotFound)
     );
-    assert_eq!(session.set_favourite(&ghost, true), Err(VaultError::NotFound));
+    assert_eq!(
+        session.set_favourite(&ghost, true),
+        Err(VaultError::NotFound)
+    );
 }
 
 // ---------- the card network, suggested from the number ----------
