@@ -11,7 +11,7 @@ The design mockup grouped cards by the free-text issuer, so differently spelled 
 
 ## Decision
 
-1. **A bank catalogue ships inside the app.** It lives in `vault-core` (`core/vault-core/data/banks-in.json`, compiled in), versioned with each release, so the same catalogue and normaliser serve the app's screens and the core's backup merge (vault-format §10.4). Each entry has:
+1. **A bank catalogue ships inside the app.** It lives in `vault-core` as a static Rust table (`vault_core::banks`), versioned with each release, so the same catalogue and normaliser serve the app's screens and the core's backup merge (vault-format §10.4). A Rust table rather than a JSON file means no JSON parser joins the core's dependencies. Each entry has:
    - `id`: `in.<code>`, stable for ever and never reused, for example `in.sbi`;
    - `name`: the short display name, for example "SBI";
    - `full_name`: for example "State Bank of India";
@@ -20,14 +20,14 @@ The design mockup grouped cards by the free-text issuer, so differently spelled 
    It covers the scheduled commercial banks listed by the Reserve Bank of India (public sector, private sector, small finance, payments and foreign banks in India), plus card issuers that are not banks, such as American Express. When banks merge, the absorbed bank's id stays valid and its names become aliases of the surviving bank.
 
 2. **Normalisation** of any bank name typed or read:
-   1. Unicode NFKC, then case-fold.
+   1. Unicode NFKC, then lowercase (Unicode lowercase mapping).
    2. Replace every character that is not a letter or digit with a space.
    3. Drop the words `bank`, `ltd`, `limited`, `the`, `of`, `india`, `card`, `cards`, `co`, `corporation`.
    4. Collapse runs of spaces and trim.
 
-   The normalised string is looked up against every catalogue name, full name and alias, normalised the same way. The catalogue is checked at build time so that no two banks share a normalised name.
+   If step 3 leaves nothing (for example "Bank of India"), the result is the step 2 output with its spaces collapsed and trimmed ("bank of india"). Normalising is idempotent.
 
-   If dropping the words leaves an empty string (for example "Bank of India"), the step 2 output is used instead, and the catalogue lists that form as an alias.
+   The normalised string is looked up, exactly, against every catalogue name, full name and alias, normalised the same way. Tests check that no two banks share a normalised spelling, and that every spelling leads back to its own bank. A name that matches nothing finds no bank: there is no guessing.
 
 3. **User-added banks:** if no catalogue bank matches, the user can add one. It gets an id `u:` + 32 random hex characters and lives in the encrypted Organisation record (vault-format §5.9). It is normalised the same way, so a second spelling finds it.
 

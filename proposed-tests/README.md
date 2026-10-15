@@ -10,4 +10,4 @@ written. From then on `python tools/frozen_tests.py check` (run in CI) fails if 
 | Component | Tests | Status |
 |---|---|---|
 | 1. Test-freeze guard | [`tools/test_frozen_tests.py`](../tools/test_frozen_tests.py) | **Frozen 2026-10-15** by the owner; code written; 27/27 green |
-| 2. Bank catalogue and name normaliser | — | Next: tests to be proposed here |
+| 2. Bank catalogue and name normaliser | [`component-2/banks.rs`](component-2/banks.rs), moves to `core/vault-core/tests/banks.rs` | **Waiting for the owner's review.** 17 tests. Checked: rustfmt clean, compiles and passes clippy `-D warnings` against a stub API, red as expected |
