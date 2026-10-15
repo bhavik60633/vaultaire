@@ -5,7 +5,7 @@
 | Status | **Draft 0.1, not yet reviewed.** Input to Gate G0 (spec freeze). Values marked **PROVISIONAL** are fixed at G0 after the Phase-0 measurements. |
 | Scope | Format version 1 (`format_version = 1`): key hierarchy, keyslots, record encryption, integrity, Recovery Key encoding and backup encryption |
 | Related | [`threat-model.md`](threat-model.md) (why), `vault-format.md` (byte layouts and schemas; to be written) |
-| Last updated | 2026-09-30 (spec findings S-4, S-7 to S-10 applied, pending review) |
+| Last updated | 2026-10-15 (§9.5 cached export key, lifecycle rows, Q9, Q10). 2026-09-30: spec findings S-4, S-7 to S-10 applied, pending review |
 
 This document is normative. The words **must**, **must not** and **should** carry their usual RFC 2119 meaning. An implementation that differs from this document is wrong, even if it "works".
 
@@ -384,14 +384,26 @@ Every step must pass before the next begins. Any failure aborts, and nothing is 
 
 Steps 6 and 7 fail with the same message: "Wrong password or Recovery Key, or the file is damaged."
 
+### 9.5 Cached export key for auto-backup — PROPOSED (reviewer question Q9)
+
+Auto-backup re-exports to the user's chosen file (for example in Google Drive, through the Storage Access Framework; [ADR-010](adr/ADR-010-backup-drive-saf.md)) after changes, without asking for the vault password each time.
+
+- When the user turns auto-backup on, they type the vault password. The core derives `KEK_exp` exactly as §9.2, with a fresh `salt_exp` and the export parameters, and stores `{kdf, kek}` in the Recovery record under K_meta (vault-format §5.6, key 4). `H_exp` is zeroized.
+- Each auto-backup builds the header from the cached `kdf` (so `salt_exp` and the parameters match the cached key), draws a **fresh FK, `nonce_wrap` and `nonce_payload`**, and seals as §9.3. The resulting file is indistinguishable in format from a manual export and is imported by §9.4 unchanged.
+- The cached key is **deleted** on: password change or reset, Recovery Key regeneration, vault-key rotation, and turning auto-backup off. Turning it back on derives a new one with a new `salt_exp`.
+- A manual "Export now" always derives a fresh `KEK_exp` from the typed password, as before.
+- **What this changes:** backups made with the same cached key share `salt_exp` and `KEK_exp`, so one Argon2id guess tests a password against all of them. An attacker who can read K_meta records already holds VK and the whole vault (threat-model T05, T36), so the cached key gives them nothing they lack, except the ability to open *older* backup files made with it. Files alone still need the password and the Recovery Key.
+
 ## 10. Key lifecycle
 
 | Operation | What changes | Requires |
 |---|---|---|
 | Create vault | New VK, SK, RS, salts, `vault_id`; all three slots written; manifest created | Secure lock screen; hardware-backed keys (§5.2) |
-| Change password | New `salt_pwd` and `salt_rec`; KS-PWD and KS-REC re-wrapped. VK unchanged. Suggest a new backup (old backups still need the old password). | Current password |
+| Change password | New `salt_pwd` and `salt_rec`; KS-PWD and KS-REC re-wrapped. VK unchanged. Cached export key (§9.5) deleted. Suggest a new backup (old backups still need the old password). | Current password |
 | Reset forgotten password | As "change password" | An unlocked biometric session **and** the Recovery Key (constant-time compare, §8) |
-| Regenerate Recovery Key | New RS; KS-REC re-wrapped; RS in K_meta replaced; new Recovery Kit shown. Old backups still need the old key. | Password |
+| Regenerate Recovery Key | New RS; KS-REC re-wrapped; RS in K_meta replaced; cached export key (§9.5) deleted; new Recovery Kit shown. Old backups still need the old key. | Password |
+| Turn auto-backup on | New `salt_exp`; `KEK_exp` derived and cached under K_meta (§9.5) | Password |
+| Turn auto-backup off | Cached export key deleted | Nothing |
 | Rotate vault key | New VK′; every record re-encrypted and every slot re-wrapped in **one transaction**; old VK zeroized. If the process crashes, the old state stays valid until commit. | Password; offered after a restore or when the user suspects exposure |
 | Re-create biometric key | New K_bio and SK; KS-BIO re-wrapped | Password, after K_bio is invalidated by a biometric enrolment change |
 | Periodic password check | Nothing changes. `KEK_rec` is derived from the typed password and RS (held in K_meta), KS-REC is opened, and the result is compared to the in-memory VK in constant time. | Every 14 days after biometric unlock; one 24-hour deferral |
@@ -469,3 +481,5 @@ The `argon2` crate has no known independent audit. It is checked against the RFC
 | Q6 | Is binding `SHA-256(slot_params_bytes)` into the slot AD sufficient to stop parameter downgrade (§4.5), given the separate range check? |
 | Q7 | Card security codes are now storable on an opt-in basis (threat-model §9). Is anything beyond critical-tier handling needed at the cryptographic level? |
 | Q8 | A backup may declare m up to 512 MiB (§4.6). What memory cap relative to device RAM should the app enforce before running Argon2id, so that a low-RAM phone refuses cleanly instead of being killed? |
+| Q9 | Is caching `KEK_exp` under K_meta for auto-backup (§9.5) acceptable, given that backups made with one cached key share `salt_exp`, and that the key opens older backup files until the password or Recovery Key changes? |
+| Q10 | ATM PINs are now storable as separate items at a critical-strict tier (threat-model §9.1). Is anything needed at the cryptographic level beyond the per-reveal biometric, for example a separate envelope or subkey for PIN items? |

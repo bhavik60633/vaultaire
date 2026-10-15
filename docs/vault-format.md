@@ -5,7 +5,7 @@
 | Status | **Draft 0.1, not yet reviewed.** Input to Gate G0 (spec freeze). |
 | Scope | `format_version = 1`: the on-device database, the encoding of everything inside it, plaintext preferences, and the `.vaultbackup` file |
 | Related | [`crypto-spec.md`](crypto-spec.md) (how each piece is encrypted and authenticated), [`threat-model.md`](threat-model.md) |
-| Last updated | 2026-09-30 (spec findings S-1 to S-3, S-5, S-6 applied, pending review) |
+| Last updated | 2026-10-15 (PIN items, bank-grouped cards, Organisation record, clipboard times; see [product plan](product-plan.md)). 2026-09-30: spec findings S-1 to S-3, S-5, S-6 applied, pending review |
 
 This document is normative, using the RFC 2119 keywords as in the crypto spec. The crypto spec defines keys, associated data (AD) and padding. This document defines **bytes and schemas**. Where the two seem to disagree, stop and report it; do not guess.
 
@@ -99,7 +99,7 @@ CREATE TABLE item_history (
 ) WITHOUT ROWID;
 
 CREATE TABLE meta_record (
-  kind        INTEGER PRIMARY KEY CHECK (kind IN (3, 4, 5, 6)),  -- = record_kind, §4.5
+  kind        INTEGER PRIMARY KEY CHECK (kind IN (3, 4, 5, 6, 7)),  -- = record_kind, §4.5
   nonce       BLOB NOT NULL CHECK (length(nonce) = 24),
   ct          BLOB NOT NULL
 );
@@ -167,6 +167,7 @@ These codes are shared with the record AD (crypto spec §6.4):
 | `0x04` | Recovery | `meta_record` (kind 4) | `0x03` meta | K_meta |
 | `0x05` | Security log | `meta_record` (kind 5) | `0x03` meta | K_meta |
 | `0x06` | Manifest | `meta_record` (kind 6) | `0x03` meta | K_meta |
+| `0x07` | Organisation | `meta_record` (kind 7) | `0x03` meta | K_meta |
 
 All records in this version use `schema_version = 1`.
 
@@ -182,22 +183,34 @@ All records in this version use `schema_version = 1`.
 | 2 | Card | 6 | Developer key |
 | 3 | Bank account | 7 | Membership |
 | 4 | Identity document | 8 | Other |
+| | | 9 | **PIN** (independent PIN storage, §5.10) |
 
 **Field kinds**
 
 | Code | Kind | Code | Kind |
 |---|---|---|---|
-| 1 | text | 8 | phone |
-| 2 | concealed | 9 | iban |
-| 3 | pan (card number) | 10 | account_number |
-| 4 | expiry | 11 | routing_code |
-| 5 | date | 12 | multiline |
-| 6 | url | 13 | totp_secret (reserved for V1.1; rejected in v1) |
-| 7 | email | 14 | **cvv** |
+| 1 | text | 9 | iban |
+| 2 | concealed | 10 | account_number |
+| 3 | pan (card number) | 11 | routing_code |
+| 4 | expiry | 12 | multiline |
+| 5 | date | 13 | totp_secret (reserved for V1.1; rejected in v1) |
+| 6 | url | 14 | **cvv** |
+| 7 | email | 15 | **pin**: 4–12 ASCII digits, nothing else |
+| 8 | phone | | |
 
-**Sensitivity:** 1 = normal (shown; value lives in the index envelope), 2 = concealed (masked; tap to reveal), 3 = critical (masked; recent biometric to reveal or copy). A field's sensitivity may be raised by the user but never lowered below its template default.
+**Sensitivity:** 1 = normal (shown; value lives in the index envelope), 2 = concealed (masked; tap to reveal), 3 = critical (masked; recent biometric to reveal or copy), 4 = **critical-strict** (masked; a fresh biometric for **every** reveal or copy, whatever `critical_window_s` says). A field's sensitivity may be raised by the user but never lowered below its template default. Values 2, 3 and 4 live in the secret envelope.
 
 **Card finishes:** 1 Obsidian, 2 Titanium, 3 Platinum, 4 Ivory, 5 Champagne.
+
+**Card kinds:** 1 Debit, 2 Credit, 3 Other (prepaid, forex, gift and similar).
+
+**PIN purposes:** 1 Locker, 2 Demat TPIN (CDSL or NSDL), 3 App login, 4 ATM or card PIN, 5 MPIN, 6 TPIN, 7 Door or alarm, 8 Other.
+
+**Bank ids** (text, ≤ 64 bytes), used by cards and bank accounts:
+
+- `in.<code>` (lowercase ASCII letters, digits and `_`): an entry of the bank catalogue bundled with the app ([ADR-011](adr/ADR-011-bank-catalogue.md)). Catalogue ids are never reused or renamed. A merged bank's id stays valid and resolves to the surviving bank's display name.
+- `u:<32 lowercase hex characters>`: a bank the user added, defined in the Organisation record (§5.9).
+- Anything else is an error. A decoder that meets an `in.` id missing from its catalogue keeps it and shows the id's code in capitals; it never drops or rewrites it.
 
 ### 5.2 Index envelope (item)
 
@@ -219,7 +232,13 @@ Decrypted for every item at unlock, into memory only.
 | 12 | `card_finish` | uint | Required for cards; absent for every other type |
 | 13 | `has_cvv` | bool | Required for cards; absent for every other type. Drives the "Stored at your request" label and the Settings count without opening the secret envelope. |
 | 14 | `fields` | array of field descriptors | Order is display order; ≤ 100 |
-| 15 | `linked_items` | array of bytes(16) | Optional. For example, a bank account linked to its login |
+| 15 | `linked_items` | array of bytes(16) | Optional. For example, a bank account linked to its login, or a PIN item linked to its card |
+| 16 | `bank_id` | text | Optional; cards and bank accounts only, absent for every other type. A bank id (§5.1). **Absent means "Other / Unassigned"** |
+| 17 | `card_kind` | uint | Required for cards; absent for every other type. A card kind (§5.1) |
+| 18 | `last4` | text | Required for cards; absent for every other type. Exactly the last four digits of the card number. `vault-core` checks it against `card.number` on every write, and refuses the write on a mismatch |
+| 19 | `pin_purpose` | uint | Required for PIN items; absent for every other type. A PIN purpose (§5.1) |
+
+Cards are grouped by bank **at display time** from `bank_id`: groups are never stored, so changing a card's `bank_id` moves it, and a bank with no cards left has no group.
 
 Field descriptor (a map):
 
@@ -229,7 +248,7 @@ Field descriptor (a map):
 | 2 | `key` | text | Template key such as `card.number`, or `custom` |
 | 3 | `label` | text | ≤ 128 bytes |
 | 4 | `kind` | uint | Field kind |
-| 5 | `sensitivity` | uint | 1, 2 or 3 |
+| 5 | `sensitivity` | uint | 1, 2, 3 or 4 |
 | 6 | `copyable` | bool | |
 | 7 | `value` | text | **Required when `sensitivity = 1`, absent otherwise.** Concealed and critical values live in the secret envelope. |
 
@@ -240,11 +259,12 @@ Opened only on an explicit reveal or copy (crypto spec §6.2).
 | Key | Name | Type | Notes |
 |---|---|---|---|
 | 1 | `revision` | uint | Must equal the index envelope's `revision` |
-| 2 | `values` | array of `[field_id (bytes 16), value (text)]` pairs, **sorted by `field_id`**, no duplicate ids *(S-2; pending review: a map keyed by byte strings would break the integer-keys rule of §2)* | One entry for each field with `sensitivity` 2 or 3. Every such field in the index must have an entry here, and no other entries are allowed. Required, possibly empty. |
+| 2 | `values` | array of `[field_id (bytes 16), value (text)]` pairs, **sorted by `field_id`**, no duplicate ids *(S-2; pending review: a map keyed by byte strings would break the integer-keys rule of §2)* | One entry for each field with `sensitivity` 2, 3 or 4. Every such field in the index must have an entry here, and no other entries are allowed. Required, possibly empty. |
 | 3 | `notes` | text | Optional, concealed |
 
 - An item with no concealed or critical fields still has a secret envelope, with an empty `values` array. So the presence of a secret envelope reveals nothing, and the 256-byte padding bucket hides whether it is empty.
-- **CVV** is stored only if the user switched it on for that card (threat-model I11). It is a field with `key = card.cvv`, `kind = 14`, `sensitivity = 3` and `copyable = true`; its descriptor sets `has_cvv = true` in the index. **There is no card-PIN key**, and a decoder must reject `card.pin`.
+- **CVV** is stored only if the user switched it on for that card (threat-model I11). It is a field with `key = card.cvv`, `kind = 14`, `sensitivity = 3` and `copyable = true`; its descriptor sets `has_cvv = true` in the index.
+- **No PIN on a card item.** A card item has no PIN key; a decoder must reject `card.pin`, and must reject a field of kind 15 (`pin`) on a card. An ATM or card PIN is stored only as its own **PIN item** (type 9) with `pin_purpose = 4`, optionally linked to the card through `linked_items` (threat-model I11). This keeps a card's number and its PIN in different records, behind different reveals, and never on one screen.
 
 ### 5.4 History envelope
 
@@ -264,7 +284,7 @@ Only security-relevant settings live here, so that weakening them requires the v
 |---|---|---|---|---|
 | 1 | `auto_lock_s` | uint | 120 | 30 – 900 |
 | 2 | `background_lock_s` | uint | 30 | 0 – 300 |
-| 3 | `clipboard_ttl_s` | uint | 60 | 30, 60, 120 |
+| 3 | `clipboard_ttl_s` | uint | 30 | 30, 60, 120. Applies to normal and concealed values. **Critical and critical-strict values (card numbers, CVVs, PINs, account numbers, banking passwords) are always cleared after a fixed 15 s**, which no setting changes |
 | 4 | `critical_window_s` | uint | 60 | 0 – 300 (0 = every time) |
 | 5 | `password_check_days` | uint | 14 | 7, 14, 30 |
 | 6 | `password_only` | bool | false | |
@@ -272,7 +292,9 @@ Only security-relevant settings live here, so that weakening them requires the v
 | 8 | `last_password_check` | uint | The vault's creation time | Required *(S-5; pending review)* |
 | 9 | `last_backup_at` | uint | | Optional |
 | 10 | `backup_reminder_days` | uint | 30 | 7 – 90 |
-| 11 | `home_sections` | array of `[item_type (uint), shown (bool)]` | Every type except Card, in the order Password, API key, Bank account, Identity, Note, Membership, Other; all shown | Each item type except Card appears exactly once |
+| 11 | `home_sections` | array of `[item_type (uint), shown (bool)]` | Every type except Card, in the order Password, API key, Bank account, PIN, Identity, Note, Membership, Other; all shown | Each item type except Card appears exactly once |
+| 12 | `backup_uri` | text | | Optional. The Storage Access Framework URI of the backup file the user chose, for example in Google Drive ([ADR-010](adr/ADR-010-backup-drive-saf.md)). Device-specific: **never exported**, so a backup's `settings` map never contains it |
+| 13 | `auto_backup` | bool | false | Re-export to `backup_uri` after changes, while unlocked (crypto spec §9.5). Turning it on needs the vault password, because that is when the export key is derived |
 
 "Never auto-lock" is not a representable value.
 
@@ -287,6 +309,7 @@ Hiding a section only removes it from the home screen. Its items stay in the vau
 | 1 | `rs` | bytes(16): the Recovery Secret |
 | 2 | `rs_id` | bytes(8) (crypto spec §9.2). *If reviewer question Q5 is accepted, this key is removed: `rs_id` then depends on each backup's salt and is computed per export (S-6).* |
 | 3 | `created_at` | uint |
+| 4 | `export_key` | map, optional *(PROPOSED; reviewer question Q9)*: `{1: kdf (as keyslot kdf, §4.4, export parameters), 2: kek (bytes 32)}`. The cached `KEK_exp` and the Argon2id parameters and `salt_exp` it was derived with (crypto spec §9.5). Present only while auto-backup is on; removed on any password change or Recovery Key regeneration |
 
 RS is kept inside the vault so that exports never require the user to type the Recovery Key, and so the periodic password check can open KS-REC (crypto spec §10).
 
@@ -315,6 +338,94 @@ As defined in crypto spec §7.2:
 
 History entries are listed with `revision = 1`; they are never edited, only added or deleted.
 
+### 5.9 Organisation (meta, kind 7)
+
+How the user's cards are organised, and where they were last looking. It lives in the encrypted vault, **never** in plaintext preferences or saved-instance state, because the banks a person uses say something about them (threat-model AS-4, T37). It is not security-relevant, so changing it never needs the vault password.
+
+| Key | Name | Type | Notes |
+|---|---|---|---|
+| 1 | `custom_banks` | array (≤ 200) of custom-bank maps | Required, possibly empty |
+| 2 | `last_card_view` | map | Optional. Restored after unlock (product plan §4, "Shopping: the round trip") |
+
+Custom-bank map:
+
+| Key | Name | Type | Notes |
+|---|---|---|---|
+| 1 | `id` | text | `u:` + 32 lowercase hex characters from the CSPRNG (§5.1). Unique in the array |
+| 2 | `name` | text | ≤ 64 bytes, as the user typed it |
+| 3 | `aliases` | array (≤ 16) of text | Optional. Other spellings, each ≤ 64 bytes |
+
+No two custom banks, and no custom bank and catalogue entry, may share a **normalised** name or alias (ADR-011). The app checks this before writing; on a clash it offers the existing bank instead.
+
+`last_card_view` map:
+
+| Key | Name | Type | Notes |
+|---|---|---|---|
+| 1 | `scope` | text | `all`, `unassigned`, or a bank id |
+| 2 | `filter` | uint | 0 All, 1 Credit, 2 Debit |
+
+The app writes `last_card_view` when the vault locks, before VK is zeroized, and only when it changed. A scope naming a bank that no longer has cards falls back to `all`. List scroll position is **not** stored; it lives in memory only.
+
+### 5.10 Templates (template version 1)
+
+A template fixes each field's `key`, `kind`, default `sensitivity` and `copyable` flag. The user may add `custom` fields to any item and may raise a sensitivity, never lower it (§5.1). "Copy" below means the copy button; the clipboard rules are in §5.5 and threat-model T11.
+
+**Card** (type 2). Index keys 12, 13, 16, 17 and 18 apply.
+
+| Key | Label | Kind | Sensitivity | Notes |
+|---|---|---|---|---|
+| `card.product` | Card name | text | 1 | For example "SBI Cashback". The issuer's product name |
+| `card.nickname` | Nickname | text | 1 | Optional. The user's own name for the card |
+| `card.issuer` | Bank | text | 1 | Display name of `bank_id`, kept in step with it. Absent when `bank_id` is |
+| `card.holder` | Name on card | text | 1 | |
+| `card.number` | Card number | pan | 3 | Digits only, 12–19, no spaces; the app formats it for display and copies it **without spaces** |
+| `card.expiry` | Expiry | expiry | 1 | `MM/YY` |
+| `card.network` | Network | text | 1 | One of `Visa`, `Mastercard`, `RuPay`, `American Express`, `Diners Club`, `Discover`, `JCB`, `UnionPay`, or absent if unknown. Suggested from the number's prefix at entry; the user can change it |
+| `card.cvv` | CVV | cvv | 3 | Opt-in only (§5.3) |
+| `card.user_note` | Your note | text | 1 | Optional, ≤ 500 bytes. Shown on the card and searched, for example "Check this card for Amazon offers". The app labels it as the user's own note, never as a verified benefit |
+| `card.customer_care` | Customer care | phone | 1 | Optional |
+
+- `title` is `card.nickname` if present, else `card.product` if present, else the bank's display name followed by " card". At least one of `card.nickname` and `card.product` is required.
+- `subtitle` is "<card kind> · <network> · •••• <last4>", leaving out the network when unknown, for example "Credit · Visa · •••• 1234".
+- Two cards may share a bank and a product name; nickname and `last4` tell them apart.
+
+**Bank account** (type 3). Index key 16 applies.
+
+| Key | Label | Kind | Sensitivity |
+|---|---|---|---|
+| `bank.issuer` | Bank | text | 1 (display name of `bank_id`) |
+| `bank.holder` | Account holder | text | 1 |
+| `bank.account_number` | Account number | account_number | 3 |
+| `bank.ifsc` | IFSC | routing_code | 1. Must match `^[A-Z]{4}0[A-Z0-9]{6}$` |
+| `bank.branch` | Branch | text | 1 |
+| `bank.customer_id` | Customer ID (CIF) | concealed | 2 |
+| `bank.netbanking_user` | Net-banking user ID | concealed | 2 |
+| `bank.netbanking_password` | Net-banking password | concealed | 3 |
+| `bank.transaction_password` | Transaction password | concealed | 3 |
+| `bank.app_password` | Mobile app password | concealed | 3 |
+| `bank.mpin` | MPIN | pin | 3 |
+| `bank.tpin` | TPIN | pin | 3 |
+| `bank.upi_pin` | UPI PIN | pin | 3 |
+| `bank.registered_mobile` | Registered mobile | phone | 1 |
+| `bank.rm_name` | Relationship manager | text | 1 |
+| `bank.rm_phone` | RM phone | phone | 1 |
+| `bank.concierge_phone` | Concierge / customer care | phone | 1 |
+
+Every field is optional except `bank.account_number`. Phone fields offer **Call**, which opens the dialler with the number filled in (`ACTION_DIAL`) and never places the call itself.
+
+**PIN** (type 9). Index key 19 applies.
+
+| Key | Label | Kind | Sensitivity |
+|---|---|---|---|
+| `pin.value` | PIN | pin | 3, or **4** when `pin_purpose = 4` (ATM or card PIN) |
+| `pin.label` | Used for | text | 1, for example "SBI locker 214" or "CDSL Easiest" |
+
+- `title` is `pin.label`.
+- When `pin_purpose = 4`, `pin.value` is critical-strict (4) and may not be lowered: every reveal and every copy needs a fresh biometric.
+- A PIN item may link to the card or bank account it belongs to (`linked_items`). The linked card's screen shows only "PIN stored separately", which opens the PIN item; it never shows, copies or counts the PIN's digits.
+
+**Login, Identity document, Secure note, Developer key, Membership and Other** keep their prototype templates until G0 review; they are unchanged by this revision.
+
 ## 6. Limits
 
 | Limit | Value |
@@ -335,7 +446,7 @@ After a keyslot opens (crypto spec §7):
 1. Verify `header_mac`.
 2. Decrypt the manifest; check that it matches the set of `item` and `item_history` ids (§5.8).
 3. Decrypt every index envelope; check each `revision` against the manifest.
-4. Decrypt the settings and recovery records.
+4. Decrypt the settings, recovery and organisation records. A vault created before the organisation record existed has none; the app creates it, empty, in the same transaction as its first write.
 
 Secret envelopes are **not** opened at unlock. Their `revision` is checked each time one is opened. Any failure means "This vault's data could not be verified. Nothing was changed." The vault stays locked.
 
@@ -398,7 +509,8 @@ Deterministic CBOR, padded to a multiple of 4096 bytes (crypto spec §9.3):
 |---|---|---|---|
 | 1 | `export_format` | uint | `1` |
 | 2 | `items` | array (≤ 10 000) of item maps | |
-| 3 | `settings` | map | As §5.5; restored so the user keeps their protection choices |
+| 3 | `settings` | map | As §5.5, without `backup_uri`; restored so the user keeps their protection choices |
+| 4 | `organisation` | map | As §5.9, without `last_card_view`. Restored with the items, so bank groups survive a restore |
 
 Item map:
 
@@ -415,6 +527,7 @@ The backup deliberately **leaves out** the Recovery Secret (the user types the R
 
 - **Restore** (new device): after import validation (crypto spec §9.4), the app creates a new vault with a **new VK** and the **same RS**, so the user's paper Recovery Kit stays valid. Items keep their ids.
 - **Merge** (existing vault): every imported item gets a **new id**, so it can never overwrite an existing record, and a tag "Imported YYYY-MM-DD".
+- **Custom banks on merge:** an imported custom bank whose normalised name matches an existing bank (catalogue or custom) is mapped onto it; any other gets a new `u:` id. Every imported item's `bank_id` is rewritten through that mapping in the staged copy, before the commit. Catalogue ids are kept as they are.
 
 ## 11. Questions for the G0 reviewer
 
@@ -424,3 +537,5 @@ The backup deliberately **leaves out** the Recovery Secret (the user types the R
 | F2 | Should the backup include the security log? (Proposed: no.) |
 | F3 | Are the settings ranges (§5.5) right, in particular allowing `critical_window_s = 300`? |
 | F4 | Normal-tier field values live in the index envelope and are decrypted at unlock (§5.2). Is that the right line, given that bank names and card expiry dates are then in memory for the whole session? |
+| F5 | Index keys 16–19 (`bank_id`, `card_kind`, `last4`, `pin_purpose`) and the Organisation record (§5.9) were added to format v1 on 2026-10-15, before the freeze. No build has been distributed, so no migration exists for them. Is adding them to v1, rather than starting v2, acceptable? |
+| F6 | `last4` repeats four digits of a critical value in the index (§5.2). The same digits were already in `subtitle`. Is a dedicated, checked key acceptable? |
