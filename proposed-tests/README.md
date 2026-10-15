@@ -11,4 +11,5 @@ written. From then on `python tools/frozen_tests.py check` (run in CI) fails if 
 |---|---|---|
 | 1. Test-freeze guard | [`tools/test_frozen_tests.py`](../tools/test_frozen_tests.py) | **Frozen 2026-10-15** by the owner; code written; 27/27 green |
 | 2. Bank catalogue and name normaliser | [`core/vault-core/tests/banks.rs`](../core/vault-core/tests/banks.rs) | **Frozen 2026-10-15** by the owner; code written (`vault_core::banks`); 17/17 green |
-| 3. Card, PIN and bank-account record rules | [`component-3/items.rs`](component-3/items.rs), moves to `core/vault-core/tests/items.rs` | **Waiting for the owner's review.** 28 tests. Checked: rustfmt clean, compiles and passes clippy `-D warnings` against a stub; a stub that accepts everything fails 27 of 28, every failure being a refused-item assertion |
+| 3. Card, PIN and bank-account record rules | [`core/vault-core/tests/items.rs`](../core/vault-core/tests/items.rs) | **Frozen 2026-10-15** by the owner; code written (`vault_core::item::validate`); 28/28 green |
+| 4. Organisation record (custom banks, last card view) | — | Next: tests to be proposed here |

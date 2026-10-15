@@ -11,6 +11,7 @@ pub mod banks;
 pub mod cbor;
 pub mod error;
 pub mod integrity;
+pub mod item;
 pub mod keyslot;
 pub mod labels;
 pub mod prims;
