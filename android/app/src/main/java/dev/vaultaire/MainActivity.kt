@@ -8,12 +8,16 @@ import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.view.WindowManager
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
+import dev.vaultaire.core.KeyLevel
+import dev.vaultaire.security.Keystore
 import dev.vaultaire.ui.AppGateway
 import dev.vaultaire.ui.VaultaireApp
 
@@ -41,6 +45,10 @@ class MainActivity : FragmentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+        )
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         window.decorView.importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
@@ -51,7 +59,10 @@ class MainActivity : FragmentActivity() {
             this, screenOff, IntentFilter(Intent.ACTION_SCREEN_OFF), ContextCompat.RECEIVER_NOT_EXPORTED,
         )
         ProcessLifecycleOwner.get().lifecycle.addObserver(processLifecycle)
-        setContent { VaultaireApp(gateway, testBuild = BuildConfig.DEBUG) }
+        // The "Test build" warning says keys are not hardware-protected, so it shows only when that
+        // is true: a debug build on a phone (or emulator) whose keys are in software.
+        val softwareKeys = BuildConfig.DEBUG && runCatching { Keystore.probeLevel() }.getOrDefault(KeyLevel.SOFTWARE) == KeyLevel.SOFTWARE
+        setContent { VaultaireApp(gateway, testBuild = softwareKeys) }
     }
 
     override fun onUserInteraction() {

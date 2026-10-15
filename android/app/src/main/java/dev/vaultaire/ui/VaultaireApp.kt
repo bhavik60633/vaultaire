@@ -1,7 +1,20 @@
 package dev.vaultaire.ui
 
 import androidx.compose.foundation.Image
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -85,7 +98,11 @@ fun VaultaireApp(gateway: VaultGateway, testBuild: Boolean) {
         Box(
             Modifier
                 .fillMaxSize()
-                .background(Obsidian.bg),
+                .background(Obsidian.bg)
+                .ambientLight()
+                // Clear of the status bar, the navigation bar and the keyboard, so a field being
+                // typed in always stays in view.
+                .windowInsetsPadding(WindowInsets.safeDrawing),
         ) {
             when {
                 locked -> LockFlow(gateway, testBuild) {
@@ -149,6 +166,44 @@ private fun Screen(
             actions()
             CapsLine(BETA_WARNING)
         }
+    }
+}
+
+/**
+ * The light the whole app sits in: a soft gold glow from above that drifts slowly across the
+ * page, as if from a lamp. Still when the phone's animations are off.
+ */
+@Composable
+private fun Modifier.ambientLight(): Modifier {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val motion = remember {
+        android.provider.Settings.Global.getFloat(
+            context.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f,
+        ) > 0f
+    }
+    val drift = if (motion) {
+        rememberInfiniteTransition(label = "light").animateFloat(
+            0f, 1f, infiniteRepeatable(tween(14_000, easing = LinearEasing), RepeatMode.Reverse), label = "x",
+        ).value
+    } else {
+        0.5f
+    }
+    return drawBehind {
+        val w = size.width
+        drawRect(
+            Brush.radialGradient(
+                listOf(Obsidian.accent.copy(alpha = 0.13f), Obsidian.accent.copy(alpha = 0.04f), Color.Transparent),
+                center = Offset(w * (0.3f + 0.4f * drift), -w * 0.18f),
+                radius = w * 1.05f,
+            ),
+        )
+        drawRect(
+            Brush.verticalGradient(
+                listOf(Color.Transparent, Color.Black.copy(alpha = 0.35f)),
+                startY = size.height * 0.6f,
+                endY = size.height,
+            ),
+        )
     }
 }
 

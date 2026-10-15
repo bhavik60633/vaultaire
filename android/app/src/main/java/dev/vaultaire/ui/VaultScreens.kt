@@ -35,6 +35,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.onClick
@@ -94,8 +105,6 @@ fun startPage(data: VaultData): Page =
         Page.Home
     }
 
-private val R12 = RoundedCornerShape(12.dp)
-
 /** The unlocked vault: home, bank pages, entry pages, forms and settings. */
 @Composable
 fun VaultArea(
@@ -116,10 +125,33 @@ fun VaultArea(
         page = next
     }
 
-    when (val p = page) {
-        Page.Home -> HomePage(data, version, failures, onDismissFailures, onLock, ::go, frame)
-        is Page.Bank -> BankPage(data, p.scope, version, ::go, frame)
-        is Page.Entry -> key(p.id) { EntryPage(data, p.id, version, changed, ::go, back = { go(p.from) }, frame) }
+    // Pages cross-fade and settle into place, the way the card itself moves.
+    AnimatedContent(
+        targetState = page,
+        transitionSpec = {
+            (fadeIn(tween(320, delayMillis = 60)) + scaleIn(tween(380, easing = FastOutSlowInEasing), initialScale = 0.97f)) togetherWith
+                fadeOut(tween(160))
+        },
+        label = "page",
+    ) { p -> PageContent(p, data, version, changed, failures, onDismissFailures, onLock, ::go, frame) }
+}
+
+@Composable
+private fun PageContent(
+    p: Page,
+    data: VaultData,
+    version: Int,
+    changed: () -> Unit,
+    failures: Int,
+    onDismissFailures: () -> Unit,
+    onLock: () -> Unit,
+    go: (Page) -> Unit,
+    frame: Frame,
+) {
+    when (p) {
+        Page.Home -> HomePage(data, version, failures, onDismissFailures, onLock, go, frame)
+        is Page.Bank -> BankPage(data, p.scope, version, go, frame)
+        is Page.Entry -> key(p.id) { EntryPage(data, p.id, version, changed, go, back = { go(p.from) }, frame) }
         is Page.EditCard -> CardForm(data, p.id, p.bankId, changed, done = { go(it ?: p.from) }, frame)
         is Page.EditPin -> PinForm(data, p.id, changed, done = { go(it ?: p.from) }, frame)
         is Page.EditAccount -> AccountForm(data, p.id, changed, done = { go(it ?: p.from) }, frame)
@@ -146,72 +178,149 @@ private fun HomePage(
     var query by remember { mutableStateOf("") }
     val all = remember(version) { session.summaries() }
     val groups = remember(version) { session.bankGroups() }
+    val autoLock = remember(version) { runCatching { session.settings().autoLockS }.getOrNull() }
 
     frame({}) {
-        Column(Modifier.tag("home"), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Row(verticalAlignment = Alignment.Top) {
+        Column(Modifier.tag("home"), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(Modifier.appear(0), verticalAlignment = Alignment.Top) {
                 Column(Modifier.weight(1f)) {
                     FieldLabel("Vault")
-                    Text(greeting(), style = type.display)
+                    Text(greeting(), style = type.display, maxLines = 1)
                 }
                 IconAction("sliders", "Settings", { go(Page.Settings) }, Modifier.tag("settings"))
                 IconAction("lock", "Lock", onLock, Modifier.tag("lock"), tint = Obsidian.accent)
             }
+            Box(Modifier.appear(1)) {
+                ProtectionPill(autoLock?.let { "Locks after ${duration(it)}" } ?: "Locked when you leave") { go(Page.Settings) }
+            }
             if (failures > 0) {
                 val noun = if (failures == 1) "attempt" else "attempts"
-                Notice("$failures failed password $noun since your last unlock", textModifier = Modifier.tag("error"))
-                GhostButton("Dismiss", onDismiss)
+                InlineNotice(
+                    "$failures failed password $noun since your last unlock",
+                    "Dismiss",
+                    onDismiss,
+                    textModifier = Modifier.tag("error"),
+                )
             }
-            SearchField(query, all.size) { query = it }
+            Box(Modifier.appear(2)) { SearchField(query, all.size) { query = it } }
             if (query.isNotBlank()) {
                 val found = remember(version, query) { session.search(query) }
                 if (found.isEmpty()) {
                     Text("Nothing found", style = type.section)
                 } else {
-                    Group { found.forEach { EntryRow(it, Modifier.tag("entry:${it.id.hex}")) { go(Page.Entry(it.id, Page.Home)) } } }
+                    Group {
+                        found.forEachIndexed { i, e ->
+                            if (i > 0) Divider()
+                            EntryRow(e, Modifier.tag("entry:${e.id.hex}")) { go(Page.Entry(e.id, Page.Home)) }
+                        }
+                    }
                 }
             } else {
-                HomeSections(data, all, groups, go)
+                HomeSections(all, groups, go)
             }
+            Spacer(Modifier.height(8.dp))
         }
     }
 }
 
+private fun duration(seconds: Long): String = when {
+    seconds < 60 -> "$seconds s"
+    seconds % 60 == 0L -> "${seconds / 60} min"
+    else -> "${seconds / 60} min ${seconds % 60} s"
+}
+
 @Composable
-private fun HomeSections(data: VaultData, all: List<EntrySummary>, groups: List<dev.vaultaire.core.BankGroup>, go: (Page) -> Unit) {
+private fun HomeSections(all: List<EntrySummary>, groups: List<dev.vaultaire.core.BankGroup>, go: (Page) -> Unit) {
     val type = LocalVaultType.current
     val cards = all.filter { it.kind == EntryKind.CARD }
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text("Browse by bank", style = type.section)
-        Spacer(Modifier.width(8.dp))
-        Text("${cards.size}", style = type.small.copy(color = Obsidian.text3))
-        Grow()
-        SmallButton("Add card", "plus", Modifier.tag("addCard")) { go(Page.EditCard(null, null, Page.Home)) }
-    }
-    if (all.isEmpty()) {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("Nothing here yet", style = type.display)
-            Text("Cards, PINs and bank accounts you add will appear here.", style = type.small.copy(color = Obsidian.text2))
-        }
-    }
-    if (cards.isNotEmpty()) {
-        val tiles = listOf(TileInfo("all", "All cards", cards.size, cards.count { it.cardKind == CardKind.DEBIT }, cards.count { it.cardKind == CardKind.CREDIT }, Scope.All)) +
-            groups.map { g ->
-                TileInfo(g.bankId ?: "unassigned", g.name, g.total, g.debit, g.credit, g.bankId?.let { Scope.Bank(it) } ?: Scope.Unassigned)
+    Column(Modifier.appear(3), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                Text("Browse by bank", style = type.section, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                Spacer(Modifier.width(8.dp))
+                Text("${cards.size}", style = type.small.copy(color = Obsidian.text3))
             }
-        tiles.chunked(2).forEach { pair ->
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                pair.forEach { t -> BankTile(t, Modifier.weight(1f)) { go(Page.Bank(t.scope)) } }
-                if (pair.size == 1) Spacer(Modifier.weight(1f))
+            Spacer(Modifier.width(8.dp))
+            SmallButton("Add card", "plus", Modifier.tag("addCard")) { go(Page.EditCard(null, null, Page.Home)) }
+        }
+        if (all.isEmpty()) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(R12)
+                    .border(1.dp, Obsidian.hair2, R12)
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text("Nothing here yet", style = type.display)
+                Text("Cards, PINs and bank accounts you add will appear here.", style = type.small.copy(color = Obsidian.text2))
+            }
+        }
+        if (cards.isNotEmpty()) {
+            val tiles = listOf(TileInfo("all", "All cards", cards.size, cards.count { it.cardKind == CardKind.DEBIT }, cards.count { it.cardKind == CardKind.CREDIT }, Scope.All)) +
+                groups.map { g ->
+                    TileInfo(g.bankId ?: "unassigned", g.name, g.total, g.debit, g.credit, g.bankId?.let { Scope.Bank(it) } ?: Scope.Unassigned)
+                }
+            tiles.chunked(2).forEach { pair ->
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    pair.forEach { t -> BankTile(t, Modifier.weight(1f)) { go(Page.Bank(t.scope)) } }
+                    if (pair.size == 1) Spacer(Modifier.weight(1f))
+                }
             }
         }
     }
     val favourites = all.filter { it.favourite }
-    if (favourites.isNotEmpty()) Section("Favourites", favourites, "favourites", go)
+    if (favourites.isNotEmpty()) {
+        Column(Modifier.appear(4), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            SectionHeader("Favourites", favourites.size)
+            Section(favourites, "favourites", go)
+        }
+    }
     val accounts = all.filter { it.kind == EntryKind.BANK_ACCOUNT }
-    Section("Bank accounts", accounts, "section:accounts", go, addTag = "addAccount") { go(Page.EditAccount(null, Page.Home)) }
+    Column(Modifier.appear(5), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        SectionHeader("Bank accounts", accounts.size, "addAccount", "Add a bank account") { go(Page.EditAccount(null, Page.Home)) }
+        if (accounts.isEmpty()) {
+            EmptyRow("Account numbers, IFSC and net-banking logins") { go(Page.EditAccount(null, Page.Home)) }
+        } else {
+            Section(accounts, "section:accounts", go)
+        }
+    }
     val pins = all.filter { it.kind == EntryKind.PIN }
-    Section("PINs", pins, "section:pins", go, addTag = "addPin") { go(Page.EditPin(null, Page.Home)) }
+    Column(Modifier.appear(6), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        SectionHeader("PINs", pins.size, "addPin", "Add a PIN") { go(Page.EditPin(null, Page.Home)) }
+        if (pins.isEmpty()) {
+            EmptyRow("Locker, demat, app and ATM PINs") { go(Page.EditPin(null, Page.Home)) }
+        } else {
+            Section(pins, "section:pins", go)
+        }
+    }
+}
+
+/** An empty section: a quiet dashed row that says what goes there. */
+@Composable
+private fun EmptyRow(text: String, onClick: () -> Unit) {
+    val type = LocalVaultType.current
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(R12)
+            .drawBehind {
+                drawRoundRect(
+                    Obsidian.hair2,
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(12.dp.toPx()),
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(
+                        1.dp.toPx(),
+                        pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 5.dp.toPx())),
+                    ),
+                )
+            }
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text, style = type.small.copy(color = Obsidian.text3), modifier = Modifier.weight(1f))
+        VIcon("plus", tint = Obsidian.text3, size = 16.dp)
+    }
 }
 
 private data class TileInfo(val key: String, val name: String, val total: Int, val debit: Int, val credit: Int, val scope: Scope)
@@ -225,58 +334,63 @@ private fun kindCounts(debit: Int, credit: Int): String =
 private fun BankTile(t: TileInfo, modifier: Modifier, onClick: () -> Unit) {
     val type = LocalVaultType.current
     val unassigned = t.scope == Scope.Unassigned
+    val all = t.scope == Scope.All
     Column(
         modifier
             .clip(R12)
-            .background(Obsidian.raised)
-            .border(1.dp, if (unassigned) Obsidian.hair2 else Obsidian.hair, R12)
+            .background(
+                Brush.verticalGradient(
+                    if (all) {
+                        listOf(Obsidian.accent.copy(alpha = 0.10f), Obsidian.raised)
+                    } else {
+                        listOf(Obsidian.elev.copy(alpha = 0.9f), Obsidian.raised)
+                    },
+                ),
+            )
+            .border(1.dp, if (all) Obsidian.accent.copy(alpha = 0.28f) else if (unassigned) Obsidian.hair2 else Obsidian.hair, R12)
             .clickable(role = Role.Button, onClick = onClick)
             .tag("bank:${t.key}")
-            .padding(14.dp),
+            .heightIn(min = 76.dp)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Row(verticalAlignment = Alignment.Top) {
-            Text(t.name, style = type.small.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold), modifier = Modifier.weight(1f))
+            Text(
+                t.name,
+                style = type.small.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(6.dp))
             Text("${t.total}", style = type.small.copy(color = Obsidian.accent))
         }
-        Text(kindCounts(t.debit, t.credit).ifEmpty { cardCount(t.total) }, style = type.faint.copy(color = Obsidian.text2))
+        Text(
+            kindCounts(t.debit, t.credit).ifEmpty { cardCount(t.total) },
+            style = type.faint.copy(color = Obsidian.text2),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
+/** A titled list on home; the whole list reads as one, each row opens its entry. */
 @Composable
-private fun Section(
-    title: String,
-    entries: List<EntrySummary>,
-    tag: String,
-    go: (Page) -> Unit,
-    addTag: String? = null,
-    onAdd: (() -> Unit)? = null,
-) {
-    val type = LocalVaultType.current
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(title, style = type.section)
-        Spacer(Modifier.width(8.dp))
-        Text("${entries.size}", style = type.small.copy(color = Obsidian.text3))
-        Grow()
-        if (addTag != null && onAdd != null) SmallButton("Add", "plus", Modifier.tag(addTag), onAdd)
-    }
-    if (entries.isNotEmpty()) {
-        Column(
-            Modifier
-                .tag(tag)
-                .semantics(mergeDescendants = true) {}
-                .clip(R12)
-                .border(1.dp, Obsidian.hair, R12),
-        ) {
-            entries.forEach { e ->
-                // Taps without a merge boundary, so the section reads as one list.
-                EntryRowContent(
-                    e,
-                    Modifier
-                        .semantics { role = Role.Button; onClick { go(Page.Entry(e.id, Page.Home)); true } }
-                        .pointerInput(e.id) { detectTapGestures { go(Page.Entry(e.id, Page.Home)) } },
-                )
-            }
+private fun Section(entries: List<EntrySummary>, tag: String, go: (Page) -> Unit) {
+    Group(
+        Modifier
+            .tag(tag)
+            .semantics(mergeDescendants = true) {},
+    ) {
+        entries.forEachIndexed { i, e ->
+            if (i > 0) Divider()
+            // Taps without a merge boundary, so the section reads as one list.
+            EntryRowContent(
+                e,
+                Modifier
+                    .semantics { role = Role.Button; onClick { go(Page.Entry(e.id, Page.Home)); true } }
+                    .pointerInput(e.id) { detectTapGestures { go(Page.Entry(e.id, Page.Home)) } },
+            )
         }
     }
 }
@@ -287,7 +401,7 @@ private fun SearchField(query: String, count: Int, onChange: (String) -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
-            .height(52.dp)
+            .heightIn(min = 50.dp)
             .clip(R12)
             .background(Obsidian.raised)
             .border(1.dp, Obsidian.hair, R12)
@@ -297,7 +411,7 @@ private fun SearchField(query: String, count: Int, onChange: (String) -> Unit) {
         VIcon("search", size = 20.dp)
         Spacer(Modifier.width(10.dp))
         Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-            if (query.isEmpty()) Text("Search $count items", style = type.body.copy(color = Obsidian.text3))
+            if (query.isEmpty()) Text("Search $count items", style = type.body.copy(color = Obsidian.text3), maxLines = 1)
             androidx.compose.foundation.text.BasicTextField(
                 value = query,
                 onValueChange = onChange,
@@ -316,28 +430,17 @@ private fun SearchField(query: String, count: Int, onChange: (String) -> Unit) {
 private fun SmallButton(text: String, icon: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Row(
         modifier
-            .height(40.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .border(1.dp, Obsidian.hair2, RoundedCornerShape(8.dp))
+            .heightIn(min = 40.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .border(1.dp, Obsidian.hair2, RoundedCornerShape(10.dp))
             .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = 12.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         VIcon(icon, tint = Obsidian.accent, size = 18.dp)
         Spacer(Modifier.width(8.dp))
-        Text(text, style = LocalVaultType.current.small.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Medium))
+        Text(text, style = LocalVaultType.current.small.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Medium), maxLines = 1, softWrap = false)
     }
-}
-
-@Composable
-private fun Group(content: @Composable ColumnScope.() -> Unit) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .clip(R12)
-            .border(1.dp, Obsidian.hair, R12),
-        content = content,
-    )
 }
 
 /** A list row: title, then kind · network · last four. Never a full number, CVV or PIN. */
@@ -352,33 +455,41 @@ private fun EntryRowContent(e: EntrySummary, modifier: Modifier) {
     Row(
         modifier
             .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .heightIn(min = 60.dp)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             Modifier
                 .size(40.dp)
-                .clip(RoundedCornerShape(8.dp))
+                .clip(RoundedCornerShape(9.dp))
                 .background(Obsidian.elev)
-                .border(1.dp, Obsidian.hair, RoundedCornerShape(8.dp)),
+                .border(1.dp, Obsidian.hair, RoundedCornerShape(9.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            VIcon(
-                when (e.kind) {
-                    EntryKind.CARD -> "card"
-                    EntryKind.PIN -> "pinpad"
-                    EntryKind.BANK_ACCOUNT -> "bank"
-                    EntryKind.OTHER -> "other"
-                },
-                size = 20.dp,
-            )
+            if (e.kind == EntryKind.CARD) {
+                CardThumb(e.finish ?: CardFinish.OBSIDIAN)
+            } else {
+                VIcon(
+                    when (e.kind) {
+                        EntryKind.PIN -> "pinpad"
+                        EntryKind.BANK_ACCOUNT -> "bank"
+                        else -> "other"
+                    },
+                    size = 20.dp,
+                )
+            }
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(e.title, style = type.body)
-            e.subtitle?.let { Text(it, style = type.faint.copy(color = Obsidian.text2)) }
+            Text(e.title, style = type.body, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            e.subtitle?.let { Text(it, style = type.faint.copy(color = Obsidian.text2), maxLines = 1, overflow = TextOverflow.Ellipsis) }
         }
-        if (e.favourite) VIcon("star", tint = Obsidian.accent, size = 14.dp)
+        if (e.favourite) {
+            Spacer(Modifier.width(6.dp))
+            VIcon("star", tint = Obsidian.accent, size = 14.dp)
+        }
+        Spacer(Modifier.width(4.dp))
         VIcon("chev", size = 18.dp, tint = Obsidian.text3)
     }
 }
@@ -445,7 +556,12 @@ private fun BankPage(data: VaultData, scope: Scope, version: Int, go: (Page) -> 
             Text("No $name$word cards", style = type.section)
             Text("Try another filter.", style = type.small.copy(color = Obsidian.text2))
         } else {
-            Group { shown.forEach { EntryRow(it, Modifier.tag("entry:${it.id.hex}")) { go(Page.Entry(it.id, Page.Bank(scope))) } } }
+            Group(Modifier.appear(2)) {
+                shown.forEachIndexed { i, e ->
+                    if (i > 0) Divider()
+                    EntryRow(e, Modifier.tag("entry:${e.id.hex}")) { go(Page.Entry(e.id, Page.Bank(scope))) }
+                }
+            }
         }
         val bankId = (scope as? Scope.Bank)?.bankId
         SecondaryButton(
@@ -467,7 +583,7 @@ fun FilterChip(text: String, selected: Boolean, tag: String, onClick: () -> Unit
             .tag(tag)
             .padding(horizontal = 12.dp, vertical = 8.dp),
     ) {
-        Text(text, style = LocalVaultType.current.small.copy(color = if (selected) Obsidian.text else Obsidian.text2))
+        Text(text, style = LocalVaultType.current.small.copy(color = if (selected) Obsidian.text else Obsidian.text2), maxLines = 1, softWrap = false)
     }
 }
 
@@ -920,10 +1036,11 @@ private fun PinForm(data: VaultData, id: EntryId?, changed: () -> Unit, done: (P
             PinPurpose.APP_LOGIN to "App login", PinPurpose.MPIN to "MPIN", PinPurpose.TPIN to "TPIN",
             PinPurpose.DOOR_ALARM to "Door / alarm", PinPurpose.OTHER to "Other",
         )
-        purposes.chunked(4).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                row.forEach { (p, text) -> FilterChip(text, purpose == p, "purpose:${p.name}") { purpose = p } }
-            }
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            purposes.forEach { (p, text) -> FilterChip(text, purpose == p, "purpose:${p.name}") { purpose = p } }
         }
         if (purpose == PinPurpose.ATM_PIN) {
             Notice("An ATM PIN is kept as its own entry and needs your fingerprint every time. It is never shown on the card.")
@@ -1004,6 +1121,10 @@ private fun AccountForm(data: VaultData, id: EntryId?, changed: () -> Unit, done
 
 // ---------- settings ----------
 
+private val AUTO_LOCK = listOf(30L to "30 s", 60L to "1 min", 120L to "2 min", 300L to "5 min", 900L to "15 min")
+private val BACKGROUND_LOCK = listOf(0L to "At once", 30L to "30 s", 60L to "1 min", 300L to "5 min")
+private val CLIPBOARD = listOf(30L to "30 s", 60L to "1 min", 120L to "2 min")
+
 @Composable
 private fun SettingsPage(data: VaultData, back: () -> Unit, frame: Frame) {
     val type = LocalVaultType.current
@@ -1017,6 +1138,7 @@ private fun SettingsPage(data: VaultData, back: () -> Unit, frame: Frame) {
         try {
             session.updateSettings(next, null)
             settings = session.settings()
+            pending = null
             data.settingsChanged()
         } catch (e: VaultException) {
             if (e.code == "password_required") {
@@ -1040,35 +1162,89 @@ private fun SettingsPage(data: VaultData, back: () -> Unit, frame: Frame) {
         password = ""
     }
 
+    // What the user is looking at: the saved settings, or the choice waiting for the password.
+    val shown = pending ?: settings
     frame({}) {
         IconAction("back", "Back to vault", back, Modifier.tag("back"))
-        Text("Settings", style = type.displayL)
-        Choice("Lock after no use", listOf(30L to "30 s", 60L to "1 min", 120L to "2 min", 300L to "5 min", 900L to "15 min"), settings.autoLockS, "autoLock") {
-            apply(settings.copy(autoLockS = it))
+        Text("Settings", style = type.displayL, modifier = Modifier.appear(0))
+
+        Column(Modifier.appear(1), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            GroupLabel("Protection")
+            Group {
+                SettingBlock("Auto-lock", "After ${duration(shown.autoLockS)} · ${background(shown.backgroundLockS)}") {
+                    Segmented(AUTO_LOCK, settings.autoLockS, "autoLock") { apply(settings.copy(autoLockS = it)) }
+                    Text("In the background", style = type.faint, modifier = Modifier.padding(top = 4.dp))
+                    Segmented(BACKGROUND_LOCK, settings.backgroundLockS, "backgroundLock") { apply(settings.copy(backgroundLockS = it)) }
+                }
+                Divider()
+                SettingBlock("Clear clipboard", "15 s for card numbers, CVVs and PINs · ${duration(shown.clipboardTtlS)} for the rest") {
+                    Segmented(CLIPBOARD, settings.clipboardTtlS, "clipboard") { apply(settings.copy(clipboardTtlS = it)) }
+                }
+                Divider()
+                SettingBlock("Card numbers, CVVs and PINs", "Fingerprint again after ${duration(settings.criticalWindowS)} · ATM PINs every time") {}
+            }
         }
-        Choice("Lock in the background after", listOf(0L to "At once", 30L to "30 s", 60L to "1 min", 300L to "5 min"), settings.backgroundLockS, "backgroundLock") {
-            apply(settings.copy(backgroundLockS = it))
+
+        androidx.compose.animation.AnimatedVisibility(
+            visible = pending != null,
+            enter = androidx.compose.animation.fadeIn(tween(220)) + androidx.compose.animation.expandVertically(tween(280)),
+            exit = androidx.compose.animation.fadeOut(tween(160)) + androidx.compose.animation.shrinkVertically(tween(220)),
+        ) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(R12)
+                    .background(Obsidian.warnSoft)
+                    .border(1.dp, Obsidian.warnLine, R12)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    VIcon("lock", tint = Obsidian.warn, size = 18.dp)
+                    Spacer(Modifier.width(10.dp))
+                    Text("This makes the vault less strict, so it needs your vault password.", style = type.small)
+                }
+                VaultField(password, { password = it }, "Vault password", secret = true, fieldModifier = Modifier.tag("settingsPassword"))
+                error?.let { Text(it, style = type.small.copy(color = Obsidian.crit), modifier = Modifier.tag("error")) }
+                PrimaryButton("Confirm", ::confirm, Modifier.tag("confirmSettings"), enabled = password.isNotEmpty())
+                GhostButton("Keep it as it is", {
+                    pending = null
+                    password = ""
+                    error = null
+                })
+            }
         }
-        Choice("Clear copied names and other details after", listOf(30L to "30 s", 60L to "1 min", 120L to "2 min"), settings.clipboardTtlS, "clipboard") {
-            apply(settings.copy(clipboardTtlS = it))
+
+        Column(Modifier.appear(2), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            GroupLabel("About")
+            Group {
+                InfoRow("Version", dev.vaultaire.BuildConfig.VERSION_NAME)
+                Divider()
+                InfoRow("Stored", "This phone only")
+                Divider()
+                InfoRow("Licence", "GPL-3.0-or-later")
+            }
         }
-        Text("Card numbers, CVVs and PINs are always cleared after 15 s.", style = type.faint)
-        if (pending != null) {
-            Notice("This makes the vault less strict, so it needs your vault password.")
-            VaultField(password, { password = it }, "Vault password", secret = true, fieldModifier = Modifier.tag("settingsPassword"))
-            error?.let { Text(it, style = type.small.copy(color = Obsidian.crit), modifier = Modifier.tag("error")) }
-            PrimaryButton("Confirm", ::confirm, Modifier.tag("confirmSettings"), enabled = password.isNotEmpty())
-            GhostButton("Cancel", { pending = null })
+        Box(Modifier.appear(3)) {
+            Notice("Unaudited beta. Do not store real credentials until an independent security review is published.")
         }
     }
 }
 
+private fun background(seconds: Long): String = if (seconds == 0L) "at once in background" else "${duration(seconds)} in background"
+
+/** One setting: its name and current value, and the choices under them. */
 @Composable
-private fun Choice(title: String, options: List<Pair<Long, String>>, current: Long, tag: String, onPick: (Long) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        FieldLabel(title)
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            options.forEach { (value, label) -> FilterChip(label, current == value, "$tag:$value") { onPick(value) } }
-        }
+private fun SettingBlock(title: String, value: String, choices: @Composable ColumnScope.() -> Unit) {
+    val type = LocalVaultType.current
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(title, style = type.body)
+        Text(value, style = type.small.copy(color = Obsidian.text2))
+        choices()
     }
 }

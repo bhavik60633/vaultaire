@@ -78,13 +78,10 @@ class AppGateway(private val activity: FragmentActivity, private val debugBuild:
             val alias = info.bioAlias ?: return false
             val sealed = info.bioSealed ?: return false
             val key = Keystore.load(alias) ?: return false
-            val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply {
-                init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, sealed.iv))
-                updateAAD(BIO_AAD)
-            }
+            val cipher = bioCipher(key, sealed.iv)
             val released = authenticate(Prompts.reveal(), BiometricPrompt.CryptoObject(cipher))
                 ?.cryptoObject?.cipher ?: return false
-            released.doFinal(sealed.blob).fill(0)
+            openSealed(released, sealed.blob).fill(0)
             revealGate.biometricConfirmed()
             autoLock.userActivity()
             true
@@ -164,13 +161,10 @@ class AppGateway(private val activity: FragmentActivity, private val debugBuild:
             val alias = info.bioAlias ?: return false
             val sealed = info.bioSealed ?: return false
             val key = Keystore.load(alias) ?: return false
-            val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply {
-                init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, sealed.iv))
-                updateAAD(BIO_AAD)
-            }
+            val cipher = bioCipher(key, sealed.iv)
             val released = authenticate(Prompts.unlock(), BiometricPrompt.CryptoObject(cipher))
                 ?.cryptoObject?.cipher ?: return false
-            val slotKey = released.doFinal(sealed.blob)
+            val slotKey = openSealed(released, sealed.blob)
             try {
                 val bio = ReleasedBioKey(Keystore.level(key), slotKey, SealedSlotKey(sealed.iv, sealed.blob))
                 open(withContext(Dispatchers.Default) { engine.unlockWithBiometric(bio) })
@@ -242,6 +236,20 @@ class AppGateway(private val activity: FragmentActivity, private val debugBuild:
         session?.lock()
         session = null
         unlocked.value = false
+    }
+
+    /**
+     * The cipher that a fingerprint prompt releases. Nothing may be fed to it before the prompt:
+     * `K_bio` needs a fingerprint for every use, and the Keystore refuses even the associated data
+     * of an unauthenticated operation (it holds that refusal back until the decryption itself).
+     */
+    private fun bioCipher(key: javax.crypto.SecretKey, iv: ByteArray): Cipher =
+        Cipher.getInstance("AES/GCM/NoPadding").apply { init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, iv)) }
+
+    /** Opens the sealed slot key with a cipher the fingerprint has just released. */
+    private fun openSealed(released: Cipher, blob: ByteArray): ByteArray {
+        released.updateAAD(BIO_AAD)
+        return released.doFinal(blob)
     }
 
     /** The phone's screen lock, when `K_pwd`'s 30-second window has passed (crypto spec §4.3). */

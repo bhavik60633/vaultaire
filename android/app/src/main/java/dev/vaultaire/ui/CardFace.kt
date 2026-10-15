@@ -579,3 +579,24 @@ private fun TurnButton(turned: Boolean, onTurn: () -> Unit) {
         )
     }
 }
+
+/** A card in miniature, in its finish, for list rows (prototype `.mini`). */
+@Composable
+fun CardThumb(finish: CardFinish, modifier: Modifier = Modifier) {
+    val colors = palette(finish)
+    Box(
+        modifier
+            .size(width = 30.dp, height = 19.dp)
+            .clip(RoundedCornerShape(3.5.dp))
+            .background(Brush.linearGradient(listOf(colors.top, colors.bottom)))
+            .border(1.dp, Color.White.copy(alpha = if (colors.light) 0.30f else 0.12f), RoundedCornerShape(3.5.dp)),
+    ) {
+        Box(
+            Modifier
+                .padding(start = 4.dp, top = 6.dp)
+                .size(width = 6.dp, height = 4.5.dp)
+                .clip(RoundedCornerShape(1.dp))
+                .background(Color(0xFFD9BC7C)),
+        )
+    }
+}

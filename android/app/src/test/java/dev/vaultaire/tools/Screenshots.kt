@@ -104,7 +104,16 @@ class Screenshots {
     }
 
     @Test
-    fun vault() {
+    fun vault() = vaultShots("")
+
+    /** The same screens with the phone's text made larger, as many people set it. */
+    @Test
+    fun vaultLargeText() {
+        org.robolectric.RuntimeEnvironment.setFontScale(1.3f)
+        vaultShots("large-")
+    }
+
+    private fun vaultShots(prefix: String) {
         val dir = Files.createTempDirectory("vaultaire-shots").toFile()
         val vault = RealVault(ApplicationProvider.getApplicationContext(), dir)
         try {
@@ -124,23 +133,23 @@ class Screenshots {
                 RealVault.NOW,
             )
             compose.setContent { VaultaireApp(vault, testBuild = false) }
-            save("11-home")
+            save(prefix + "11-home")
             click("bank:in.sbi")
-            save("12-bank-sbi")
+            save(prefix + "12-bank-sbi")
             click("filter:credit")
-            save("13-bank-sbi-credit")
+            save(prefix + "13-bank-sbi-credit")
             click("entry:${ids[0].hex}")
-            save("14-card")
+            save(prefix + "14-card")
             click("reveal:card.number")
             click("copy:card.number")
-            save("15-card-revealed-copied")
+            save(prefix + "15-card-revealed-copied")
             click("back")
             click("back")
             click("addCard")
-            save("16-add-card")
+            save(prefix + "16-add-card")
             click("back")
             click("settings")
-            save("17-settings")
+            save(prefix + "17-settings")
         } finally {
             vault.lock()
             dir.deleteRecursively()
