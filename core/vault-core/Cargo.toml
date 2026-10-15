@@ -18,6 +18,7 @@ zeroize.workspace = true
 getrandom.workspace = true
 minicbor.workspace = true
 unicode-normalization.workspace = true
+rusqlite.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]

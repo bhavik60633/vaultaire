@@ -1,5 +1,9 @@
 # Frozen tests (product plan §7). CI fails if any file below changes.
 # Only the owner adds or removes lines here; a removed line is an unfreeze and needs a reason in its commit.
+7c459984f6de406f8571d073cec9793279fe90ef477aaff7017c60011202dda8  core/vault-core/tests/backup_banks.rs
 887d02919d278c2ae2e69f1ae1bdae0a112de163fa7a35b60dad5e116d245ac4  core/vault-core/tests/banks.rs
+cf421fd3d73d6914c1ee461ad059fcd7e44f45b3ddc3de91ba96383a4de7986f  core/vault-core/tests/export_key.rs
 4aa4d833569227b339af0a52e22ed33e4ad3b318611457e69281416aeca32149  core/vault-core/tests/items.rs
+777b15c52e80337b38e986c4e5320de80a67d6902d58d6e8997bf951aa841393  core/vault-core/tests/organisation.rs
+8dbf31b9d682fd2f049340b3361960bf5665d8f42d7b61feec755066bcd15214  core/vault-core/tests/vault_store.rs
 f063f19090e48ea634b0d5cf85c382d7aae16af9ed82725f3ef8eaa1310ec04c  tools/test_frozen_tests.py

@@ -49,6 +49,10 @@ rules:
     message: >-
       Keys, tags, MACs and checksums must be compared in constant time with `subtle::ConstantTimeEq`
       (ADR-004). `==` can leak through timing how many leading bytes match.
+    # Tests never ship, and their fake hardware compares tags with `!=` to stay simple. Frozen
+    # tests cannot be edited (tests/FROZEN.sha256), so the rule covers product code only.
+    paths:
+      exclude: ["**/tests/**"]
     patterns:
       - pattern-either:
           - pattern: $A == $B

@@ -18,6 +18,8 @@ sha2 = "=0.11.0"
 subtle = "=2.6.1"
 zeroize = { version = "=1.9.0", features = ["derive"] }
 getrandom = "=0.4.3"
+# ADR-005: SQLite compiled from the bundled amalgamation, the same version on every phone.
+rusqlite = { version = "=0.40.2", features = ["bundled"] }
 minicbor = { version = "=2.3.0", features = ["alloc"] }
 unicode-normalization = "=0.1.25"
 thiserror = "=2.0.21"

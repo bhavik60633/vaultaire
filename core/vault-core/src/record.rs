@@ -15,6 +15,7 @@ pub enum RecordKind {
     Recovery = 4,
     SecurityLog = 5,
     Manifest = 6,
+    Organisation = 7,
 }
 
 /// `envelope_kind` (§6.2).

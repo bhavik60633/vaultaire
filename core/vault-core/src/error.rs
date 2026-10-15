@@ -39,6 +39,23 @@ pub enum VaultError {
     /// The operating system's random generator failed; the operation is abandoned (crypto spec §2.1).
     #[error("random_unavailable")]
     RandomUnavailable,
+    /// A vault already exists where one was to be created or restored.
+    #[error("vault_exists")]
+    VaultExists,
+    /// The device cannot protect the keys: no secure lock screen, or software-only keys outside a
+    /// debug build (crypto spec §5.2).
+    #[error("insecure_device")]
+    InsecureDevice,
+    /// The vault opened, but its data could not be verified; nothing was shown or changed
+    /// (vault-format §7).
+    #[error("integrity_failed")]
+    IntegrityFailed,
+    /// No such entry or field.
+    #[error("not_found")]
+    NotFound,
+    /// The vault file could not be read or written.
+    #[error("storage_failed")]
+    StorageFailed,
 }
 
 /// Result type used throughout the core.

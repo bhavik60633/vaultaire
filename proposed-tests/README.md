@@ -12,10 +12,11 @@ written. From then on `python tools/frozen_tests.py check` (run in CI) fails if 
 | 1. Test-freeze guard | [`tools/test_frozen_tests.py`](../tools/test_frozen_tests.py) | **Frozen 2026-10-15** by the owner; code written; 27/27 green |
 | 2. Bank catalogue and name normaliser | [`core/vault-core/tests/banks.rs`](../core/vault-core/tests/banks.rs) | **Frozen 2026-10-15** by the owner; code written (`vault_core::banks`); 17/17 green |
 | 3. Card, PIN and bank-account record rules | [`core/vault-core/tests/items.rs`](../core/vault-core/tests/items.rs) | **Frozen 2026-10-15** by the owner; code written (`vault_core::item::validate`); 28/28 green |
-| 4. Organisation record (custom banks, last card view) | [`component-4/organisation.rs`](component-4/organisation.rs), moves to `core/vault-core/tests/organisation.rs` | **Waiting for the owner's review.** 17 tests |
-| 5. Backups carry bank groups | [`component-5/backup_banks.rs`](component-5/backup_banks.rs), moves to `core/vault-core/tests/backup_banks.rs` | **Waiting for the owner's review.** 11 tests (two backward-compatibility tests already pass on today's code and must keep passing) |
-| 6. Cached export key for auto-backup | [`component-6/export_key.rs`](component-6/export_key.rs), moves to `core/vault-core/tests/export_key.rs` | **Waiting for the owner's review.** 6 tests |
+| 4. Organisation record (custom banks, last card view) | [`core/vault-core/tests/organisation.rs`](../core/vault-core/tests/organisation.rs) | **Frozen 2026-10-15** by the owner; code written (`vault_core::organisation`); 17/17 green |
+| 5. Backups carry bank groups | [`core/vault-core/tests/backup_banks.rs`](../core/vault-core/tests/backup_banks.rs) | **Frozen 2026-10-15** by the owner; code written (`vault_core::backup`); 11/11 green |
+| 6. Cached export key for auto-backup | [`core/vault-core/tests/export_key.rs`](../core/vault-core/tests/export_key.rs) | **Frozen 2026-10-15** by the owner; code written (`vault_core::backup::ExportKey`); 6/6 green |
+| 7. Vault store and session (milestone M1) | [`core/vault-core/tests/vault_store.rs`](../core/vault-core/tests/vault_store.rs) | **Frozen 2026-10-15** by the owner; code written (`vault_core::vault`, SQLite via `rusqlite`, ADR-005); 17/17 green |
 
-| 7. Vault store and session (milestone M1) | [`component-7/vault_store.rs`](component-7/vault_store.rs), moves to `core/vault-core/tests/vault_store.rs` | **Waiting for the owner's review.** 17 tests. Adds `rusqlite` (ADR-005) and four error names: `vault_exists`, `insecure_device`, `integrity_failed`, `not_found` |
+**Milestone M1** is components 4–7 together (51 tests), frozen in one go (owner decision: batches per milestone). **M1 is complete: all 51 tests green, none changed.**
 
-**Milestone M1** is components 4–7 together (51 tests), frozen in one go (owner decision: batches per milestone). Components 4–6 were checked together: rustfmt clean, they compile and pass clippy `-D warnings` against stub APIs, and they fail against those stubs.
+The Semgrep rule `secret-compared-with-eq` now skips `tests/`, like `no-printing-in-core`: the fake fingerprint hardware in the frozen `vault_store.rs` compares a tag with `!=`, tests never ship, and a frozen test cannot be edited.

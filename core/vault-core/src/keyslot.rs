@@ -39,6 +39,8 @@ impl KdfParams {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum HwLevel {
+    /// A software Keystore: debug builds only, such as the emulator (crypto spec §5.2).
+    Software = 0,
     Tee = 1,
     StrongBox = 2,
 }

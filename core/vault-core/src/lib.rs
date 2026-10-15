@@ -14,8 +14,10 @@ pub mod integrity;
 pub mod item;
 pub mod keyslot;
 pub mod labels;
+pub mod organisation;
 pub mod prims;
 pub mod record;
 pub mod recovery_key;
+pub mod vault;
 
 pub use error::{Result, VaultError};

@@ -4,8 +4,10 @@ use zeroize::Zeroizing;
 
 use crate::cbor::{self, Limits, Value};
 use crate::error::{Result, VaultError};
+use crate::item;
 use crate::keyslot::KdfParams;
 use crate::labels;
+use crate::organisation;
 use crate::prims;
 use crate::record;
 
@@ -76,10 +78,117 @@ pub fn export(
     rnd: &ExportRandom,
 ) -> Result<Vec<u8>> {
     prims::check_kdf_params(kdf.m, kdf.t, kdf.p)?;
-    let header = backup_header(kdf, &rs_id(rs));
     let kek = kek_export(password, kdf, rs)?;
+    seal_file(payload, rs, kdf, &kek, rnd)
+}
+
+/// §9.5 (PROPOSED, Q9): writes a backup with a cached export key, without the password. The file
+/// is byte for byte what [`export`] makes from the same password, Recovery Secret and randomness.
+pub fn export_with_key(
+    payload: &Value,
+    rs: &[u8; 16],
+    key: &ExportKey,
+    rnd: &ExportRandom,
+) -> Result<Vec<u8>> {
+    prims::check_kdf_params(key.kdf.m, key.kdf.t, key.kdf.p)?;
+    seal_file(payload, rs, &key.kdf, &key.kek, rnd)
+}
+
+/// §9.5: `KEK_exp` derived once from the password and Recovery Secret and kept in the vault
+/// (vault-format §5.6 key 4) for auto-backup. Its `Debug` output never shows the key.
+pub struct ExportKey {
+    kdf: KdfParams,
+    kek: prims::Key32,
+}
+
+impl core::fmt::Debug for ExportKey {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("ExportKey")
+            .field("kdf", &self.kdf)
+            .field("kek", &"<redacted>")
+            .finish()
+    }
+}
+
+impl ExportKey {
+    /// Runs Argon2id once (§9.2) and keeps the result.
+    pub fn derive(password: &str, rs: &[u8; 16], kdf: &KdfParams) -> Result<ExportKey> {
+        prims::check_kdf_params(kdf.m, kdf.t, kdf.p)?;
+        Ok(ExportKey {
+            kdf: kdf.clone(),
+            kek: kek_export(password, kdf, rs)?,
+        })
+    }
+
+    /// The Argon2id parameters and `salt_exp` the key was derived with.
+    pub fn kdf(&self) -> &KdfParams {
+        &self.kdf
+    }
+
+    /// The stored form: `{1: kdf, 2: kek}` (vault-format §5.6 key 4).
+    pub fn to_value(&self) -> Value {
+        Value::map(vec![
+            (1, self.kdf.to_value()),
+            (2, Value::Bytes(self.kek.to_vec())),
+        ])
+    }
+
+    /// Reads the stored form strictly. Parameters out of range are refused, so a stored key can
+    /// never lower the Argon2id cost of later backups.
+    pub fn from_value(value: &Value) -> Result<ExportKey> {
+        if !matches!(value, Value::Map(_)) || value.keys() != [1, 2] {
+            return Err(VaultError::SchemaViolation);
+        }
+        let kdf = parse_kdf(value.get(1).ok_or(VaultError::SchemaViolation)?)?;
+        prims::check_kdf_params(kdf.m, kdf.t, kdf.p)?;
+        let kek: [u8; 32] = value
+            .get(2)
+            .and_then(Value::as_bytes)
+            .and_then(|b| b.try_into().ok())
+            .ok_or(VaultError::SchemaViolation)?;
+        Ok(ExportKey {
+            kdf,
+            kek: Zeroizing::new(kek),
+        })
+    }
+}
+
+/// A `kdf` map (vault-format §4.4), checked for shape only.
+pub(crate) fn parse_kdf(k: &Value) -> Result<KdfParams> {
+    if !matches!(k, Value::Map(_)) || k.keys() != [1, 2, 3, 4, 5] {
+        return Err(VaultError::SchemaViolation);
+    }
+    let uint = |key| {
+        k.get(key)
+            .and_then(Value::as_uint)
+            .ok_or(VaultError::SchemaViolation)
+    };
+    if uint(1)? != 1 {
+        return Err(VaultError::SchemaViolation);
+    }
+    let salt: [u8; 16] = k
+        .get(5)
+        .and_then(Value::as_bytes)
+        .and_then(|b| b.try_into().ok())
+        .ok_or(VaultError::SchemaViolation)?;
+    Ok(KdfParams {
+        m: uint(2)?,
+        t: uint(3)?,
+        p: uint(4)?,
+        salt,
+    })
+}
+
+fn seal_file(
+    payload: &Value,
+    rs: &[u8; 16],
+    kdf: &KdfParams,
+    kek: &[u8; 32],
+    rnd: &ExportRandom,
+) -> Result<Vec<u8>> {
+    let header = backup_header(kdf, &rs_id(rs));
     let wrapped_fk = prims::seal(
-        &kek,
+        kek,
         &rnd.nonce_wrap,
         rnd.fk.as_ref(),
         &associated_data(labels::EXPORT_WRAP, &header),
@@ -211,8 +320,194 @@ pub fn import(data: &[u8], password: &str, rs: &[u8; 16], total_ram: Option<u64>
         VaultError::AuthFailed,
     )?; // 7
     let payload = cbor::decode(record::unpad(&plain, BUCKET)?, Limits::PAYLOAD)?;
-    if payload.keys() != [1, 2, 3] || payload.get(1).and_then(Value::as_uint) != Some(1) {
-        return Err(VaultError::SchemaViolation); // 8 (structure only, for now)
-    }
+    check_payload_shape(&payload)?; // 8 (structure only, for now)
     Ok(payload)
+}
+
+/// §10.3: keys 1–3, plus key 4 only when it carries custom banks and no device-only last view.
+fn check_payload_shape(payload: &Value) -> Result<()> {
+    let keys = payload.keys();
+    if (keys != [1, 2, 3] && keys != [1, 2, 3, 4])
+        || payload.get(1).and_then(Value::as_uint) != Some(1)
+    {
+        return Err(VaultError::SchemaViolation);
+    }
+    if let Some(org) = payload.get(4) {
+        organisation::validate(org)?;
+        if org.get(2).is_some() || organisation::custom_bank_ids(org)?.is_empty() {
+            return Err(VaultError::SchemaViolation);
+        }
+    }
+    Ok(())
+}
+
+/// Builds a backup payload (vault-format §10.3) from item maps, the settings record and the
+/// Organisation record. Device-only data is left out: the backup location (settings key 12) and
+/// the last card view (organisation key 2). Key 4 is present only when there are custom banks.
+///
+/// Every item is checked against the item rules, and every custom bank an item uses must be
+/// defined in the organisation, so a backup never refers to a bank it does not carry.
+pub fn build_payload(items: Vec<Value>, settings: &Value, organisation: &Value) -> Result<Value> {
+    organisation::validate(organisation)?;
+    let defined = organisation::custom_bank_ids(organisation)?;
+    for entry in &items {
+        let (_, index, secret) = item_parts(entry)?;
+        item::validate(index, secret)?;
+        if let Some(bank) = custom_bank_of(index)
+            && !defined.iter().any(|id| id == bank)
+        {
+            return Err(VaultError::SchemaViolation);
+        }
+    }
+
+    let settings = match settings {
+        Value::Map(entries) => {
+            Value::map(entries.iter().filter(|(k, _)| *k != 12).cloned().collect())
+        }
+        _ => return Err(VaultError::SchemaViolation),
+    };
+    let mut payload = vec![(1, Value::Uint(1)), (2, Value::Array(items)), (3, settings)];
+    if !defined.is_empty() {
+        payload.push((4, organisation::without_last_view(organisation)?));
+    }
+    Ok(Value::map(payload))
+}
+
+/// Merges the custom banks of an imported backup into the vault's Organisation record
+/// (vault-format §10.4) and rewrites the imported items' bank ids to match.
+///
+/// An imported bank whose name or an alias matches a catalogue bank maps onto that catalogue id;
+/// one matching an existing custom bank maps onto it; any other is added with a fresh id. Nothing
+/// in `items` changes unless the whole merge succeeds.
+pub fn merge_banks(
+    existing: &Value,
+    imported: Option<&Value>,
+    items: &mut [Value],
+    fresh_id: &mut dyn FnMut() -> Result<[u8; 16]>,
+) -> Result<Value> {
+    organisation::validate(existing)?;
+    let mut merged = existing.clone();
+    let mut mapping: Vec<(String, String)> = Vec::new();
+
+    if let Some(imported) = imported {
+        organisation::validate(imported)?;
+        for bank in organisation::custom_banks(imported)? {
+            let target = bank
+                .spellings()
+                .find_map(|spelling| organisation::resolve(&merged, spelling));
+            let target = match target {
+                Some(id) => id,
+                None => {
+                    let raw = fresh_id()?;
+                    let id = format!(
+                        "u:{}",
+                        raw.iter().map(|b| format!("{b:02x}")).collect::<String>()
+                    );
+                    if organisation::custom_bank_ids(&merged)?.contains(&id) {
+                        return Err(VaultError::SchemaViolation);
+                    }
+                    merged = append_bank(&merged, &id, bank.name, &bank.aliases)?;
+                    id
+                }
+            };
+            mapping.push((bank.id.to_string(), target));
+        }
+    }
+
+    let known = organisation::custom_bank_ids(&merged)?;
+    let mut rewritten = Vec::with_capacity(items.len());
+    for entry in items.iter() {
+        let (_, index, _) = item_parts(entry)?;
+        let target = match custom_bank_of(index) {
+            None => None,
+            Some(bank) => match mapping.iter().find(|(from, _)| from == bank) {
+                Some((_, to)) => Some(to.clone()),
+                None if known.iter().any(|id| id == bank) => None,
+                None => return Err(VaultError::SchemaViolation),
+            },
+        };
+        rewritten.push(match target {
+            Some(to) => set_bank(entry, &to)?,
+            None => entry.clone(),
+        });
+    }
+    for (slot, new) in items.iter_mut().zip(rewritten) {
+        *slot = new;
+    }
+    organisation::validate(&merged)?;
+    Ok(merged)
+}
+
+/// The id, index and secret of a payload item map (vault-format §10.3).
+fn item_parts(entry: &Value) -> Result<(&[u8], &Value, &Value)> {
+    if !matches!(entry, Value::Map(_)) || entry.keys() != [1, 2, 3, 4] {
+        return Err(VaultError::SchemaViolation);
+    }
+    let id = entry
+        .get(1)
+        .and_then(Value::as_bytes)
+        .filter(|b| b.len() == 16)
+        .ok_or(VaultError::SchemaViolation)?;
+    match entry.get(4) {
+        Some(Value::Array(history)) if history.len() <= 10 => {}
+        _ => return Err(VaultError::SchemaViolation),
+    }
+    let index = entry.get(2).ok_or(VaultError::SchemaViolation)?;
+    let secret = entry.get(3).ok_or(VaultError::SchemaViolation)?;
+    Ok((id, index, secret))
+}
+
+/// The item's custom bank id (`u:`), if it has one.
+fn custom_bank_of(index: &Value) -> Option<&str> {
+    match index.get(16) {
+        Some(Value::Text(id)) if id.starts_with("u:") => Some(id),
+        _ => None,
+    }
+}
+
+/// A copy of the item map with its index envelope's `bank_id` replaced.
+fn set_bank(entry: &Value, bank_id: &str) -> Result<Value> {
+    let replace = |map: &Value, key: u64, value: Value| -> Result<Value> {
+        match map {
+            Value::Map(entries) => {
+                let mut out: Vec<(u64, Value)> =
+                    entries.iter().filter(|(k, _)| *k != key).cloned().collect();
+                out.push((key, value));
+                Ok(Value::map(out))
+            }
+            _ => Err(VaultError::SchemaViolation),
+        }
+    };
+    let index = entry.get(2).ok_or(VaultError::SchemaViolation)?;
+    let new_index = replace(index, 16, Value::Text(bank_id.to_string()))?;
+    replace(entry, 2, new_index)
+}
+
+fn append_bank(org: &Value, id: &str, name: &str, aliases: &[&str]) -> Result<Value> {
+    let mut banks = match org.get(1) {
+        Some(Value::Array(items)) => items.clone(),
+        _ => return Err(VaultError::SchemaViolation),
+    };
+    let mut bank = vec![
+        (1, Value::Text(id.to_string())),
+        (2, Value::Text(name.to_string())),
+    ];
+    if !aliases.is_empty() {
+        bank.push((
+            3,
+            Value::Array(
+                aliases
+                    .iter()
+                    .map(|a| Value::Text((*a).to_string()))
+                    .collect(),
+            ),
+        ));
+    }
+    banks.push(Value::map(bank));
+    let mut entries: Vec<(u64, Value)> = match org {
+        Value::Map(entries) => entries.iter().filter(|(k, _)| *k != 1).cloned().collect(),
+        _ => return Err(VaultError::SchemaViolation),
+    };
+    entries.push((1, Value::Array(banks)));
+    Ok(Value::map(entries))
 }
