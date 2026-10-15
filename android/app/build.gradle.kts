@@ -39,6 +39,10 @@ android {
             isIncludeAndroidResources = true
             all {
                 // Robolectric reaches into FileDescriptor internals on JDK 21.
+                // ./gradlew :app:testDebugUnitTest -Pscreenshots renders every screen (tools/Screenshots.kt).
+                if (project.hasProperty("screenshots")) {
+                    it.systemProperty("vaultaire.screenshots", layout.buildDirectory.dir("screenshots").get().asFile.path)
+                }
                 it.jvmArgs(
                     "--add-exports=java.base/jdk.internal.access=ALL-UNNAMED",
                     "--add-opens=java.base/java.io=ALL-UNNAMED",

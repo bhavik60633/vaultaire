@@ -1,25 +1,25 @@
 package dev.vaultaire.ui
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -28,16 +28,34 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.text
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
+import dev.vaultaire.R
 import dev.vaultaire.core.VaultException
 import dev.vaultaire.security.Refusal
+import dev.vaultaire.ui.theme.CapsLine
+import dev.vaultaire.ui.theme.FieldLabel
+import dev.vaultaire.ui.theme.GhostButton
+import dev.vaultaire.ui.theme.Grow
+import dev.vaultaire.ui.theme.IconAction
+import dev.vaultaire.ui.theme.LocalVaultType
+import dev.vaultaire.ui.theme.LockEmblem
+import dev.vaultaire.ui.theme.Notice
+import dev.vaultaire.ui.theme.Obsidian
+import dev.vaultaire.ui.theme.Panel
+import dev.vaultaire.ui.theme.PrimaryButton
+import dev.vaultaire.ui.theme.SecondaryButton
+import dev.vaultaire.ui.theme.StepHeader
+import dev.vaultaire.ui.theme.VaultField
+import dev.vaultaire.ui.theme.VaultaireTheme
+import dev.vaultaire.ui.theme.tag
+import java.util.Calendar
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -53,191 +71,326 @@ private sealed class Step {
     data object Home : Step()
 }
 
-/** The whole app: onboarding, the lock screen, and (for now) an empty home. */
+/** The whole app: onboarding, the lock screen and home, in the Obsidian design. */
 @Composable
 fun VaultaireApp(gateway: VaultGateway, testBuild: Boolean) {
-    val dark = isSystemInDarkTheme()
-    MaterialTheme(colorScheme = if (dark) darkColorScheme() else lightColorScheme()) {
-        Surface(Modifier.fillMaxSize()) {
-            val unlocked by gateway.unlocked.collectAsState()
-            var step by remember {
-                mutableStateOf<Step>(if (gateway.vaultExists()) Step.Home else Step.Welcome)
-            }
-            var failures by remember { mutableStateOf(0) }
-            val locked = !unlocked && gateway.vaultExists()
+    VaultaireTheme {
+        val unlocked by gateway.unlocked.collectAsState()
+        var step by remember {
+            mutableStateOf<Step>(if (gateway.vaultExists()) Step.Home else Step.Welcome)
+        }
+        var failures by remember { mutableStateOf(0) }
+        val locked = !unlocked && gateway.vaultExists()
 
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Banners(testBuild)
-                when {
-                    locked -> LockScreen(gateway) {
-                        failures = gateway.failuresSinceLastUnlock()
-                        step = Step.Home
-                    }
-                    else -> when (val current = step) {
-                        Step.Welcome -> Welcome(gateway) { step = Step.CreatePassword }
-                        Step.CreatePassword -> CreatePassword(gateway) { step = Step.ShowRecoveryKey(it) }
-                        is Step.ShowRecoveryKey -> ShowRecoveryKey(current.key) { step = Step.Fingerprint }
-                        Step.Fingerprint -> FingerprintStep(gateway) { step = Step.Home }
-                        Step.Home -> Home(failures) { gateway.lock() }
-                    }
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Obsidian.bg),
+        ) {
+            when {
+                locked -> LockFlow(gateway, testBuild) {
+                    failures = gateway.failuresSinceLastUnlock()
+                    step = Step.Home
+                }
+                else -> when (val current = step) {
+                    Step.Welcome -> Welcome(gateway, testBuild) { step = Step.CreatePassword }
+                    Step.CreatePassword -> CreatePassword(gateway, testBuild) { step = Step.ShowRecoveryKey(it) }
+                    is Step.ShowRecoveryKey -> ShowRecoveryKey(current.key, testBuild) { step = Step.Fingerprint }
+                    Step.Fingerprint -> FingerprintStep(gateway, testBuild) { step = Step.Home }
+                    Step.Home -> Home(failures, testBuild, onDismiss = { failures = 0 }) { gateway.lock() }
                 }
             }
         }
     }
 }
 
+/**
+ * A page in the design: the content scrolls, the actions stay at the bottom, and the beta line
+ * closes every screen.
+ */
 @Composable
-private fun Banners(testBuild: Boolean) {
-    Warning(BETA_WARNING)
-    if (testBuild) Warning(TEST_BUILD_WARNING)
+private fun Screen(
+    testBuild: Boolean,
+    actions: @Composable ColumnScope.() -> Unit = {},
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(Modifier.fillMaxSize()) {
+        Column(
+            Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            if (testBuild) TestBuildNote()
+            content()
+        }
+        Column(
+            Modifier.padding(start = 24.dp, end = 24.dp, bottom = 16.dp, top = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            actions()
+            CapsLine(BETA_WARNING)
+        }
+    }
 }
 
 @Composable
-private fun Warning(text: String) {
-    Surface(color = Color(0xFFFFE8B0), shape = MaterialTheme.shapes.small) {
-        Text(
-            text,
-            color = Color(0xFF4A3300),
-            style = MaterialTheme.typography.labelLarge,
+private fun TestBuildNote() {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .background(Obsidian.warnSoft, shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+            .padding(vertical = 6.dp),
+    ) { CapsLine(TEST_BUILD_WARNING, color = Obsidian.warn) }
+}
+
+@Composable
+private fun Lockup() {
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Image(
+            painterResource(R.drawable.vaultaire_lockup),
+            contentDescription = "Vaultaire",
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
+                .width(300.dp)
+                .height(200.dp),
         )
-    }
-}
-
-@Composable
-private fun Welcome(gateway: VaultGateway, onCreate: () -> Unit) {
-    val refusal = remember { gateway.refusal() }
-    Text("Vaultaire", style = MaterialTheme.typography.headlineMedium)
-    Text("Your cards, PINs and bank details, encrypted on this phone. Nothing is sent anywhere.")
-    if (refusal != null) {
         Text(
-            when (refusal) {
-                Refusal.NO_SCREEN_LOCK ->
-                    "Set a screen lock (PIN, pattern or password) on this phone first. " +
-                        "Without one, anyone holding the phone could use the vault's keys."
-                Refusal.SOFTWARE_KEYS ->
-                    "This phone keeps keys in software, not in hardware, so a vault can't be " +
-                        "created on it."
-            },
-            color = MaterialTheme.colorScheme.error,
-            modifier = Modifier.testTag("refusal"),
+            "You have things worth protecting.",
+            style = LocalVaultType.current.small.copy(color = Obsidian.text2),
+            modifier = Modifier.padding(top = 0.dp),
         )
-    } else {
-        Button(onClick = onCreate, modifier = Modifier.testTag("create")) { Text("Create a vault") }
+    }
+}
+
+// ---------- onboarding ----------
+
+@Composable
+private fun Welcome(gateway: VaultGateway, testBuild: Boolean, onCreate: () -> Unit) {
+    val type = LocalVaultType.current
+    val refusal = remember { gateway.refusal() }
+    Screen(testBuild, actions = {
+        if (refusal == null) PrimaryButton("Create a vault", onCreate, Modifier.tag("create"))
+    }) {
+        Lockup()
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Your cards, PINs and bank details, encrypted on this phone. Nothing is sent anywhere.",
+            style = type.body.copy(color = Obsidian.text2),
+        )
+        Spacer(Modifier.height(24.dp))
+        if (refusal != null) {
+            Notice(
+                when (refusal) {
+                    Refusal.NO_SCREEN_LOCK ->
+                        "Set a screen lock (PIN, pattern or password) on this phone first. " +
+                            "Without one, anyone holding the phone could use the vault's keys."
+                    Refusal.SOFTWARE_KEYS ->
+                        "This phone keeps keys in software, not in hardware, so a vault can't be " +
+                            "created on it."
+                },
+                textModifier = Modifier.tag("refusal"),
+            )
+        }
     }
 }
 
 @Composable
-private fun CreatePassword(gateway: VaultGateway, onCreated: (CharArray) -> Unit) {
+private fun CreatePassword(gateway: VaultGateway, testBuild: Boolean, onCreated: (CharArray) -> Unit) {
+    val type = LocalVaultType.current
     val scope = rememberCoroutineScope()
     var password by remember { mutableStateOf("") }
     var confirm by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
 
-    Text("Choose a vault password", style = MaterialTheme.typography.titleLarge)
-    Text("At least 12 characters. A few unrelated words make a strong, memorable password.")
-    PasswordField(password, "Vault password", "password") { password = it }
-    PasswordField(confirm, "Type it again", "confirm") { confirm = it }
-    error?.let { ErrorText(it) }
-    Button(
-        onClick = {
-            if (password != confirm) {
-                error = "The passwords don't match."
-                return@Button
-            }
-            busy = true
-            scope.launch {
-                try {
-                    onCreated(gateway.create(password.toCharArray()))
-                } catch (e: VaultException) {
-                    error = when (e.code) {
-                        "weak_password" ->
-                            "Choose a stronger password: at least 12 characters, and not a " +
-                                "common word or pattern."
-                        else -> "Couldn't create the vault. Nothing was saved."
+    Screen(testBuild, actions = {
+            PrimaryButton(
+                if (busy) "Creating…" else "Continue",
+                onClick = {
+                    if (password != confirm) {
+                        error = "The passwords don't match."
+                        return@PrimaryButton
                     }
-                } finally {
-                    busy = false
+                    busy = true
+                    scope.launch {
+                        try {
+                            onCreated(gateway.create(password.toCharArray()))
+                        } catch (e: VaultException) {
+                            error = when (e.code) {
+                                "weak_password" ->
+                                    "Choose a stronger password: at least 12 characters, and not a " +
+                                        "common word or pattern."
+                                else -> "Couldn't create the vault. Nothing was saved."
+                            }
+                        } finally {
+                            busy = false
+                        }
+                    }
+                },
+                enabled = password.isNotEmpty() && confirm.isNotEmpty() && !busy,
+                modifier = Modifier.tag("continue"),
+            )
+    }) {
+        StepHeader(1, 3)
+        Spacer(Modifier.height(20.dp))
+        Text("Choose a vault password", style = type.displayL)
+        Text(
+            "At least 12 characters. A few unrelated words make a strong password you can remember.",
+            style = type.body.copy(color = Obsidian.text2),
+        )
+        Spacer(Modifier.height(8.dp))
+        VaultField(password, { password = it }, "Vault password", secret = true, fieldModifier = Modifier.tag("password"))
+        VaultField(confirm, { confirm = it }, "Type it again", secret = true, fieldModifier = Modifier.tag("confirm"))
+        error?.let { ErrorText(it) }
+    }
+}
+
+@Composable
+private fun ShowRecoveryKey(key: CharArray, testBuild: Boolean, onDone: () -> Unit) {
+    val type = LocalVaultType.current
+    var writtenDown by remember { mutableStateOf(false) }
+    val groups = remember { String(key).split('-') }
+
+    Screen(testBuild, actions = {
+            PrimaryButton(
+                "Continue",
+                onClick = {
+                    key.fill('\u0000')
+                    onDone()
+                },
+                enabled = writtenDown,
+                modifier = Modifier.tag("continue"),
+            )
+    }) {
+        StepHeader(2, 3)
+        Spacer(Modifier.height(20.dp))
+        Text("Your Recovery Key", style = type.displayL)
+        Text(
+            "Write it down by hand. With your vault password, it is the only way back in if this " +
+                "phone loses its unlock keys, and the only way to restore a backup on a new phone.",
+            style = type.body.copy(color = Obsidian.text2),
+        )
+        Panel(
+            Modifier
+                .tag("recoveryKey")
+                .semantics(mergeDescendants = false) { text = AnnotatedString(String(key)) },
+        ) {
+            groups.chunked(2).forEachIndexed { row, pair ->
+                Row(Modifier.padding(vertical = 6.dp)) {
+                    pair.forEachIndexed { col, group ->
+                        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                            Text("${row * 2 + col + 1}", style = type.label.copy(color = Obsidian.accent))
+                            Spacer(Modifier.width(10.dp))
+                            Text(group, style = type.monoLarge)
+                        }
+                    }
+                    if (pair.size == 1) Spacer(Modifier.weight(1f))
                 }
             }
-        },
-        enabled = password.isNotEmpty() && confirm.isNotEmpty() && !busy,
-        modifier = Modifier.testTag("continue"),
-    ) { Text("Continue") }
-}
-
-@Composable
-private fun ShowRecoveryKey(key: CharArray, onDone: () -> Unit) {
-    var writtenDown by remember { mutableStateOf(false) }
-    Text("Your Recovery Key", style = MaterialTheme.typography.titleLarge)
-    Text(
-        "Write it on paper and keep it somewhere safe. With your password, it restores your " +
-            "backup on a new phone. It is shown only this once, and nobody can recover it for you.",
-    )
-    Text(
-        String(key),
-        fontFamily = FontFamily.Monospace,
-        style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.testTag("recoveryKey"),
-    )
-    Row(
-        Modifier
-            .testTag("writtenDown")
-            .toggleable(value = writtenDown, role = Role.Checkbox) { writtenDown = it },
-    ) {
-        Checkbox(checked = writtenDown, onCheckedChange = null)
-        Text("I have written down my Recovery Key", Modifier.padding(start = 8.dp))
+        }
+        Notice("Keep this away from your phone and your cloud photos. We will never ask you for it.")
+        Text("Screenshots are blocked on this screen.", style = type.faint)
+        Row(
+            Modifier
+                .tag("writtenDown")
+                .toggleable(value = writtenDown, role = Role.Checkbox) { writtenDown = it }
+                .padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Checkbox(
+                checked = writtenDown,
+                onCheckedChange = null,
+                colors = CheckboxDefaults.colors(
+                    checkedColor = Obsidian.accent,
+                    uncheckedColor = Obsidian.text3,
+                    checkmarkColor = Obsidian.bg,
+                ),
+            )
+            Spacer(Modifier.width(10.dp))
+            Text("I have written it down by hand", style = type.body)
+        }
     }
-    Button(
-        onClick = {
-            key.fill('\u0000')
-            onDone()
-        },
-        enabled = writtenDown,
-        modifier = Modifier.testTag("continue"),
-    ) { Text("Continue") }
 }
 
 @Composable
-private fun FingerprintStep(gateway: VaultGateway, onDone: () -> Unit) {
+private fun FingerprintStep(gateway: VaultGateway, testBuild: Boolean, onDone: () -> Unit) {
+    val type = LocalVaultType.current
     val scope = rememberCoroutineScope()
-    Text("Unlock with your fingerprint?", style = MaterialTheme.typography.titleLarge)
-    Text(
-        "Anyone whose fingerprint is on this phone can open the vault. Remove other people's " +
-            "fingerprints first. You can always unlock with your password instead.",
-    )
-    Button(
-        onClick = {
-            scope.launch {
-                gateway.enrolFingerprint()
-                gateway.onboardingFinished()
-                onDone()
-            }
-        },
-        modifier = Modifier.testTag("useFingerprint"),
-    ) { Text("Use fingerprint") }
-    OutlinedButton(
-        onClick = {
-            gateway.onboardingFinished()
-            onDone()
-        },
-        modifier = Modifier.testTag("notNow"),
-    ) { Text("Not now") }
+    Screen(testBuild, actions = {
+            PrimaryButton(
+                "Use fingerprint",
+                onClick = {
+                    scope.launch {
+                        gateway.enrolFingerprint()
+                        gateway.onboardingFinished()
+                        onDone()
+                    }
+                },
+                icon = "finger",
+                modifier = Modifier.tag("useFingerprint"),
+            )
+            GhostButton(
+                "Not now",
+                onClick = {
+                    gateway.onboardingFinished()
+                    onDone()
+                },
+                modifier = Modifier.tag("notNow"),
+            )
+    }) {
+        StepHeader(3, 3)
+        Spacer(Modifier.height(20.dp))
+        Text("Unlock with your fingerprint?", style = type.displayL)
+        Text(
+            "Your fingerprint opens the vault without typing. You can always use your vault password instead.",
+            style = type.body.copy(color = Obsidian.text2),
+        )
+        Notice(
+            "Anyone whose fingerprint is on this phone can open the vault. Remove other people's " +
+                "fingerprints first.",
+        )
+    }
 }
 
+// ---------- lock ----------
+
 @Composable
-private fun LockScreen(gateway: VaultGateway, onUnlocked: () -> Unit) {
-    val scope = rememberCoroutineScope()
+private fun LockFlow(gateway: VaultGateway, testBuild: Boolean, onUnlocked: () -> Unit) {
     var usePassword by remember { mutableStateOf(false) }
+    if (usePassword) {
+        PasswordScreen(gateway, testBuild, onBack = { usePassword = false }, onUnlocked = onUnlocked)
+    } else {
+        LockScreen(gateway, testBuild, onPassword = { usePassword = true }, onUnlocked = onUnlocked)
+    }
+}
+
+@Composable
+private fun LockScreen(gateway: VaultGateway, testBuild: Boolean, onPassword: () -> Unit, onUnlocked: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    Screen(testBuild, actions = {
+            PrimaryButton(
+                "Unlock with fingerprint",
+                onClick = { scope.launch { if (gateway.unlockWithFingerprint()) onUnlocked() } },
+                icon = "finger",
+                modifier = Modifier.tag("unlockFingerprint"),
+            )
+            SecondaryButton("Use vault password", onPassword, Modifier.tag("usePassword"))
+    }) {
+        Lockup()
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp),
+            contentAlignment = Alignment.Center,
+        ) { LockEmblem() }
+    }
+}
+
+@Composable
+private fun PasswordScreen(gateway: VaultGateway, testBuild: Boolean, onBack: () -> Unit, onUnlocked: () -> Unit) {
+    val type = LocalVaultType.current
+    val scope = rememberCoroutineScope()
     var password by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -250,73 +403,92 @@ private fun LockScreen(gateway: VaultGateway, onUnlocked: () -> Unit) {
         }
     }
 
-    Text("Vaultaire is locked", style = MaterialTheme.typography.titleLarge)
-    Button(
-        onClick = {
-            scope.launch { if (gateway.unlockWithFingerprint()) onUnlocked() }
-        },
-        modifier = Modifier.testTag("unlockFingerprint"),
-    ) { Text("Unlock with fingerprint") }
-    OutlinedButton(
-        onClick = { usePassword = true },
-        modifier = Modifier.testTag("usePassword"),
-    ) { Text("Use password") }
-
-    if (usePassword) {
-        PasswordField(password, "Vault password", "password") { password = it }
-        if (delayS > 0) Text("Too many attempts. Try again in $delayS s")
-        error?.let { ErrorText(it) }
-        Button(
-            onClick = {
-                busy = true
-                scope.launch {
-                    try {
-                        gateway.unlockWithPassword(password.toCharArray())
-                        password = ""
-                        onUnlocked()
-                    } catch (e: VaultException) {
-                        error = "Couldn't unlock. Check your password and try again."
-                        delayS = gateway.remainingDelayS()
-                    } finally {
-                        busy = false
+    Screen(testBuild, actions = {
+            PrimaryButton(
+                if (busy) "Verifying…" else "Unlock",
+                onClick = {
+                    busy = true
+                    scope.launch {
+                        try {
+                            gateway.unlockWithPassword(password.toCharArray())
+                            password = ""
+                            onUnlocked()
+                        } catch (e: VaultException) {
+                            error = "Couldn't unlock. Check your password and try again."
+                            delayS = gateway.remainingDelayS()
+                        } finally {
+                            busy = false
+                        }
                     }
-                }
-            },
-            enabled = password.isNotEmpty() && delayS == 0L && !busy,
-            modifier = Modifier.testTag("unlock"),
-        ) { Text("Unlock") }
-    }
-}
-
-@Composable
-private fun Home(failures: Int, onLock: () -> Unit) {
-    Column(Modifier.testTag("home"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        if (failures > 0) {
-            val noun = if (failures == 1) "attempt" else "attempts"
-            ErrorText("$failures failed password $noun since your last unlock")
+                },
+                enabled = password.isNotEmpty() && delayS == 0L && !busy,
+                modifier = Modifier.tag("unlock"),
+            )
+    }) {
+        IconAction("back", "Back to lock", onBack, Modifier.tag("back"))
+        Spacer(Modifier.height(16.dp))
+        Text("Enter vault password", style = type.displayL)
+        Text(
+            "Your phone will then ask for its screen lock. Both are needed to open the vault this way.",
+            style = type.body.copy(color = Obsidian.text2),
+        )
+        Spacer(Modifier.height(8.dp))
+        VaultField(
+            password, { password = it }, "Vault password", secret = true,
+            enabled = delayS == 0L, fieldModifier = Modifier.tag("password"),
+        )
+        Text("Forgot it? You will need your Recovery Key.", style = type.faint)
+        if (delayS > 0) {
+            Text("Too many attempts. Try again in $delayS s", style = type.small.copy(color = Obsidian.warn))
         }
-        Text("Your vault", style = MaterialTheme.typography.titleLarge)
-        Text("It's empty for now. Cards, PINs and bank accounts arrive in the next update.")
-        OutlinedButton(onClick = onLock, modifier = Modifier.testTag("lock")) { Text("Lock") }
+        error?.let { ErrorText(it) }
     }
 }
 
+// ---------- home ----------
+
 @Composable
-private fun PasswordField(value: String, label: String, tag: String, onChange: (String) -> Unit) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onChange,
-        label = { Text(label) },
-        singleLine = true,
-        visualTransformation = PasswordVisualTransformation(),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
-        modifier = Modifier
-            .fillMaxWidth()
-            .testTag(tag),
-    )
+private fun Home(failures: Int, testBuild: Boolean, onDismiss: () -> Unit, onLock: () -> Unit) {
+    val type = LocalVaultType.current
+    Screen(testBuild) {
+        Column(Modifier.tag("home"), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(verticalAlignment = Alignment.Top) {
+                Column(Modifier.weight(1f)) {
+                    FieldLabel("Vault")
+                    Text(greeting(), style = type.display)
+                }
+                IconAction("lock", "Lock", onLock, Modifier.tag("lock"), tint = Obsidian.accent)
+            }
+            if (failures > 0) {
+                val noun = if (failures == 1) "attempt" else "attempts"
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Notice(
+                        "$failures failed password $noun since your last unlock",
+                        modifier = Modifier.weight(1f),
+                        textModifier = Modifier.tag("error"),
+                    )
+                }
+                GhostButton("Dismiss", onDismiss)
+            }
+            Panel {
+                Text("Your vault is empty", style = type.section)
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Cards, PINs and bank accounts arrive in the next update.",
+                    style = type.body.copy(color = Obsidian.text2),
+                )
+            }
+        }
+    }
+}
+
+private fun greeting(): String = when (Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) {
+    in 5..11 -> "Good morning"
+    in 12..16 -> "Good afternoon"
+    else -> "Good evening"
 }
 
 @Composable
 private fun ErrorText(text: String) {
-    Text(text, color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("error"))
+    Text(text, style = LocalVaultType.current.small.copy(color = Obsidian.crit), modifier = Modifier.tag("error"))
 }
