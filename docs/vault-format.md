@@ -355,7 +355,7 @@ Custom-bank map:
 | 2 | `name` | text | ≤ 64 bytes, as the user typed it |
 | 3 | `aliases` | array (≤ 16) of text | Optional. Other spellings, each ≤ 64 bytes |
 
-No two custom banks, and no custom bank and catalogue entry, may share a **normalised** name or alias (ADR-011). The app checks this before writing; on a clash it offers the existing bank instead.
+No two custom banks may share a **normalised** name or alias (ADR-011), and a record that breaks this is invalid. Adding a bank whose name already belongs to a catalogue or custom bank returns that bank instead of a new one. A custom bank that **later** matches a catalogue entry (the catalogue grew in an app update) stays valid, so an update never invalidates a vault; name lookups check the catalogue first, and a merge maps such a bank onto the catalogue entry.
 
 `last_card_view` map:
 
@@ -510,7 +510,7 @@ Deterministic CBOR, padded to a multiple of 4096 bytes (crypto spec §9.3):
 | 1 | `export_format` | uint | `1` |
 | 2 | `items` | array (≤ 10 000) of item maps | |
 | 3 | `settings` | map | As §5.5, without `backup_uri`; restored so the user keeps their protection choices |
-| 4 | `organisation` | map | As §5.9, without `last_card_view`. Restored with the items, so bank groups survive a restore |
+| 4 | `organisation` | map | Optional: present only when the user has custom banks. As §5.9, without `last_card_view`. Restored with the items, so bank groups survive a restore. A backup made before this key existed still imports |
 
 Item map:
 
