@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.view.View
@@ -11,12 +12,15 @@ import android.view.WindowManager
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import dev.vaultaire.core.KeyLevel
+import dev.vaultaire.scan.LocalCardCamera
+import dev.vaultaire.scan.MlKitCardCamera
 import dev.vaultaire.security.Keystore
 import dev.vaultaire.ui.AppGateway
 import dev.vaultaire.ui.VaultaireApp
@@ -62,7 +66,11 @@ class MainActivity : FragmentActivity() {
         // The "Test build" warning says keys are not hardware-protected, so it shows only when that
         // is true: a debug build on a phone (or emulator) whose keys are in software.
         val softwareKeys = BuildConfig.DEBUG && runCatching { Keystore.probeLevel() }.getOrDefault(KeyLevel.SOFTWARE) == KeyLevel.SOFTWARE
-        setContent { VaultaireApp(gateway, testBuild = softwareKeys) }
+        // The scanner's camera, on phones that have one (ADR-009).
+        val camera = if (packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) MlKitCardCamera(this) else null
+        setContent {
+            CompositionLocalProvider(LocalCardCamera provides camera) { VaultaireApp(gateway, testBuild = softwareKeys) }
+        }
     }
 
     override fun onUserInteraction() {

@@ -350,6 +350,15 @@ pub fn suggest_network(number: String) -> Option<String> {
     entries::suggest_network(&number).map(str::to_string)
 }
 
+/// The catalogue bank a printed or typed name stands for, by the same normaliser as the bank
+/// picker (ADR-011): "HDFC BANK" is `in.hdfc`. None for anything that is not a known bank.
+#[uniffi::export]
+pub fn find_bank(name: String) -> Option<String> {
+    vault_core::banks::Catalogue::bundled()
+        .lookup(&name)
+        .map(|bank| bank.id.to_string())
+}
+
 /// The bundled bank catalogue (ADR-011), for the bank picker.
 #[uniffi::export]
 pub fn catalogue_banks() -> Vec<FfiCatalogueBank> {

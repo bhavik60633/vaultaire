@@ -1,5 +1,6 @@
 # Frozen tests (product plan §7). CI fails if any file below changes.
 # Only the owner adds or removes lines here; a removed line is an unfreeze and needs a reason in its commit.
+b092151905c348c492240cbc23352a1279490ef7e2650753b2942cb3d6294d7b  android/app/src/test/java/dev/vaultaire/scan/CardTextReaderTest.kt
 37f6b390bee61f9f79effc428f6d188e967ba23a6ce6fb7375931f800be15699  android/app/src/test/java/dev/vaultaire/security/AutoLockTest.kt
 0343357e84c8f852f8dbac784f354ccbdc39e3a9c5d161a1ff6a815171ab9399  android/app/src/test/java/dev/vaultaire/security/ClipboardGuardTest.kt
 588ff1f9c116740ba73a1af8c764f2a461bb75f288f22cb509bc17130fc4f22d  android/app/src/test/java/dev/vaultaire/security/DevicePolicyTest.kt
@@ -13,14 +14,17 @@ c49070d0dc8e6672ca6861a2ea6c11ea743d7784a660785a6d4eeda0f7268571  android/app/sr
 f69f69f2ff2382a867c6515c0bde53b196bf4415bba258ba50333f8ad4cb295c  android/app/src/test/java/dev/vaultaire/ui/CardFaceTest.kt
 a6f2fbe7c4838d388f81708a2d6597203f8c6c6cd2fce0215195e86c961fe0fd  android/app/src/test/java/dev/vaultaire/ui/EditTest.kt
 475ffd9d9d78dcd2db55be6f8c571e9f3a6efa6b279670b831852d89eca3631b  android/app/src/test/java/dev/vaultaire/ui/EntryPageTest.kt
+ce063c00de3abc0826e78ac6e1e2f000f2a63ffcca965357c07f0c3820285330  android/app/src/test/java/dev/vaultaire/ui/FakeCamera.kt
 8f714951fc8292359730ae7c244d2b07f5945e42b3c15bf795348ea2760f4d8e  android/app/src/test/java/dev/vaultaire/ui/FakeGateway.kt
 acd8ef8cc985c5af67d732c91811f4c8fb035b1d180c1f237642a81d8cf4afc5  android/app/src/test/java/dev/vaultaire/ui/HomeAndBankTest.kt
 f5366020899ec225d2df5852c983ced07c03e32972a19903636f74593e880e87  android/app/src/test/java/dev/vaultaire/ui/LockScreenTest.kt
 33b9c2da47e64ac568f9f06cbb2626a4b8ae7310282f45b9c51403720db09e65  android/app/src/test/java/dev/vaultaire/ui/OnboardingTest.kt
 1ec4ef98f1ba4a5c3cf45d73792dcb2ecfecc2a577441d5d7c59661ab4745868  android/app/src/test/java/dev/vaultaire/ui/RealVault.kt
 8f684f59f14bfb7d2463c5805d8f041279fc8afd6b71184a803300d671ab8ed9  android/app/src/test/java/dev/vaultaire/ui/ReturnAndSettingsTest.kt
+a01a508150b9cb2d4ded3c90a0d01ebdd285ce8b4fa11d9a40a24f1d0fec6f1d  android/app/src/test/java/dev/vaultaire/ui/ScanCardTest.kt
 5a217a6ebb134f2a9c2620ec97d790bee61ff3bd7baa6a9c0d5312e39ea6a357  android/app/src/test/java/dev/vaultaire/ui/SecureWindowTest.kt
 13fe30a1059ed16e8ff0f44aa4b5f6caeb11565697a9204a10163871b9a90b33  android/core-bindings/src/test/java/dev/vaultaire/core/EntriesBridgeTest.kt
+98bbe3171fa2fac6e3153ecc74f2d8d0dc0620616dca3f54b38faaab492f2769  android/core-bindings/src/test/java/dev/vaultaire/core/ScanBridgeTest.kt
 307e5a0167d25333e52a8efbf7559886cd5c370360c1e5f4ef74304860cde070  android/core-bindings/src/test/java/dev/vaultaire/core/VaultEngineTest.kt
 7c459984f6de406f8571d073cec9793279fe90ef477aaff7017c60011202dda8  core/vault-core/tests/backup_banks.rs
 887d02919d278c2ae2e69f1ae1bdae0a112de163fa7a35b60dad5e116d245ac4  core/vault-core/tests/banks.rs
@@ -31,3 +35,4 @@ cf421fd3d73d6914c1ee461ad059fcd7e44f45b3ddc3de91ba96383a4de7986f  core/vault-cor
 03d4be7ec7166e18c25556cb80e2a255636f938f85fe77adafc456384d84c21e  core/vault-core/tests/session_security.rs
 8dbf31b9d682fd2f049340b3361960bf5665d8f42d7b61feec755066bcd15214  core/vault-core/tests/vault_store.rs
 f063f19090e48ea634b0d5cf85c382d7aae16af9ed82725f3ef8eaa1310ec04c  tools/test_frozen_tests.py
+203ca142ea9daf23c3d19a911c3442b940482201294397301db5144107998fb1  tools/test_manifest_camera.py

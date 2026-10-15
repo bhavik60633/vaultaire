@@ -183,7 +183,7 @@ Vaultaire does **not** fill in checkout forms by itself in this version. It does
 | **M2. App foundation** (Android) | The Rust–Kotlin bridge (UniFFI); Gradle project with the Rust core built in; the security log; hardware keys and fingerprint unlock (`BiometricPrompt` with `CryptoObject`); create vault with password and Recovery Key; auto-lock; screenshot blocking; clipboard rules | 109 tests (22 Rust, 87 Kotlin on Robolectric, run in CI without a phone), frozen 2026-10-15. **Done: all green** |
 | **M3. Screens** | Home with bank tiles and favourites; bank page with filters; card page with copy rows; add and edit card, PIN and bank account; search; settings; returning to the last bank after unlock; the owner's ten acceptance checks (§8) | 74 tests (29 Rust, 11 bridge, 34 Compose screen tests driving a real vault), **frozen 2026-10-15**; wording follows the design mockup |
 | **M4. Backup and restore** | Save to Google Drive through the file picker; auto-backup; restore on a new phone | Unit and UI tests; R12 waits for real phones at G2 |
-| **M5. Scanner** | CameraX and ML Kit (bundled), card-front parser | Parser unit tests; manifest check |
+| **M5. Scanner** (built before M4, owner's request 2026-10-15) | CameraX and ML Kit (bundled), card-front parser | Parser unit tests; manifest check. **Done 2026-10-15:** components 16–19, 34 frozen tests green |
 | **M6. First APK** | Release build by GitHub Actions; emulator guide for the owner | CI build passes; manifest has no INTERNET permission |
 
 ## 7. How each part is built: frozen tests first

@@ -765,6 +765,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_vault_ffi_checksum_func_catalogue_banks(
     ): Int
+    external fun uniffi_vault_ffi_checksum_func_find_bank(
+    ): Int
     external fun uniffi_vault_ffi_checksum_func_suggest_network(
     ): Int
     external fun uniffi_vault_ffi_checksum_method_ffisession_change_password(
@@ -959,6 +961,8 @@ internal object UniffiLib {
     ): Long
     external fun uniffi_vault_ffi_fn_func_catalogue_banks(uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_vault_ffi_fn_func_find_bank(`name`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_vault_ffi_fn_func_suggest_network(`number`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun ffi_vault_ffi_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -1102,6 +1106,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if ((lib.uniffi_vault_ffi_checksum_func_catalogue_banks() and 0xFFFF) != 20210) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_vault_ffi_checksum_func_find_bank() and 0xFFFF) != 60746) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if ((lib.uniffi_vault_ffi_checksum_func_suggest_network() and 0xFFFF) != 48055) {
@@ -4220,6 +4227,21 @@ public object FfiConverterSequenceTypeFfiSummary: FfiConverterRustBuffer<List<Ff
     UniffiLib.uniffi_vault_ffi_fn_func_catalogue_banks(
     
         _status)
+}
+    )
+    }
+    
+
+        /**
+         * The catalogue bank a printed or typed name stands for, by the same normaliser as the bank
+         * picker (ADR-011): "HDFC BANK" is `in.hdfc`. None for anything that is not a known bank.
+         */ fun `findBank`(`name`: kotlin.String): kotlin.String? {
+            return FfiConverterOptionalString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_vault_ffi_fn_func_find_bank(
+    
+        
+        FfiConverterString.lower(`name`),_status)
 }
     )
     }

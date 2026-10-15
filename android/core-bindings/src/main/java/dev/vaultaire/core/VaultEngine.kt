@@ -126,6 +126,12 @@ class VaultEngine(private val file: File, private val allowSoftwareKeys: Boolean
         fun suggestNetwork(number: String): String? =
             uniffi.vault_ffi.suggestNetwork(number.filter { it.isDigit() }.take(6))
 
+        /**
+         * The catalogue bank a name stands for, by the bank picker's normaliser: "HDFC BANK" is
+         * `in.hdfc`. Null for anything that is not a known bank.
+         */
+        fun findBank(name: String): String? = uniffi.vault_ffi.findBank(name)
+
         /** The bundled bank catalogue (ADR-011), for the bank picker. */
         fun catalogue(): List<CatalogueBank> =
             uniffi.vault_ffi.catalogueBanks().map { CatalogueBank(it.id, it.name, it.fullName) }

@@ -1,11 +1,8 @@
 package dev.vaultaire.ui
 
 import androidx.compose.foundation.Image
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.WindowInsets
@@ -99,7 +96,6 @@ fun VaultaireApp(gateway: VaultGateway, testBuild: Boolean) {
             Modifier
                 .fillMaxSize()
                 .background(Obsidian.bg)
-                .ambientLight()
                 // Clear of the status bar, the navigation bar and the keyboard, so a field being
                 // typed in always stays in view.
                 .windowInsetsPadding(WindowInsets.safeDrawing),
@@ -145,7 +141,11 @@ private fun Screen(
     actions: @Composable ColumnScope.() -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(Modifier.fillMaxSize()) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .ambientLight(),
+    ) {
         Column(
             Modifier
                 .weight(1f)
@@ -170,8 +170,9 @@ private fun Screen(
 }
 
 /**
- * The light the whole app sits in: a soft gold glow from above that drifts slowly across the
- * page, as if from a lamp. Still when the phone's animations are off.
+ * The light every page sits in: a soft gold glow from above that glides across the page when it
+ * opens and then rests there, as if from a lamp. It settles rather than moving forever, so it
+ * costs nothing while the page is read. Still when the phone's animations are off.
  */
 @Composable
 private fun Modifier.ambientLight(): Modifier {
@@ -181,19 +182,17 @@ private fun Modifier.ambientLight(): Modifier {
             context.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f,
         ) > 0f
     }
-    val drift = if (motion) {
-        rememberInfiniteTransition(label = "light").animateFloat(
-            0f, 1f, infiniteRepeatable(tween(14_000, easing = LinearEasing), RepeatMode.Reverse), label = "x",
-        ).value
-    } else {
-        0.5f
+    val drift = remember { Animatable(if (motion) 0f else 1f) }
+    LaunchedEffect(Unit) {
+        if (motion) drift.animateTo(1f, tween(4_200, easing = FastOutSlowInEasing))
     }
     return drawBehind {
         val w = size.width
+        val t = drift.value
         drawRect(
             Brush.radialGradient(
-                listOf(Obsidian.accent.copy(alpha = 0.13f), Obsidian.accent.copy(alpha = 0.04f), Color.Transparent),
-                center = Offset(w * (0.3f + 0.4f * drift), -w * 0.18f),
+                listOf(Obsidian.accent.copy(alpha = 0.13f * (0.35f + 0.65f * t)), Obsidian.accent.copy(alpha = 0.04f), Color.Transparent),
+                center = Offset(w * (0.22f + 0.36f * t), -w * 0.18f),
                 radius = w * 1.05f,
             ),
         )

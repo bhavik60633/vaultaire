@@ -1,6 +1,6 @@
 # ADR-009: Card scanner with CameraX and ML Kit's bundled text recognition
 
-- Status: **Proposed**, for review at Gate G0. Versions are pinned, and the review below done, before Phase 5 starts.
+- Status: **Accepted** for milestone M5 (owner, 2026-10-15). Built with CameraX 1.6.2 and ML Kit `text-recognition` 16.0.1; the on-phone part of the review below (R13) still waits for a real phone.
 - Date: 2026-10-15
 
 ## Context
@@ -38,7 +38,15 @@ Rules:
 - The camera is unbound when a scan succeeds, when the user leaves the screen and when the vault locks.
 - The release manifest is checked in CI: CAMERA present; INTERNET and ACCESS_NETWORK_STATE absent. Any entry merged in by a library is removed with `tools:node="remove"`.
 
-## Review before Phase 5 (research item R13)
+## As built (milestone M5)
+
+- `androidx.camera:camera-camera2`, `camera-lifecycle`, `camera-view` **1.6.2**; `com.google.mlkit:text-recognition` **16.0.1** (bundled model).
+- The bundled artifact also pulls in Google's `play-services-mlkit-text-recognition` client and Play-services base libraries as compile dependencies. The app uses the bundled model; R13 must confirm on a phone that nothing is downloaded or written.
+- ML Kit's usage reporting (`com.google.android.datatransport`) merges `INTERNET` and `ACCESS_NETWORK_STATE` into the manifest. Both are removed with `tools:node="remove"`, and `tools/manifest_assert.py` fails the build if either returns. Without the permission, the reporting cannot reach the network.
+- The preview uses a TextureView (`PreviewView` in COMPATIBLE mode), so the window's FLAG_SECURE also covers the camera picture.
+- `CardTextReader` (Kotlin) is the parser; the bank suggestion uses the catalogue's normaliser through `VaultEngine.findBank`.
+
+## Review before real cards (research item R13)
 
 - Read ML Kit's merged manifest entries and confirm none of them need the network.
 - Run a scan on the A12 with `strace` or file-access monitoring, and confirm nothing is written under the app's storage (model cache, logs, telemetry queue).

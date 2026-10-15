@@ -54,6 +54,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import dev.vaultaire.core.BankAccountInput
+import dev.vaultaire.scan.LocalCardCamera
 import dev.vaultaire.core.CardFinish
 import dev.vaultaire.core.CardFilter
 import dev.vaultaire.core.CardInput
@@ -940,6 +941,18 @@ private fun CardForm(data: VaultData, id: EntryId?, bankId: String?, changed: ()
     var cvv by remember { mutableStateOf("") }
     var note by remember { mutableStateOf(value("card.user_note")) }
     var error by remember { mutableStateOf<String?>(null) }
+    val camera = LocalCardCamera.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var scanning by remember { mutableStateOf(false) }
+    var cameraRefused by remember { mutableStateOf(false) }
+    var seenBank by remember { mutableStateOf<String?>(null) }
+    var pickerKey by remember { mutableIntStateOf(0) }
+    val askCamera = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        cameraRefused = !granted
+        scanning = granted
+    }
     val ready = kind != null && (product.isNotBlank() || nickname.isNotBlank()) && (id != null || number.isNotBlank())
 
     fun save() {
@@ -968,10 +981,50 @@ private fun CardForm(data: VaultData, id: EntryId?, bankId: String?, changed: ()
         }
     }
 
+    if (scanning && camera != null) {
+        CardScanner(camera, onClose = { scanning = false }) { card ->
+            // Only what the reader took: number, expiry, name. Bank and type stay the person's.
+            scanning = false
+            number = if (card.number.length == 15) {
+                "${card.number.take(4)} ${card.number.substring(4, 10)} ${card.number.drop(10)}"
+            } else {
+                card.number.chunked(4).joinToString(" ")
+            }
+            VaultEngine.suggestNetwork(card.number)?.let { network = it }
+            card.expiry?.let { expiry = it }
+            card.holder?.let { holder = it }
+            seenBank = card.seenBankId
+        }
+        return
+    }
+
+    fun scan() {
+        val allowed = androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA) ==
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (allowed) scanning = true else askCamera.launch(android.Manifest.permission.CAMERA)
+    }
+
     frame({ PrimaryButton("Save card", ::save, Modifier.tag("save"), enabled = ready) }) {
         IconAction("close", "Cancel", { done(null) }, Modifier.tag("back"))
         Text(if (id == null) "Add card" else "Edit card", style = type.displayL)
-        BankPicker(data, bank) { bank = it }
+        if (id == null && camera != null) {
+            ScanButton(::scan)
+            if (cameraRefused) {
+                Text(
+                    "Vaultaire needs the camera to read the card. You can type the details instead.",
+                    style = type.small.copy(color = Obsidian.warn),
+                )
+            }
+        }
+        key(pickerKey) { BankPicker(data, bank) { bank = it } }
+        val offered = seenBank
+        if (offered != null && offered != bank) {
+            SeenBank(session.bankName(offered) ?: offered) {
+                bank = offered
+                seenBank = null
+                pickerKey++
+            }
+        }
         FieldLabel("Card type")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip("Credit", kind == CardKind.CREDIT, "kind:credit") { kind = CardKind.CREDIT }
@@ -997,6 +1050,51 @@ private fun CardForm(data: VaultData, id: EntryId?, bankId: String?, changed: ()
         VaultField(cvv, { cvv = it }, "CVV (optional, stored only if you add it)", secret = true, fieldModifier = Modifier.tag("field:cvv"))
         VaultField(note, { note = it }, "Your note (optional)", fieldModifier = Modifier.tag("field:user_note"))
         error?.let { Text(it, style = type.small.copy(color = Obsidian.crit), modifier = Modifier.tag("error")) }
+    }
+}
+
+/** "Scan card": fills the number, expiry and name from the camera. */
+@Composable
+private fun ScanButton(onClick: () -> Unit) {
+    val type = LocalVaultType.current
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(R12)
+            .background(Brush.horizontalGradient(listOf(Obsidian.accent.copy(alpha = 0.14f), Obsidian.raised)))
+            .border(1.dp, Obsidian.accent.copy(alpha = 0.35f), R12)
+            .clickable(role = Role.Button, onClick = onClick)
+            .tag("scanCard")
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        VIcon("scan", tint = Obsidian.accent, size = 26.dp)
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text("Scan card", style = type.body.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Medium))
+            Text("Front only · fills the number, expiry and name", style = type.faint.copy(color = Obsidian.text2))
+        }
+        VIcon("chev", tint = Obsidian.text3, size = 18.dp)
+    }
+}
+
+/** A bank printed on the scanned card, offered for one tap; never chosen for the person. */
+@Composable
+private fun SeenBank(name: String, onUse: () -> Unit) {
+    val type = LocalVaultType.current
+    Row(
+        Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(Obsidian.accentSoft)
+            .border(1.dp, Obsidian.accent.copy(alpha = 0.35f), RoundedCornerShape(20.dp))
+            .clickable(role = Role.Button, onClick = onUse)
+            .tag("seenBank")
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("Seen on card: $name", style = type.small)
+        Spacer(Modifier.width(8.dp))
+        VIcon("plus", tint = Obsidian.accent, size = 14.dp)
     }
 }
 
