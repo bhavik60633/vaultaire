@@ -8,6 +8,10 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
+import dev.vaultaire.core.CardFinish
+import dev.vaultaire.core.CardInput
+import dev.vaultaire.core.CardKind
 import androidx.test.core.app.ApplicationProvider
 import dev.vaultaire.core.BankAccountInput
 import dev.vaultaire.core.PinInput
@@ -24,6 +28,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
@@ -48,7 +53,7 @@ class Screenshots {
     private fun save(name: String) {
         compose.waitForIdle()
         val bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
-        File(out!!).mkdirs()
+        File(out!!, name).parentFile?.mkdirs()
         File(out, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
 
@@ -136,6 +141,62 @@ class Screenshots {
             click("back")
             click("settings")
             save("17-settings")
+        } finally {
+            vault.lock()
+            dir.deleteRecursively()
+        }
+    }
+
+    /**
+     * Frames of the card for the owner's preview: drifting, tilted by a finger, turned over and
+     * back, the finishes, and the number shown after a fingerprint. Rendered at twice the density.
+     */
+    @Test
+    @Config(qualifiers = "w411dp-h891dp-xhdpi")
+    fun cardAnimation() {
+        val dir = Files.createTempDirectory("vaultaire-card").toFile()
+        val vault = RealVault(ApplicationProvider.getApplicationContext(), dir)
+        try {
+            val id = vault.session().addCard(
+                CardInput(
+                    bankId = "in.hdfc", kind = CardKind.CREDIT, product = "HDFC Millennia", holder = "ASHA RAO",
+                    number = SecretInput.Set("5555555555554444".toCharArray()), expiry = "08/29",
+                    network = "Mastercard", cvv = SecretInput.Set("321".toCharArray()),
+                ),
+                RealVault.NOW,
+            )
+            vault.session().addPin(
+                PinInput(PinPurpose.ATM_PIN, "HDFC card PIN", SecretInput.Set("8642".toCharArray()), linkedTo = id),
+                RealVault.NOW,
+            )
+            compose.setContent { VaultaireApp(vault, testBuild = false) }
+            click("bank:in.hdfc")
+            click("entry:${id.hex}")
+            compose.mainClock.autoAdvance = false
+            var frame = 0
+            fun shoot(ms: Long, count: Int) = repeat(count) {
+                compose.mainClock.advanceTimeBy(ms)
+                save("card/%03d".format(frame++))
+            }
+            shoot(80, 30)
+            compose.onNodeWithTag("cardFace").performTouchInput { down(center) }
+            repeat(10) {
+                compose.onNodeWithTag("cardFace").performTouchInput { moveBy(androidx.compose.ui.geometry.Offset(-9f, 4f)) }
+                shoot(40, 1)
+            }
+            compose.onNodeWithTag("cardFace").performTouchInput { up() }
+            shoot(60, 18)
+            click("turnCard")
+            shoot(40, 22)
+            shoot(80, 14)
+            click("turnCard")
+            shoot(40, 22)
+            for (f in listOf(CardFinish.CHAMPAGNE, CardFinish.PLATINUM, CardFinish.IVORY, CardFinish.TITANIUM, CardFinish.OBSIDIAN)) {
+                click("finish:${f.name.lowercase()}")
+                shoot(80, 9)
+            }
+            click("cardNumber")
+            shoot(80, 20)
         } finally {
             vault.lock()
             dir.deleteRecursively()

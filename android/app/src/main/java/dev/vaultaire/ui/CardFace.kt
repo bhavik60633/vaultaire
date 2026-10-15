@@ -49,6 +49,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -169,17 +170,23 @@ fun CardStage(
         Box(
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 6.dp, vertical = 10.dp)
+                .padding(horizontal = 6.dp, vertical = 18.dp)
                 .drawBehind {
-                    // The glow under the card, in the finish's own light.
-                    val pulse = 0.30f + 0.10f * sin(wave)
-                    drawRect(
-                        Brush.radialGradient(
-                            listOf(colors.glow.copy(alpha = pulse), Color.Transparent),
-                            center = Offset(size.width / 2, size.height * 0.62f + floatY),
-                            radius = size.width * 0.62f,
-                        ),
-                    )
+                    // The glow under the card, in the finish's own light: an ellipse that fades out
+                    // well inside this box, so it never shows an edge.
+                    val pulse = 0.38f + 0.12f * sin(wave)
+                    val center = Offset(size.width / 2, size.height * 0.58f + floatY)
+                    scale(scaleX = 1f, scaleY = 0.5f, pivot = center) {
+                        drawCircle(
+                            Brush.radialGradient(
+                                listOf(colors.glow.copy(alpha = pulse), colors.glow.copy(alpha = pulse * 0.35f), Color.Transparent),
+                                center = center,
+                                radius = size.width * 0.5f,
+                            ),
+                            radius = size.width * 0.5f,
+                            center = center,
+                        )
+                    }
                 }
                 .pointerInput(Unit) {
                     detectDragGestures(
@@ -522,7 +529,7 @@ private fun FinishPicker(current: CardFinish, onFinish: (CardFinish) -> Unit) {
             val selected = f == current
             Box(
                 Modifier
-                    .size(40.dp)
+                    .size(38.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .selectable(selected = selected, role = Role.RadioButton) { onFinish(f) }
                     .tag("finish:${f.name.lowercase()}")
@@ -547,7 +554,7 @@ private fun FinishPicker(current: CardFinish, onFinish: (CardFinish) -> Unit) {
             }
         }
         Spacer(Modifier.width(6.dp))
-        Text(current.label, style = LocalVaultType.current.small.copy(color = Obsidian.text2))
+        Text(current.label, style = LocalVaultType.current.small.copy(color = Obsidian.text2), softWrap = false)
     }
 }
 
@@ -566,8 +573,9 @@ private fun TurnButton(turned: Boolean, onTurn: () -> Unit) {
         VIcon("refresh", tint = Obsidian.accent, size = 18.dp)
         Spacer(Modifier.width(8.dp))
         Text(
-            if (turned) "Front" else "Turn over",
+            if (turned) "Front" else "Turn",
             style = LocalVaultType.current.small.copy(fontWeight = FontWeight.Medium),
+            softWrap = false,
         )
     }
 }
