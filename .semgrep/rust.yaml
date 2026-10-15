@@ -53,7 +53,12 @@ rules:
       - pattern-either:
           - pattern: $A == $B
           - pattern: $A != $B
+      # A length check on a secret is not a comparison of its bytes.
+      - pattern-not: $X.len() == $N
+      - pattern-not: $X.len() != $N
       - metavariable-regex:
           metavariable: $A
           # Whole words only, so a map's `keys()` or a `tags` list is not mistaken for a secret.
-          regex: (?i)(^|[^a-z])(key|kek|vk|sk|secret|tag|mac|checksum|digest|hmac|hw_pwd|h_pwd|rs|rs_id)([^a-z]|$)
+          # Semgrep matches this regex from the start of $A, hence the leading `.*`: without it,
+          # `expected_mac` or `stored_rs_id` would never match and the rule would check nothing.
+          regex: (?i).*(^|[^a-z])(key|kek|vk|sk|secret|tag|mac|checksum|digest|hmac|hw_pwd|h_pwd|rs|rs_id)([^a-z]|$)
