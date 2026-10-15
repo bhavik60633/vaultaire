@@ -7,6 +7,7 @@
 //! **Unaudited. Do not store real credentials** (Gate G0 owner override, 2026-09-30).
 
 pub mod backup;
+pub mod banks;
 pub mod cbor;
 pub mod error;
 pub mod integrity;
