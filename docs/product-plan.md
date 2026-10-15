@@ -162,7 +162,7 @@ Vaultaire does **not** fill in checkout forms by itself in this version. It does
 | Phase | What gets built | Status |
 |---|---|---|
 | 1. Specs | This plan; changes to the threat model, crypto spec and vault format; ADR-009 to ADR-011 | **Written 2026-10-15; waiting for review at G0** |
-| 2. Core (Rust) | Test-freeze guard; bank catalogue and name normaliser; card, PIN and bank-account record rules; Organisation record; backup carrying bank groups; the auto-backup key | Not started |
+| 2. Core (Rust) | Test-freeze guard; bank catalogue and name normaliser; card, PIN and bank-account record rules; Organisation record; backup carrying bank groups; the auto-backup key | **Started:** the test-freeze guard is done (component 1) |
 | 3. App shell (Android) | Unlock and auto-lock; home page with bank tiles, search and favourites; bank page with filters; card page with copy rows; adding and editing; PIN and bank-account entries; returning to the same place after unlock | Not started |
 | 4. Backup and restore | Saving to Google Drive, automatic re-saving, restoring on a new phone; real-phone checks (R12) | Not started |
 | 5. Scanner | Camera scanning of the card front; checks that it keeps nothing and uses no network (R13) | Not started |
@@ -182,7 +182,7 @@ Planned components, in order (phase 2 first):
 
 | # | Component | Tests check, for example |
 |---|---|---|
-| 1 | Test-freeze guard (`tools/frozen_tests.py`) | An unchanged file passes; a changed or missing file fails; a frozen file cannot be re-frozen with new contents; a damaged checksum list fails |
+| 1 | Test-freeze guard (`tools/frozen_tests.py`). **Done 2026-10-15:** 27 tests frozen by the owner, all green, checked in CI | An unchanged file passes; a changed or missing file fails; a frozen file cannot be re-frozen with new contents; a damaged checksum list fails |
 | 2 | Bank catalogue and name normaliser (`vault-core`) | "SBI", "State Bank of India" and "state bank" give `in.sbi`; unknown names give no match; no two catalogue banks clash |
 | 3 | Card, PIN and bank-account record rules (`vault-core`) | Last four must match the number; `card.pin` and PIN fields on cards are refused; ATM PINs must be critical-strict; IFSC format |
 | 4 | Organisation record (`vault-core`) | Custom banks round-trip; clashing names are refused; limits |

@@ -1,0 +1,3 @@
+# Frozen tests (product plan §7). CI fails if any file below changes.
+# Only the owner adds or removes lines here; a removed line is an unfreeze and needs a reason in its commit.
+f063f19090e48ea634b0d5cf85c382d7aae16af9ed82725f3ef8eaa1310ec04c  tools/test_frozen_tests.py
