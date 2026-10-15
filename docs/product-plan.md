@@ -168,6 +168,24 @@ Vaultaire does **not** fill in checkout forms by itself in this version. It does
 | 5. Scanner | Camera scanning of the card front; checks that it keeps nothing and uses no network (R13) | Not started |
 | 6. Gates G2–G4 | Real-phone security tests, leak tests, tamper and lock-out tests, independent review. **Only after this may real data go in** | Not started |
 
+### 6.1 Owner decisions of 2026-10-15 (later the same day)
+
+- **One complete app first.** The first APK contains everything: the vault, cards, PINs, bank accounts, Google Drive backup and restore, and the camera scanner. No partial APK comes before it.
+- **Emulator only.** Gate G0's rule stays as it is: no APK is installed on a real phone, sideloaded or shared until the independent security review. The owner tries the app in the **Android emulator on a laptop** (Android Studio). The APK is built by GitHub Actions and downloaded from there.
+- **iPhone:** an APK cannot run on an iPhone. The iPhone shows the design mockup only; a real iPhone app needs a Mac and an Apple developer account (iOS phase, paused).
+- **Tests in batches per milestone.** All tests for a milestone are written together, frozen once by the owner, then the code is built until all are green. Frozen tests are never changed.
+
+### 6.2 Milestones to the first APK
+
+| Milestone | Contents | Tests |
+|---|---|---|
+| **M1. Core complete** (Rust) | Components 4–6 (organisation record, backup bank groups, auto-backup key, already proposed); the encrypted vault store (SQLite); create, unlock and lock a vault through the three keyslots; add, edit, delete and list items; change password; security log; the Rust–Kotlin bridge (UniFFI) | Rust integration tests |
+| **M2. App foundation** (Android) | Gradle project with the Rust core built in; hardware keys and fingerprint unlock (`BiometricPrompt` with `CryptoObject`); create vault with password and Recovery Key; auto-lock; screenshot blocking; clipboard rules | JVM unit tests and Compose UI tests (Robolectric), run in CI without a phone |
+| **M3. Screens** | Home with bank tiles and favourites; bank page with filters; card page with copy rows; add and edit card, PIN and bank account; search; settings; returning to the last bank after unlock; the owner's ten acceptance checks (§8) | Compose UI tests |
+| **M4. Backup and restore** | Save to Google Drive through the file picker; auto-backup; restore on a new phone | Unit and UI tests; R12 waits for real phones at G2 |
+| **M5. Scanner** | CameraX and ML Kit (bundled), card-front parser | Parser unit tests; manifest check |
+| **M6. First APK** | Release build by GitHub Actions; emulator guide for the owner | CI build passes; manifest has no INTERNET permission |
+
 ## 7. How each part is built: frozen tests first
 
 The owner's rule (2026-10-15):
