@@ -69,7 +69,7 @@ class HomeAndBankTest {
     @Test
     fun anEmptyVaultInvitesYouToAddACard() {
         start()
-        compose.onNodeWithText("No cards yet").assertExists()
+        compose.onNodeWithText("Nothing here yet").assertExists()
         compose.onNodeWithTag("addCard").assertExists()
     }
 
@@ -78,22 +78,21 @@ class HomeAndBankTest {
         vault.fixture()
         start()
         compose.onNodeWithTag("bank:all").assertTextContains("All cards", substring = true)
-        compose.onNodeWithTag("bank:all").assertTextContains("10 cards", substring = true)
-        compose.onNodeWithTag("bank:in.sbi").assertTextContains("SBI", substring = true)
-        compose.onNodeWithTag("bank:in.sbi")
-            .assertTextContains("5 cards · 3 credit · 2 debit", substring = true)
-        compose.onNodeWithTag("bank:in.hdfc")
-            .assertTextContains("2 cards · 1 credit · 1 debit", substring = true)
-        compose.onNodeWithTag("bank:in.axis")
-            .assertTextContains("3 cards · 2 credit · 1 debit", substring = true)
+        compose.onNodeWithTag("bank:all").assertTextContains("10")
+        compose.onNodeWithTag("bank:all").assertTextContains("4 debit · 6 credit")
+        compose.onNodeWithTag("bank:in.sbi").assertTextContains("SBI")
+        compose.onNodeWithTag("bank:in.sbi").assertTextContains("5")
+        compose.onNodeWithTag("bank:in.sbi").assertTextContains("2 debit · 3 credit")
+        compose.onNodeWithTag("bank:in.hdfc").assertTextContains("1 debit · 1 credit")
+        compose.onNodeWithTag("bank:in.axis").assertTextContains("1 debit · 2 credit")
     }
 
     @Test
     fun cardsWithoutABankHaveTheirOwnTile() {
         vault.card(null, CardKind.OTHER, "Forex card", "4000000000009001")
         start()
-        compose.onNodeWithTag("bank:unassigned")
-            .assertTextContains("Other / Unassigned", substring = true)
+        compose.onNodeWithTag("bank:unassigned").assertTextContains("Other / Unassigned")
+        compose.onNodeWithTag("bank:unassigned").assertTextContains("1 card")
     }
 
     @Test
@@ -135,7 +134,8 @@ class HomeAndBankTest {
         vault.fixture()
         start()
         open("bank:in.sbi")
-        compose.onNodeWithTag("bankPage").assertTextContains("SBI · 5 cards", substring = true)
+        compose.onNodeWithTag("bankPage").assertTextContains("SBI")
+        compose.onNodeWithTag("bankPage").assertTextContains("5 cards · 2 debit · 3 credit")
         rows().assertCountEquals(5)
     }
 

@@ -72,7 +72,7 @@ class ReturnAndSettingsTest {
         compose.onNodeWithTag("value:card.number").assertTextContains("4111 1111 1111 1234")
 
         lockAndUnlock()
-        compose.onNodeWithTag("bankPage").assertTextContains("SBI · 5 cards", substring = true)
+        compose.onNodeWithTag("bankPage").assertTextContains("5 cards · 2 debit · 3 credit")
         compose.onNodeWithTag("filter:credit").assertIsSelected()
         compose.onNodeWithText("4111 1111 1111 1234").assertDoesNotExist()
         compose.onAllNodesWithTag("entryPage").assertCountEquals(0)

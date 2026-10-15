@@ -383,7 +383,7 @@ A template fixes each field's `key`, `kind`, default `sensitivity` and `copyable
 | `card.holder` | Name on card | text | 1 | |
 | `card.number` | Card number | pan | 3 | Digits only, 12–19, no spaces; the app formats it for display and copies it **without spaces** |
 | `card.expiry` | Expiry | expiry | 1 | `MM/YY` |
-| `card.network` | Network | text | 1 | One of `Visa`, `Mastercard`, `RuPay`, `American Express`, `Diners Club`, `Discover`, `JCB`, `UnionPay`, or absent if unknown. Suggested from the number's prefix at entry; the user can change it |
+| `card.network` | Network | text | 1 | One of `Visa`, `Mastercard`, `RuPay`, `American Express`, `Diners Club`, `Discover`, `JCB`, `UnionPay`, or absent if unknown. Suggested from the number's prefix at entry (Visa 4; Mastercard 51–55 and 2221–2720; RuPay 60, 6521–6522, 81, 82, 508; American Express 34, 37; Diners Club 300–305, 36, 38, 39; Discover 6011, 644–649, 65; JCB 3528–3589; UnionPay 62); the user can change it |
 | `card.cvv` | CVV | cvv | 3 | Opt-in only (§5.3) |
 | `card.user_note` | Your note | text | 1 | Optional, ≤ 500 bytes. Shown on the card and searched, for example "Check this card for Amazon offers". The app labels it as the user's own note, never as a verified benefit |
 | `card.customer_care` | Customer care | phone | 1 | Optional |
@@ -414,7 +414,7 @@ A template fixes each field's `key`, `kind`, default `sensitivity` and `copyable
 | `bank.rm_phone` | RM phone | phone | 1 |
 | `bank.concierge_phone` | Concierge / customer care | phone | 1 |
 
-Every field is optional except `bank.account_number`. Phone fields offer **Call**, which opens the dialler with the number filled in (`ACTION_DIAL`) and never places the call itself.
+Every field is optional except `bank.account_number`. `title` is the bank's display name followed by " account" ("Bank account" when no bank is set); `subtitle` is "•••• " followed by the last four digits of the account number. Phone fields offer **Call**, which opens the dialler with the number filled in (`ACTION_DIAL`) and never places the call itself.
 
 **PIN** (type 9). Index key 19 applies.
 

@@ -37,7 +37,7 @@ import org.robolectric.Shadows.shadowOf
  * - Copying or showing the card number or CVV needs a fingerprint from the last minute; the
  *   number is copied without spaces and cleared after 15 seconds. Other values need none and
  *   are cleared after 30 seconds. A refused fingerprint copies and shows nothing.
- * - A card linked to a PIN shows only "PIN stored separately". Every PIN reveal or copy needs a
+ * - A card linked to a PIN shows only "Stored separately · fingerprint every time". Every PIN reveal or copy needs a
  *   fresh fingerprint.
  * - Leaving the page hides whatever was shown. Deleting asks first.
  */
@@ -97,7 +97,8 @@ class EntryPageTest {
         compose.onNodeWithTag("value:card.cvv").assertTextContains("•••")
         compose.onNodeWithTag("value:card.holder").assertTextContains("ASHA RAO")
         compose.onNodeWithText("4111", substring = true).assertDoesNotExist()
-        compose.onNodeWithText("Copy all", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Copy all").assertDoesNotExist()
+        compose.onNodeWithText("Copied without spaces · clears in 15 s").assertExists()
         compose.onNodeWithTag("copy:card.number").assertExists()
         compose.onNodeWithTag("copy:card.holder").assertExists()
     }
@@ -171,7 +172,8 @@ class EntryPageTest {
             RealVault.NOW,
         )
         openCard(cardId)
-        compose.onNodeWithText("PIN stored separately").assertExists()
+        compose.onNodeWithTag("linkedPin").assertTextContains("ATM PIN")
+        compose.onNodeWithTag("linkedPin").assertTextContains("Stored separately · fingerprint every time")
         compose.onNodeWithText("4321", substring = true).assertDoesNotExist()
 
         click("linkedPin")
