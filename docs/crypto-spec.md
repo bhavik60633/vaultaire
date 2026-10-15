@@ -235,7 +235,7 @@ VK and its subkeys **never** cross the FFI.
 - the device has no secure lock screen (`KeyguardManager.isDeviceSecure() == false`), or
 - Keystore reports that `K_bio` or `K_pwd` is software-backed.
 
-The emulator's Keystore is software-backed. It is allowed only in debug builds for CI.
+The emulator's Keystore is software-backed. It is allowed only in **debug builds**, for CI and for the owner's trials in the Android emulator (product plan §6.1). Such a vault records `hw_level = 0` in its slots, and every screen of a debug build shows "Test build: keys are not hardware-protected". A release build refuses to create a vault with software keys and refuses to open a vault whose slots record `hw_level = 0`.
 
 ## 6. Record encryption
 

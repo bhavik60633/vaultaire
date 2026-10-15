@@ -179,8 +179,8 @@ Vaultaire does **not** fill in checkout forms by itself in this version. It does
 
 | Milestone | Contents | Tests |
 |---|---|---|
-| **M1. Core complete** (Rust) | Components 4–6 (organisation record, backup bank groups, auto-backup key, already proposed); the encrypted vault store (SQLite); create, unlock and lock a vault through the three keyslots; add, edit, delete and list items; change password; security log; the Rust–Kotlin bridge (UniFFI) | Rust integration tests |
-| **M2. App foundation** (Android) | Gradle project with the Rust core built in; hardware keys and fingerprint unlock (`BiometricPrompt` with `CryptoObject`); create vault with password and Recovery Key; auto-lock; screenshot blocking; clipboard rules | JVM unit tests and Compose UI tests (Robolectric), run in CI without a phone |
+| **M1. Core complete** (Rust) | Components 4–6 (organisation record, backup bank groups, auto-backup key) and 7 (the encrypted vault store in SQLite: create, unlock through the three keyslots, lock, add, edit, delete, list and reveal entries, change password, back up and restore onto a new phone) | 51 Rust integration tests, proposed together |
+| **M2. App foundation** (Android) | The Rust–Kotlin bridge (UniFFI); Gradle project with the Rust core built in; the security log; hardware keys and fingerprint unlock (`BiometricPrompt` with `CryptoObject`); create vault with password and Recovery Key; auto-lock; screenshot blocking; clipboard rules | JVM unit tests and Compose UI tests (Robolectric), run in CI without a phone |
 | **M3. Screens** | Home with bank tiles and favourites; bank page with filters; card page with copy rows; add and edit card, PIN and bank account; search; settings; returning to the last bank after unlock; the owner's ten acceptance checks (§8) | Compose UI tests |
 | **M4. Backup and restore** | Save to Google Drive through the file picker; auto-backup; restore on a new phone | Unit and UI tests; R12 waits for real phones at G2 |
 | **M5. Scanner** | CameraX and ML Kit (bundled), card-front parser | Parser unit tests; manifest check |

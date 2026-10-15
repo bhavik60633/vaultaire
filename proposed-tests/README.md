@@ -16,4 +16,6 @@ written. From then on `python tools/frozen_tests.py check` (run in CI) fails if 
 | 5. Backups carry bank groups | [`component-5/backup_banks.rs`](component-5/backup_banks.rs), moves to `core/vault-core/tests/backup_banks.rs` | **Waiting for the owner's review.** 11 tests (two backward-compatibility tests already pass on today's code and must keep passing) |
 | 6. Cached export key for auto-backup | [`component-6/export_key.rs`](component-6/export_key.rs), moves to `core/vault-core/tests/export_key.rs` | **Waiting for the owner's review.** 6 tests |
 
-Components 4–6 were checked together: rustfmt clean, they compile and pass clippy `-D warnings` against stub APIs, and they fail against those stubs.
+| 7. Vault store and session (milestone M1) | [`component-7/vault_store.rs`](component-7/vault_store.rs), moves to `core/vault-core/tests/vault_store.rs` | **Waiting for the owner's review.** 17 tests. Adds `rusqlite` (ADR-005) and four error names: `vault_exists`, `insecure_device`, `integrity_failed`, `not_found` |
+
+**Milestone M1** is components 4–7 together (51 tests), frozen in one go (owner decision: batches per milestone). Components 4–6 were checked together: rustfmt clean, they compile and pass clippy `-D warnings` against stub APIs, and they fail against those stubs.

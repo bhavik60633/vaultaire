@@ -134,7 +134,7 @@ CREATE TABLE meta_record (
 | Key | Name | Type | BIO | PWD | REC |
 |---|---|---|---|---|---|
 | 1 | `slot_type` | uint (must equal the column) | 1 | 2 | 3 |
-| 2 | `hw_level` | uint: 1 = TEE, 2 = StrongBox | required | required | — |
+| 2 | `hw_level` | uint: 1 = TEE, 2 = StrongBox; 0 = software Keystore, **debug builds only** (crypto spec §5.2) | required | required | — |
 | 3 | `keystore_alias` | text, ≤ 128 bytes | required | required | — |
 | 4 | `iv` | bytes(12): Keystore AES-GCM IV | required | — | — |
 | 5 | `bio_blob` | bytes(48): SK encrypted by `K_bio` (32 + 16-byte tag) | required | — | — |
