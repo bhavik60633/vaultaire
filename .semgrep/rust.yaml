@@ -49,11 +49,20 @@ rules:
     message: >-
       Keys, tags, MACs and checksums must be compared in constant time with `subtle::ConstantTimeEq`
       (ADR-004). `==` can leak through timing how many leading bytes match.
+    # Tests never ship, and their fake hardware compares tags with `!=` to stay simple. Frozen
+    # tests cannot be edited (tests/FROZEN.sha256), so the rule covers product code only.
+    paths:
+      exclude: ["**/tests/**"]
     patterns:
       - pattern-either:
           - pattern: $A == $B
           - pattern: $A != $B
+      # A length check on a secret is not a comparison of its bytes.
+      - pattern-not: $X.len() == $N
+      - pattern-not: $X.len() != $N
       - metavariable-regex:
           metavariable: $A
           # Whole words only, so a map's `keys()` or a `tags` list is not mistaken for a secret.
-          regex: (?i)(^|[^a-z])(key|kek|vk|sk|secret|tag|mac|checksum|digest|hmac|hw_pwd|h_pwd|rs|rs_id)([^a-z]|$)
+          # Semgrep matches this regex from the start of $A, hence the leading `.*`: without it,
+          # `expected_mac` or `stored_rs_id` would never match and the rule would check nothing.
+          regex: (?i).*(^|[^a-z])(key|kek|vk|sk|secret|tag|mac|checksum|digest|hmac|hw_pwd|h_pwd|rs|rs_id)([^a-z]|$)

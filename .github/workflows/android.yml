@@ -54,9 +54,26 @@ jobs:
         run: |
           rustup target add aarch64-linux-android x86_64-linux-android
           cargo install --locked cargo-ndk@4.1.2
-          cargo ndk -t arm64-v8a -t x86_64 -P 31 -o ../android/core-bindings/src/main/jniLibs build --release --locked
+          cargo ndk -t arm64-v8a -t x86_64 -P 31 -o ../android/core-bindings/src/main/jniLibs build -p vault-ffi --release --locked
+      - name: The Kotlin bindings match the Rust bridge
+        working-directory: core
+        run: |
+          cargo build -p vault-ffi --locked
+          cargo run -p uniffi-bindgen --release --locked -- generate --library target/debug/libvault_ffi.so \
+            --language kotlin --out-dir ../android/core-bindings/src/main/java --no-format
+          git diff --exit-code -- ../android/core-bindings/src/main/java/uniffi
+      # The unit tests also build the Rust core for this runner (Gradle task buildHostCore).
       - name: Lint, unit tests and the R8 release build (dependency verification strict)
         working-directory: android
-        run: ./gradlew --no-daemon --dependency-verification strict lint testDebugUnitTest assembleRelease
+        run: ./gradlew --no-daemon --dependency-verification strict lint testDebugUnitTest assembleRelease assembleDebug
       - name: Manifest rules on what actually ships
         run: python3 tools/manifest_assert.py android/app/build/intermediates/merged_manifest/release/processReleaseMainManifest/AndroidManifest.xml
+      # The owner tries the app in the Android emulator only (Gate G0; product plan §6.1). The debug
+      # build accepts the emulator's software keys and says "Test build" on every screen.
+      - name: Emulator test build for the owner (debug APK, kept 14 days)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: vaultaire-emulator-test-build
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
+          if-no-files-found: error

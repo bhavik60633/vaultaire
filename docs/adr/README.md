@@ -14,6 +14,11 @@ Every third-party dependency also needs a record before it is added (why it is n
 | [006](ADR-006-cbor-minicbor.md) | `minicbor` for deterministic CBOR | Proposed |
 | [007](ADR-007-password-input.md) | Password strength (`zxcvbn`, conditional) and normalisation | Proposed |
 | [008](ADR-008-bridge-errors.md) | The Rust–Kotlin bridge (`uniffi`, JNA) and error types | Proposed |
+| [009](ADR-009-card-scanner-ocr.md) | Card scanner with CameraX and ML Kit's bundled text recognition | Proposed; versions pinned before Phase 5 |
+| [010](ADR-010-backup-drive-saf.md) | Backups to the user's Google Drive through the system file picker | Proposed; cached key pending Q9 |
+| [011](ADR-011-bank-catalogue.md) | A bundled bank catalogue and name normalisation for bank-grouped cards | Proposed |
+
+**Supply-chain store** (`core/supply-chain/`, set up 2026-10-15 by owner decision): `cargo vet` runs in CI. As a starting point every crate in `Cargo.lock` on that date (50 third-party crates) is an **exemption**: accepted without a recorded audit. From then on, any new or updated crate fails CI until it is audited or exempted with a reason in its ADR. Next step: import published audits (for example Mozilla's, Google's and the Bytecode Alliance's) so that exemptions become audits.
 
 **Dependency totals** (measured 2026-09-30 with `cargo tree` for `aarch64-linux-android`): about **74 crates compiled into the app**, 98 including build-time tools. Every licence in the tree is GPLv3-compatible (MIT, Apache-2.0, BSD-3-Clause, MPL-2.0, Zlib, Unlicense, Unicode-3.0, BlueOak-1.0.0). The largest single contributors are UniFFI's runtime (about 20) and `zxcvbn` (17). ADRs 003–008 group the dependencies by purpose, with one section per crate.
 

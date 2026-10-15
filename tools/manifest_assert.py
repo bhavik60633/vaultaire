@@ -5,7 +5,8 @@ Run it on the *merged* release manifest (what actually ships), for example:
     python tools/manifest_assert.py android/app/build/intermediates/merged_manifest/release/processReleaseMainManifest/AndroidManifest.xml
 
 Rules (threat model; blueprint §26):
-  1. Permissions: only those in ALLOWED_PERMISSIONS. No network permission, ever.
+  1. Permissions: only those in ALLOWED_PERMISSIONS. No network permission, ever. With CAMERA,
+     the camera feature must be declared optional.
   2. <application>: allowBackup="false", dataExtractionRules set, not debuggable, no cleartext traffic.
   3. Exported components: only the launcher activity, plus anything in ALLOWED_EXPORTED guarded by
      the permission listed for it.
@@ -20,6 +21,7 @@ A = '{http://schemas.android.com/apk/res/android}'
 ALLOWED_PERMISSIONS = {
     'android.permission.USE_BIOMETRIC',
     'android.permission.VIBRATE',  # haptics
+    'android.permission.CAMERA',  # the card scanner (ADR-009), asked for when Scan is tapped
 }
 # AndroidX adds a signature-level permission named <applicationId>.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION.
 ALLOWED_PERMISSION_SUFFIXES = ('.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION',)
@@ -54,6 +56,15 @@ def check(path):
         name = attr(p, 'name') or ''
         if name not in ALLOWED_PERMISSIONS and not name.endswith(ALLOWED_PERMISSION_SUFFIXES):
             problems.append(f'permission not allowed: {name}')
+
+    # The scanner is optional: the app must still install on a phone without a camera.
+    asks_camera = any(attr(p, 'name') == 'android.permission.CAMERA' for p in root.findall('uses-permission'))
+    optional_camera = any(
+        attr(f, 'name') == 'android.hardware.camera' and attr(f, 'required') == 'false'
+        for f in root.findall('uses-feature')
+    )
+    if asks_camera and not optional_camera:
+        problems.append('camera must be optional: android.hardware.camera required="false"')
 
     app = root.find('application')
     if app is None:

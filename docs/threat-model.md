@@ -5,7 +5,7 @@
 | Status | **Draft 0.1, not yet reviewed.** Input to Gate G0 (spec freeze). |
 | Scope | Vaultaire V1 for Android (minSdk 31). iOS differences are listed in [§10](#10-ios-delta-deferred) and are out of scope until the iOS phase. |
 | Companion specs | `crypto-spec.md` (key hierarchy, primitives, test vectors) and `vault-format.md` (on-disk and backup formats). Both are still to be written. |
-| Last updated | 2026-09-29 |
+| Last updated | 2026-10-15: ATM PINs as separate items (I11, §9.1, T39), list and re-mask invariants (I12, I13), scanner (T35, B7), cached backup key (T36), bank grouping (T37), Google Drive (T38, B5), R12–R13. Earlier: 2026-09-29 |
 
 Vaultaire is unaudited. Until an independent security review is published, nobody should store real credentials in it.
 
@@ -60,7 +60,9 @@ Each invariant must be testable. [§7](#7-threat-register) links threats to the 
 - **I8** Untrusted input is authenticated (AEAD) before any parsing beyond a small, bounded, fuzzed header.
 - **I9** Nothing sensitive reaches recents thumbnails, assistant or AI screen context, other autofill services, OS search, widgets or notifications.
 - **I10** Every display or copy of a secret is started by the user and ends after a bounded time.
-- **I11** A card security code (CVV) is stored only after an explicit, per-card opt-in. It is a critical field and is never autofilled. Card PINs are never stored. See [§9](#9-decision-record-card-security-codes-cvv).
+- **I11** A card security code (CVV) is stored only after an explicit, per-card opt-in. It is a critical field and is never autofilled. **A card PIN (ATM PIN) is never stored on a card item.** It may be stored only as a separate PIN item (vault-format §5.10), at the critical-strict tier: a fresh biometric for every reveal or copy. A card's screen never shows, copies or counts the digits of a linked PIN. See [§9](#9-decision-record-card-security-codes-cvv) and [§9.1](#91-decision-record-atm-pins).
+- **I12** No value of sensitivity 2 or higher appears in a list, a search result, a toast or a notification. Lists show only normal-tier fields, such as the title, card kind, network and last four digits.
+- **I13** Revealed values are re-masked as soon as the app leaves the foreground (`onStop`), not only after the 30-second re-mask timer. Restoring a screen after unlock never restores a revealed value.
 
 ## 4. System and trust boundaries
 
@@ -85,7 +87,9 @@ Each invariant must be testable. [§7](#7-threat-register) links threats to the 
    └─────────────────┘                             └────────────────────────────────────┘
 
 B4: untrusted inputs — backup files being imported · intents · (V1.1) autofill view structures
-B5: user-chosen storage for exported backups (cloud drives, USB, messaging) — assumed hostile
+B5: user-chosen storage for exported backups (Google Drive through the system file picker,
+    other cloud drives, USB, messaging) — assumed hostile
+B7: the camera (card scanner, front of the card only) — frames in memory, never stored
 B6: build and release pipeline — developer machine, CI, dependency registries, Play Console
 ```
 
@@ -149,7 +153,7 @@ Risk is likelihood × impact: **L**ow, **M**edium or **H**igh. "Verified by" nam
 | ID | Threat | Adv. | Risk | Mitigations | Residual risk | Verified by |
 |---|---|---|---|---|---|---|
 | T01 | Lost or stolen phone, locked | ADV-1 | H | OS lock and file-based encryption. Vault records AEAD-encrypted under VK. Device keyslots bound to hardware. Metadata minimised and padded (I1). | See T03 and T05 for stronger attackers | Canary sweep of extracted files (G1, G4) |
-| T02 | Someone uses the unlocked app | ADV-3 | M–H | Auto-lock after 2 min of inactivity, 30 s in the background, and at once on screen-off. Critical fields need a biometric within the last 60 s. Export and security changes need the vault password (I6). Always-visible lock button. Revealed values re-mask after 30 s (I10). | Can read non-critical values during the session | Instrumented tests (G2, G3) |
+| T02 | Someone uses the unlocked app | ADV-3 | M–H | Auto-lock after 2 min of inactivity, 30 s in the background, and at once on screen-off. Critical fields need a biometric within the last 60 s. Export and security changes need the vault password (I6). Always-visible lock button. Revealed values re-mask after 30 s (I10), and at once when the app leaves the foreground (I13). Returning from another app (for example a shopping checkout) restores the screen only after unlock, never a revealed value. | Can read non-critical values during the session | Instrumented tests (G2, G3) |
 | T03 | Thief who knows the device passcode | ADV-2 | M | **The passcode alone never unlocks the vault** (I3). KS-BIO needs the owner's biometric, and enrolling a new one invalidates it. KS-PWD needs the passcode **and** the vault password. App-enforced delays between password attempts. | With an OS exploit as well, the vault password's strength decides | Invalidation scenarios on StrongBox and TEE devices (G2) |
 | T13 | Shoulder surfing | ADV-3 | M | Masked by default. One field revealed at a time. Automatic re-mask. Biometric-first unlock means little typing. | Values are visible while revealed | Manual (G3) |
 | T27 | Other people's fingerprints, or spoofed biometrics | ADV-4 | M | Class 3 biometrics only. Onboarding warns that anyone enrolled on the phone can open the vault. Password-only mode. | Spoofing of certified sensors; household members enrolled before the vault existed | Manual (G2) |
@@ -172,7 +176,7 @@ Risk is likelihood × impact: **L**ow, **M**edium or **H**igh. "Verified by" nam
 | T07 | Copy of `vault.db` | ADV-6, ADV-7 | M | Per-record AEAD. Keys in hardware. KS-REC needs the password **and** a 128-bit secret. | Item count, padded record sizes and keyslot KDF parameters are visible | DB extraction and canary grep (G1, G4) |
 | T08 | Reading app preferences and other files | ADV-6 | M | Preferences hold only the theme, onboarding state, failure counter and lockout time | Root can reset the failure counter (see T14) | File review (G3) |
 | T09 | Extraction through OS backups | ADV-7 | M | `allowBackup=false`. `dataExtractionRules` exclude everything, for both cloud and device-to-device transfer. Vault in `noBackupFilesDir`. | If an OS bug copies files anyway, they are ciphertext, and hardware keys never migrate | `adb backup`, `bmgr`, transfer simulation (G3) |
-| T11 | Clipboard harvesting | ADV-5 | M | Copy only on an explicit tap. `EXTRA_IS_SENSITIVE`. Cleared after 60 s. Autofill in V1.1 reduces clipboard use. | Keyboard and OEM clipboard histories: **Samsung reportedly keeps every clip in plain text with no expiry, ignoring the sensitive flag** (R2), which outlives anything the app can clear. Background `clearPrimaryClip()` alone can be a no-op, so ClipboardGuard overwrites with an empty sensitive clip first (R1). | Device matrix (G3) |
+| T11 | Clipboard harvesting | ADV-5 | M | Copy only on an explicit tap, one field at a time; there is no "copy all". `EXTRA_IS_SENSITIVE`. Critical values (card numbers, CVVs, PINs, account numbers, banking passwords) cleared after a fixed 15 s; other values after 30 s by default (vault-format §5.5). The confirmation toast never contains the value (I12). Autofill in V1.1 reduces clipboard use. | Keyboard and OEM clipboard histories: **Samsung reportedly keeps every clip in plain text with no expiry, ignoring the sensitive flag** (R2), which outlives anything the app can clear. Background `clearPrimaryClip()` alone can be a no-op, so ClipboardGuard overwrites with an empty sensitive clip first (R1). | Device matrix (G3) |
 | T12 | Screenshots, recording, casting | ADV-5 | M | FLAG_SECURE on **every** window, including dialogs and sheets. `setRecentsScreenshotEnabled(false)`. | A second camera cannot be stopped | Every screen and dialog (G3) |
 | T22 | Secrets in logs | ADV-5, ADV-6 | M | Logging stripped from release builds. Lint bans. Redacted `toString` and `Debug`. Canary sweeps. | System logs written by keyboards and other apps | Canary sweep of logcat, bugreport and tombstones (every gate) |
 | T23 | Secrets in crash reports | ADV-10 | L–M | No crash-reporting SDK. Sanitised exception messages. | OS crash reports contain stack traces, not heap contents | Forced crashes during reveal (every gate) |
@@ -180,6 +184,8 @@ Risk is likelihood × impact: **L**ow, **M**edium or **H**igh. "Verified by" nam
 | T30 | Assistant or AI screen reading (for example Circle to Search) | ADV-5 | M | FLAG_SECURE | **OEM and OS behaviour varies** (R7) | Device matrix (G3) |
 | T31 | Other autofill services reading Vaultaire's screens | ADV-5 | M | Root view marked `importantForAutofill=noExcludeDescendants`. The vault-password field is never tagged as a login field. | — | Hostile test APK (G3) |
 | T32 | Secrets restored after the OS kills the app | ADV-3 | M | No secrets in `savedInstanceState`, `rememberSaveable`, `SavedStateHandle` or navigation arguments. A cold start always shows the lock screen. | — | Reveal → kill → restore test (G2, G3) |
+| T35 | **Card image leaks through the scanner** | ADV-5, ADV-10 | M | CameraX `ImageAnalysis` only: no `ImageCapture`, so no photo is ever written. ML Kit text recognition with the **bundled** model, on the device. Frames closed straight after analysis; OCR text dropped after parsing; nothing logged. FLAG_SECURE on the scanner. The camera is unbound when the scan ends, the screen closes or the vault locks. CAMERA is requested only when the user taps Scan. CI fails if the merged manifest gains `INTERNET` or `ACCESS_NETWORK_STATE` ([ADR-009](adr/ADR-009-card-scanner-ocr.md)). CVV, PIN, bank and card kind are never read from the camera. | A compromised OCR library could keep frames in memory, but with no network it has no direct way out (I5) | Manifest assertion (CI); file and logcat canary sweep after scans (G3) |
+| T37 | **Bank grouping reveals which banks the user has** | ADV-6, ADV-7 | L–M | Bank ids, custom banks and the last-viewed bank live only in encrypted records (index envelopes, Organisation record). They never go into plaintext preferences, saved-instance state, file names or notifications; the plaintext-preferences CI check (vault-format §8) covers them. Search runs over the in-memory index only, and no search history is kept. | Visible to anyone who reads the unlocked screen (T02) | Preferences and file review (G3) |
 
 ### 7.4 Files, backups and recovery
 
@@ -191,7 +197,9 @@ Risk is likelihood × impact: **L**ow, **M**edium or **H**igh. "Verified by" nam
 | T29 | Offline guessing against a stolen backup | ADV-7 | M | Two secrets. Argon2id at 128 MiB memory, 4 passes. Password policy ≥ 10¹² estimated guesses. | If the Recovery Key is also stolen, password strength decides | Parameter-bound tests (G4) |
 | T26 | Phishing the Recovery Key, fake support | ADV-9 | M | **No support-assisted recovery exists.** The app says "We never ask for your Recovery Key." It is entered only in restore and reset flows. | Users can still be tricked | Copy review (G4) |
 | T28 | Repackaged or fake app | ADV-9 | M | Play App Signing. Published signing-certificate fingerprint. A fake app cannot read our data (different UID). | Phishing of the password plus the Recovery Key | — |
-| T34 | **Vault destroyed or owner locked out** (uninstall, factory reset, lost phone, wipe after 10 failures if enabled, forgotten password with no working biometric) | ADV-1, ADV-3, or accident | M | Encrypted backups are part of V1, with reminders. A periodic password check keeps the password remembered and proves the recovery slot works. Erase-after-failures is off by default. Onboarding states that a lost password plus a lost biometric cannot be recovered. | **Without a backup, a lost or wiped phone means a lost vault.** This is inherent to local-only storage. | Lockout scenarios (G4) |
+| T36 | **Cached backup key** (auto-backup to Google Drive) | ADV-6 | M | `KEK_exp` is cached only inside the vault, encrypted under K_meta (crypto spec §9.5), and only while auto-backup is on. It is deleted on any password change or Recovery Key regeneration. Every export still uses a fresh file key and nonces. The backup file itself still needs password **and** Recovery Key (T25). | Someone who already controls an unlocked session (T05, out of scope) can read the cached key and decrypt current and earlier backups made with it, until the password or Recovery Key changes. Reviewer question Q9 | Export after password change fails to use the old key (G4) |
+| T38 | **Google Drive provider behaviour** | ADV-7 | L | The app writes only through the Storage Access Framework URI the user picked; it holds no Google credentials and has no network access. The file is ciphertext (T25). If the provider refuses persistent writes, auto-backup turns itself off and the app asks for a manual export. | Drive keeps old versions of the file; each is protected like a fresh backup. An attacker with the Google account can delete the backups (availability, T34) | R12 (G2) |
+| T34 | **Vault destroyed or owner locked out** (uninstall, factory reset, lost phone, wipe after 10 failures if enabled, forgotten password with no working biometric) | ADV-1, ADV-3, or accident | M | Encrypted backups are part of V1, with reminders. A periodic password check keeps the password remembered and proves the recovery slot works. Erase-after-failures is off by default. Onboarding states that a lost password plus a lost biometric cannot be recovered. | **Without a backup, a lost or wiped phone means a lost vault.** This is inherent to local-only storage. Signing in to the same Google account on a new phone finds the backup file but never opens it: restoring needs the vault password **and** the Recovery Key. | Lockout scenarios (G4) |
 
 ### 7.5 Interfaces and supply chain
 
@@ -202,6 +210,7 @@ Risk is likelihood × impact: **L**ow, **M**edium or **H**igh. "Verified by" nam
 | T20 | Compromised dependency | ADV-10 | M, H impact | Few dependencies, each justified in an ADR, pinned with checksums. `cargo deny`, `cargo vet`, Gradle dependency verification. **No `INTERNET` permission.** Lint bans on `ACTION_VIEW` to external URIs and on WebView, which would otherwise let code leak data through a browser. | Indirect leakage through other apps | CI on every PR |
 | T21 | Compromised build or release pipeline, or developer account takeover | ADV-10 | M, **critical impact** | Passkeys (FIDO2) on GitHub, Google and Play Console accounts. Clean CI runners; actions pinned by commit SHA. Reproducible builds. Play App Signing with a separate upload key. App Bundle code transparency. SBOM. | **A malicious update after an account takeover is the top residual risk.** It can read the vault at the next unlock. | Reproducible-build comparison (every release) |
 | T33 | **Stored CVVs turn one vault compromise into ready-to-use card fraud** | ADV-3, ADV-6, ADV-7 | M, H impact | Opt-in per card, off by default, with the risk stated before the field appears (I11). Critical tier: fingerprint within the last 60 s to reveal or copy. Never autofilled. Never shown on the card face. Padded like every other secret, so its length is hidden. Settings shows how many cards have a stored CVV. | Any full compromise (T05 while unlocked, T25 with both secrets) yields **number + expiry + CVV** for every opted-in card, enough for online purchases | Reveal and copy gating (G3); canary sweep (G3) |
+| T39 | **Stored ATM PINs turn one vault compromise into cash withdrawal** | ADV-3, ADV-6, ADV-7 | M, H impact | ATM PINs only as separate PIN items, never on the card (I11). Critical-strict: a fresh biometric for **every** reveal and copy, whatever `critical_window_s` says. Clipboard cleared after 15 s. The card screen shows only "PIN stored separately". Padded, so a 4-digit PIN looks like any other secret. | A full compromise yields card number + expiry + PIN, enough with a cloned or stolen card | Reveal and copy gating (G3) |
 
 ## 8. Residual risks (published)
 
@@ -215,6 +224,9 @@ These will be stated in the app's About section in plain language:
 6. **Losing the phone without a backup** means the vault is gone.
 7. **Stored CVVs** make a compromised vault directly usable for online card fraud.
 8. **Rolling back the vault file** to an older copy is not detected in V1 (requires root).
+9. **Stored ATM PINs**, with the card's number, are enough to use a stolen or cloned card at an ATM if the whole vault is compromised.
+10. **Your notes on a card** ("check this card for Amazon offers") are your own words. Vaultaire does not check offers and does not know whether a card qualifies for one.
+11. **Your Google account finds your backup but cannot open it.** If you lose both the vault password and the Recovery Key, the backup in Drive can never be opened, by you or anyone else.
 
 ## 9. Decision record: card security codes (CVV)
 
@@ -225,8 +237,20 @@ These will be stated in the app's About section in plain language:
   - critical tier (biometric within the last 60 s to reveal or copy);
   - never autofilled, never shown on the card face;
   - included in encrypted backups (leaving it out would lose data silently on restore);
-  - the card PIN is still never stored.
+  - the card PIN is still never stored *(superseded on 2026-10-15 by §9.1: still never on the card item)*.
 - **Consequences:** new threat T33, invariant I11 and published residual risk 7. The G0 reviewer is asked to challenge this decision specifically.
+
+### 9.1 Decision record: ATM PINs
+
+- **Earlier decision (2026-09-29):** card PINs are never stored.
+- **Change (2026-10-15):** the product owner decided that users should be able to keep every PIN in the vault, including ATM PINs, alongside locker, demat, MPIN, TPIN and app PINs ([product plan](product-plan.md)).
+- **Conditions adopted:**
+  - a PIN is its own item (type 9), never a field of the card;
+  - an ATM or card PIN (`pin_purpose = 4`) is critical-strict: a fresh biometric for every reveal and copy;
+  - the card's screen shows only "PIN stored separately", never the digits or their count;
+  - the clipboard is cleared after 15 s;
+  - included in encrypted backups, like every other item.
+- **Consequences:** threat T39, rewritten invariant I11 and published residual risk 9. The G0 reviewer is asked to challenge this decision specifically.
 
 ## 10. iOS delta (deferred)
 
@@ -251,6 +275,8 @@ To be resolved, or explicitly accepted as risks, at Gate G0:
 | R6 | UniFFI and JNA footprint, R8 compatibility and startup cost versus a minimal JNI layer | T20 |
 | R7 | How assistants, Circle to Search and on-device AI treat FLAG_SECURE windows | T30 |
 | R8–R11 | iOS items: `kSecAccessControlApplicationPassword`, AutoFill extension memory, screenshot blanking, SQLite file locking in App Groups | §10 |
+| R12 | Does the Google Drive document provider grant a persistable write permission, support overwrite (`"wt"`), and upload without the user opening Drive, on the A12 and S20? | T36, T38 |
+| R13 | Does ML Kit's bundled text-recognition library merge any network permission into the manifest, or write files (model cache, logs) to app storage? | T35 |
 
 **Status (2026-09-30):** R1, R2, R7 and the cracking-cost part of R5 are answered in [G0 desk research](research/g0-desk-research.md). R3, R5 (timing) and R6 are answered in the [Phase-0 results](spikes/phase0-results.md). R4 moved to Gate G2. Device confirmation of R1, R2 and R7 stays on the G3 device matrix.
 

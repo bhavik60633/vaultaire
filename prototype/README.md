@@ -52,17 +52,17 @@ All three use IBM Plex Mono for card numbers, keys and codes. Once one is chosen
 |---|---|
 | Lock | Guilloché rosette; the ring closes on fingerprint unlock; "unaudited beta" label (Amendment 1) |
 | Vault password | Unlock is disabled until something is typed; a dial turns while the (simulated) key derivation runs |
-| Vault | One scrolling page of category sections in a fixed order: Cards (wallet), Passwords, API keys, Bank accounts, Identity, Notes, Memberships. Up to 3 items per section with "See all"; empty categories hidden; search covers everything. Greeting, protections status, failed-attempts banner, Lock always visible. |
+| Vault | **Browse by bank** first: an All cards tile, one tile per bank with its card count and debit/credit split, and Other / Unassigned last; an Add card button; then Favourites. Then the other category sections in the user's order: Passwords, API keys, Bank accounts, PINs, Identity, Notes, Memberships. Up to 3 items per section with "See all"; empty categories hidden; search covers everything. Greeting, protections status, failed-attempts banner, Lock always visible. |
 | Home sections (`#/sections`) | The user orders and hides home sections: up and down buttons plus a show switch per section, reset to default. Cards are pinned first. Hidden sections are listed at the bottom of home and stay in search and backups. Opened from "Organise sections" on home or Settings → Appearance. The prototype remembers the layout in this browser only. |
 | Coming up (on Vault) | Expiry watch: cards, documents and memberships ending within 6 months, soonest first, below the Cards section. Shown only inside the unlocked app, never as a notification (a notification would need the vault readable while locked). |
-| Cards (`#/category/card`) | Cards grouped into folders, with a "Lost your wallet?" button |
-| Folder (`#/folder/American%20Express`) | Cards from the same bank group into a folder automatically. On Vault a folder of two or more cards shows as a fanned deck. Any card can be moved into a folder the user makes (card → Folder → New folder). |
+| Cards (`#/category/card`) | Every card grouped by bank, with a "Lost your wallet?" button |
+| Bank (`#/bank/in.sbi`, `#/bank/all`, `#/bank/unassigned`) | One bank's cards with an **All / Credit / Debit** filter showing counts. Each row: card name, then "Credit · Visa · •••• 1234", and a star for favourites; never a full number, CVV or PIN. The bank and filter are remembered: lock, unlock again, and you land back on the same bank and filter (the shopping round trip, product plan §4). Grouping comes from each card's bank id; there are no user-made folders. |
 | Lost wallet (`#/lost`) | Every card grouped by bank, one Call button per bank (the card's lost-or-stolen number), and a switch per card to tick it off as blocked, with progress. A checklist only: nothing is sent to any bank. |
 | Recovery codes (`#/item/r2`) | Two-step login backup codes: all hidden behind one biometric, each can be marked used, and a warning when 2 or fewer are left |
 | Category (`#/category/login` and so on) | Every item in one category, a line on how that category is protected, and an Add button for that type |
-| Card (`#/card/1`, `#/card/2`) | **Critical** fields: reveal or copy asks for a fingerprint, then not again for 60 s; one field at a time; auto-hides after 30 s. Five finishes to choose from. Card 1 has a stored CVV, card 2 does not. No PIN field. |
-| Item (`#/item/k1` and so on) | One detail screen for every other type. Each field follows its tier: **normal** shown, **concealed** tap to reveal, **critical** fingerprint to reveal or copy. Passwords show a strength meter. |
-| Add item | 8 templates; critical fields marked; passphrase generator; CVV is an opt-in switch on the Card form, off by default, with the risk stated |
+| Card (`#/card/1`, `#/card/2`) | A copy button per detail, no "copy all": card number (fingerprint, then not again for 60 s; copied without spaces; clears in 15 s), name on card, expiry and card name (clear in 30 s), CVV if stored. Then your note (labelled as your own words, not a checked offer), bank, card type, network, product, and "ATM PIN · Stored separately" linking to the PIN item without showing its digits. Card 1 has a stored CVV, card 2 does not. |
+| Item (`#/item/k1` and so on) | One detail screen for every other type. Each field follows its tier: **normal** shown, **concealed** tap to reveal, **critical** fingerprint to reveal or copy, **every time** (ATM PINs, `#/item/q3`) fingerprint on every reveal and copy. Passwords show a strength meter. The Indian bank account (`#/item/b1`) shows IFSC, net-banking password, MPIN, TPIN, RM and concierge numbers. |
+| Add item | 10 templates, including PIN and a card form that starts with the bank and card type; critical fields marked; passphrase generator; CVV is an opt-in switch on the Card form, off by default, with the risk stated |
 | Recovery Kit | Key in 7 groups, then re-type groups 3 and 6 (case, dashes and O/0, I/L/1 forgiven) |
 | Settings | Protection options, device protection check, backup and recovery |
 
@@ -70,7 +70,7 @@ Locking (the lock icon) wipes all session state. Leaving a screen, or switching 
 
 ## CVV: a changed decision
 
-Blueprint §13 left CVV out. On 2026-09-29 the product owner asked for it. The prototype follows the conditions §13 set for adding it: per-card opt-in, off by default, critical tier (fingerprint to reveal or copy), never autofilled, with an explicit warning. The card PIN is still never stored. This reverses a blueprint decision, so it must be recorded in the threat model and reviewed at Gate G0.
+Blueprint §13 left CVV out. On 2026-09-29 the product owner asked for it. The prototype follows the conditions §13 set for adding it: per-card opt-in, off by default, critical tier (fingerprint to reveal or copy), never autofilled, with an explicit warning. The card PIN is not stored on the card; since 2026-10-15 an ATM PIN can be kept as its own PIN item, fingerprint every time (threat-model §9.1). This reverses a blueprint decision, so it must be recorded in the threat model and reviewed at Gate G0.
 
 ## Known gaps
 

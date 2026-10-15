@@ -42,6 +42,7 @@
     folder: '<path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/>',
     phone: '<path d="M6.5 4h3l1.5 4-2 1.5a11 11 0 0 0 5.5 5.5l1.5-2 4 1.5v3a2 2 0 0 1-2 2A15.5 15.5 0 0 1 4.5 6a2 2 0 0 1 2-2z"/>',
     calendar: '<rect x="4" y="5.5" width="16" height="14.5" rx="2"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/>',
+    pinpad: '<rect x="5" y="3" width="14" height="18" rx="2.5"/><circle cx="9" cy="8" r=".9"/><circle cx="12" cy="8" r=".9"/><circle cx="15" cy="8" r=".9"/><circle cx="9" cy="12" r=".9"/><circle cx="12" cy="12" r=".9"/><circle cx="15" cy="12" r=".9"/><circle cx="12" cy="16" r=".9"/>',
     codes: '<path d="M10 7h10M10 12h10M10 17h10"/><path d="M4.5 6.5l1.2-.7v3.4M4.3 11h2.2l-2.2 2.6h2.2M4.3 16h2.2l-1.1 1.2 1.1 1.3H4.3"/>'
   };
 
@@ -50,7 +51,7 @@
     const hidden = attrs.includes('aria-label') ? '' : ' aria-hidden="true"';
     return `<svg ${attrs} class="${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"${hidden}>${PATHS[name]}</svg>`;
   }
-  const typeTile = (kind) => `<span class="type-tile">${icon(kind)}</span>`;
+  const typeTile = (kind) => `<span class="type-tile">${icon(kind === 'pin' ? 'pinpad' : kind)}</span>`; // 'pin' alone is the pinned-section icon
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   // ---------- Guilloché: the engraved line work of banknotes and watch dials ----------
@@ -162,10 +163,11 @@
   // ---------- Categories, in the order the vault shows them ----------
   const CATEGORIES = [
     { type: 'card', label: 'Cards', one: 'card', many: 'cards', add: 'Add card', note: 'Card numbers and security codes need your {bio} to show or copy.' },
-    { type: 'login', label: 'Passwords', one: 'password', many: 'passwords', add: 'Add password', note: 'Passwords stay masked until you tap. Copies clear after 60 seconds.' },
+    { type: 'login', label: 'Passwords', one: 'password', many: 'passwords', add: 'Add password', note: 'Passwords stay masked until you tap. Copies clear after 30 seconds.' },
     { type: 'devkey', label: 'API keys', one: 'key', many: 'keys', add: 'Add API key', note: 'Secrets need your {bio} to show or copy.' },
     { type: 'codes', label: 'Recovery codes', one: 'set', many: 'sets', add: 'Add recovery codes', note: 'Codes need your {bio} to show. Each code works once, so tick it off when you use it.' },
-    { type: 'bank', label: 'Bank accounts', one: 'account', many: 'accounts', add: 'Add bank account', note: 'Account numbers need your {bio} to show or copy.' },
+    { type: 'bank', label: 'Bank accounts', one: 'account', many: 'accounts', add: 'Add bank account', note: 'Account numbers, banking passwords, MPIN and TPIN need your {bio} to show or copy.' },
+    { type: 'pin', label: 'PINs', one: 'PIN', many: 'PINs', add: 'Add PIN', note: 'Every PIN needs your {bio} to show or copy. ATM PINs need it every single time. Copies clear after 15 seconds.' },
     { type: 'identity', label: 'Identity', one: 'document', many: 'documents', add: 'Add document', note: 'Document numbers need your {bio} to show or copy.' },
     { type: 'note', label: 'Notes', one: 'note', many: 'notes', add: 'Add note', note: 'Notes stay hidden until you tap.' },
     { type: 'membership', label: 'Memberships', one: 'membership', many: 'memberships', add: 'Add membership', note: 'Membership PINs stay masked until you tap.' },
@@ -202,26 +204,39 @@
 
   // ---------- Sample data (not real) ----------
   const FINISHES = [['obsidian', 'Obsidian'], ['titanium', 'Titanium'], ['platinum', 'Platinum'], ['ivory', 'Ivory'], ['champagne', 'Champagne']];
-  // Hotline numbers are fictional (the reserved 555-01xx range).
-  const CARDS = {
-    1: { id: '1', nick: 'Travel card', network: 'VISA', issuer: 'Northbridge Bank', holder: 'Alex Morgan', number: '4929 1845 7720 4821', last4: '4821', expiry: '08 / 29', cvv: '317', hotline: '+1 800 555 0142' },
-    2: { id: '2', nick: 'Everyday debit', network: 'MASTERCARD', issuer: 'Harbour Mutual', holder: 'Alex Morgan', number: '5412 7534 9021 1177', last4: '1177', expiry: '12 / 26', cvv: null, hotline: '+1 800 555 0163' },
-    3: { id: '3', nick: 'Platinum', network: 'AMEX', issuer: 'American Express', holder: 'Alex Morgan', number: '3714 496353 98431', last4: '8431', expiry: '05 / 28', cvv: null, hotline: '+1 800 555 0177' },
-    4: { id: '4', nick: 'Gold', network: 'AMEX', issuer: 'American Express', holder: 'Alex Morgan', number: '3787 344936 71006', last4: '1006', expiry: '04 / 27', cvv: null, hotline: '+1 800 555 0177' },
-    5: { id: '5', nick: 'Business Platinum', network: 'AMEX', issuer: 'American Express', holder: 'Alex Morgan', number: '3782 822463 10005', last4: '0005', expiry: '10 / 29', cvv: null, hotline: '+1 800 555 0177' },
-    6: { id: '6', nick: 'Blue Cash', network: 'AMEX', issuer: 'American Express', holder: 'Alex Morgan', number: '3400 000000 00009', last4: '0009', expiry: '02 / 28', cvv: null, hotline: '+1 800 555 0177' }
+  // Banks come from the built-in catalogue (ADR-011); a card stores the bank's id, never free text.
+  // A card with no bank sits under "Other / Unassigned" until the user picks one.
+  const BANKS = {
+    'in.sbi': { name: 'SBI', full: 'State Bank of India', aliases: ['state bank', 'sbi card'] },
+    'in.hdfc': { name: 'HDFC Bank', full: 'HDFC Bank Limited', aliases: ['hdfc'] },
+    'in.axis': { name: 'Axis Bank', full: 'Axis Bank Limited', aliases: ['axis'] }
   };
+  const UNASSIGNED = 'unassigned';
+  const bankName = (id) => (id && BANKS[id] ? BANKS[id].name : 'Other / Unassigned');
+  // All card numbers are well-known test numbers; customer-care numbers are fictional.
+  const CARDS = {
+    1: { id: '1', nick: 'SBI Cashback', product: 'SBI Cashback', kind: 'Credit', network: 'VISA', bank: 'in.sbi', holder: 'Asha Rao', number: '4111 1111 1111 1234', last4: '1234', expiry: '08 / 29', cvv: '317', note: 'Check this card for Amazon offers', hotline: '1800 000 0101', fav: true },
+    2: { id: '2', nick: 'SBI Cashback · Add-on', product: 'SBI Cashback', kind: 'Credit', network: 'VISA', bank: 'in.sbi', holder: 'Ravi Rao', number: '4111 1111 1111 2468', last4: '2468', expiry: '08 / 29', cvv: null, note: 'Add-on card for Ravi', hotline: '1800 000 0101', fav: false },
+    3: { id: '3', nick: 'SBI Elite', product: 'SBI Card ELITE', kind: 'Credit', network: 'MASTERCARD', bank: 'in.sbi', holder: 'Asha Rao', number: '5555 5555 5555 4444', last4: '4444', expiry: '03 / 28', cvv: null, note: 'Lounge access; travel bookings', hotline: '1800 000 0101', fav: false },
+    4: { id: '4', nick: 'SBI Account Debit', product: 'SBI Global Debit', kind: 'Debit', network: 'RUPAY', bank: 'in.sbi', holder: 'Asha Rao', number: '6074 8200 0000 5678', last4: '5678', expiry: '11 / 27', cvv: null, note: '', hotline: '1800 000 0102', fav: false },
+    5: { id: '5', nick: 'SBI Savings Debit', product: 'SBI Platinum Debit', kind: 'Debit', network: 'VISA', bank: 'in.sbi', holder: 'Asha Rao', number: '4012 8888 8888 1881', last4: '1881', expiry: '06 / 30', cvv: null, note: '', hotline: '1800 000 0102', fav: false },
+    6: { id: '6', nick: 'HDFC Millennia', product: 'Millennia', kind: 'Credit', network: 'MASTERCARD', bank: 'in.hdfc', holder: 'Asha Rao', number: '5105 1051 0510 5100', last4: '5100', expiry: '01 / 27', cvv: null, note: 'My preferred grocery card', hotline: '1800 000 0201', fav: true },
+    7: { id: '7', nick: 'HDFC Salary Debit', product: 'Millennia Debit', kind: 'Debit', network: 'VISA', bank: 'in.hdfc', holder: 'Asha Rao', number: '4000 0566 5566 5556', last4: '5556', expiry: '09 / 28', cvv: null, note: '', hotline: '1800 000 0202', fav: false },
+    8: { id: '8', nick: 'Axis Ace', product: 'ACE', kind: 'Credit', network: 'VISA', bank: 'in.axis', holder: 'Asha Rao', number: '4242 4242 4242 4242', last4: '4242', expiry: '12 / 26', cvv: null, note: 'Bill payments', hotline: '1800 000 0301', fav: false },
+    9: { id: '9', nick: 'Axis Debit', product: 'Axis Online Rewards Debit', kind: 'Debit', network: 'RUPAY', bank: 'in.axis', holder: 'Asha Rao', number: '6522 1111 1111 3007', last4: '3007', expiry: '05 / 29', cvv: null, note: '', hotline: '1800 000 0302', fav: false },
+    10: { id: '10', nick: 'Forex card', product: 'Travel forex card', kind: 'Other', network: 'MASTERCARD', bank: null, holder: 'Asha Rao', number: '5200 8282 8282 8210', last4: '8210', expiry: '02 / 28', cvv: null, note: 'Pick a bank for this card', hotline: '1800 000 0401', fav: false }
+  };
+  for (const c of Object.values(CARDS)) c.issuer = bankName(c.bank);
+  const NETWORK_NAMES = { VISA: 'Visa', MASTERCARD: 'Mastercard', RUPAY: 'RuPay', AMEX: 'American Express' };
+  const cardSub = (c) => `${c.kind} · ${NETWORK_NAMES[c.network] || c.network} · •••• ${c.last4}`;
   // Field tiers follow blueprint §17: normal (shown), concealed (tap), critical (biometric).
   const N = (label, value, extra) => Object.assign({ label, value, tier: 'normal', copy: false }, extra);
   const C = (label, value, extra) => Object.assign({ label, value, tier: 'concealed', copy: true }, extra);
   const X = (label, value, extra) => Object.assign({ label, value, tier: 'critical', copy: true }, extra);
+  // Critical-strict: a fresh biometric for every reveal and copy (ATM PINs; vault-format §5.1).
+  const XX = (label, value, extra) => Object.assign({ label, value, tier: 'strict', copy: true }, extra);
   const ITEMS = [
-    { id: 'c1', type: 'card', card: '1', title: 'Travel card', sub: 'Visa · •••• 4821', fav: true },
-    { id: 'c2', type: 'card', card: '2', title: 'Everyday debit', sub: 'Mastercard · •••• 1177', fav: false },
-    { id: 'c3', type: 'card', card: '3', title: 'Platinum', sub: 'American Express · •••• 8431', fav: false },
-    { id: 'c4', type: 'card', card: '4', title: 'Gold', sub: 'American Express · •••• 1006', fav: false },
-    { id: 'c5', type: 'card', card: '5', title: 'Business Platinum', sub: 'American Express · •••• 0005', fav: false },
-    { id: 'c6', type: 'card', card: '6', title: 'Blue Cash', sub: 'American Express · •••• 0009', fav: false },
+    ...Object.values(CARDS).map((c) => ({ id: 'c' + c.id, type: 'card', card: c.id, title: c.nick, sub: cardSub(c), fav: c.fav })),
     {
       id: 'p1', type: 'login', title: 'Primary email', sub: 'alex.morgan@example.com', fav: true,
       fields: [N('Username', 'alex.morgan@example.com', { copy: true }), C('Password', 'harbor-violet-onyx-ledger-canyon-rune', { mono: true, meter: [5, 'Very strong · 6-word passphrase'] }), N('Website', 'mail.example.com'), N('Password history', '2 earlier versions kept')],
@@ -256,9 +271,22 @@
       foot: 'Tags: business · Edited 3 Sep 2026'
     },
     {
-      id: 'b1', type: 'bank', title: 'Salary account', sub: 'Northbridge Bank · •••• 0932',
-      fields: [N('Bank', 'Northbridge Bank'), N('Account holder', 'Alex Morgan', { copy: true }), N('Account type', 'Current'), X('Account number', '5521 4471 0932', { mono: true, keep: '0932' }), N('Sort code', '20-41-55', { mono: true, copy: true }), N('SWIFT', 'NBRGGB2L', { mono: true, copy: true })],
-      foot: 'Linked to: Online banking'
+      id: 'b1', type: 'bank', title: 'SBI Salary', sub: 'SBI · •••• 0932',
+      fields: [N('Bank', 'SBI'), N('Account holder', 'Asha Rao', { copy: true }), X('Account number', '30012 34509 32', { mono: true, keep: '0932' }), N('IFSC', 'SBIN0001234', { mono: true, copy: true }), N('Branch', 'Koramangala, Bengaluru'), C('Net-banking user ID', 'asharao84', { mono: true }), X('Net-banking password', 'Mango#Monsoon2026', { mono: true }), X('MPIN', '482913', { mono: true }), X('TPIN', '7731', { mono: true }), N('Relationship manager', 'Priya Nair'), N('RM phone', '+91 90000 00001', { mono: true, copy: true }), N('Concierge', '1800 000 0103', { mono: true, copy: true })],
+      foot: 'Linked to: SBI Account Debit · Numbers are fictional'
+    },
+    {
+      id: 'q1', type: 'pin', title: 'SBI locker 214', sub: 'Locker · Koramangala branch',
+      fields: [X('PIN', '4821', { mono: true }), N('Used for', 'Locker 214, SBI Koramangala')]
+    },
+    {
+      id: 'q2', type: 'pin', title: 'CDSL Easiest TPIN', sub: 'Demat TPIN',
+      fields: [X('TPIN', '615204', { mono: true }), N('Used for', 'Selling shares from the CDSL demat account')]
+    },
+    {
+      id: 'q3', type: 'pin', title: 'SBI Cashback ATM PIN', sub: 'ATM PIN · linked to SBI Cashback',
+      fields: [XX('ATM PIN', '9076', { mono: true }), N('Card', 'SBI Cashback · •••• 1234')],
+      foot: 'ATM PINs need your fingerprint every time, and are never shown on the card.'
     },
     {
       id: 'i1', type: 'identity', title: 'Passport', sub: 'Expires Mar 2031', expires: '2031-03-14',
@@ -286,7 +314,8 @@
     { id: 'login', label: 'Password', desc: 'For a website or app' },
     { id: 'devkey', label: 'API key', desc: 'Secrets and access keys' },
     { id: 'codes', label: 'Recovery codes', desc: 'Backup codes for two-step login' },
-    { id: 'bank', label: 'Bank account', desc: 'Account and routing numbers' },
+    { id: 'bank', label: 'Bank account', desc: 'Account number, IFSC, MPIN, RM' },
+    { id: 'pin', label: 'PIN', desc: 'Locker, demat, ATM, app PINs' },
     { id: 'identity', label: 'Identity', desc: 'Passport, licence, ID card' },
     { id: 'note', label: 'Secure note', desc: 'Private text' },
     { id: 'membership', label: 'Membership', desc: 'Loyalty and member numbers' },
@@ -295,8 +324,9 @@
   const F = (label, hint = '', extra = {}) => Object.assign({ label, hint, critical: false, pw: false, area: false }, extra);
   const TEMPLATES = {
     login: [F('Title', 'e.g. Primary email'), F('Username', 'name@example.com'), F('Password', '', { pw: true }), F('Website', 'example.com')],
-    card: [F('Nickname', 'e.g. Travel card'), F('Cardholder', 'Name on card'), F('Card number', '0000 0000 0000 0000', { critical: true }), F('Expiry', 'MM / YY'), F('Issuer', 'Bank name')],
-    bank: [F('Title', 'e.g. Salary account'), F('Bank', 'Bank name'), F('Account holder', 'Full name'), F('Account number or IBAN', '', { critical: true }), F('Routing, IFSC, sort code or SWIFT')],
+    card: [F('Bank', 'Search: SBI, HDFC, Axis… or add your own'), F('Card type', 'Debit, Credit or Other'), F('Card name', 'e.g. SBI Cashback'), F('Nickname (optional)', 'e.g. Add-on for Ravi'), F('Cardholder', 'Name on card'), F('Card number', '0000 0000 0000 0000', { critical: true }), F('Expiry', 'MM / YY'), F('Your note (optional)', 'e.g. Check this card for Amazon offers')],
+    bank: [F('Title', 'e.g. SBI Salary'), F('Bank', 'Search: SBI, HDFC, Axis…'), F('Account holder', 'Full name'), F('Account number', '', { critical: true }), F('IFSC', 'e.g. SBIN0001234'), F('Net-banking password', '', { critical: true }), F('MPIN', '', { critical: true }), F('Relationship manager phone')],
+    pin: [F('Used for', 'e.g. SBI locker 214'), F('Kind', 'Locker, Demat TPIN, App login, ATM PIN, MPIN, TPIN…'), F('PIN', '4 to 12 digits', { critical: true })],
     identity: [F('Document type', 'e.g. Passport'), F('Full name', 'As printed'), F('Document number', '', { critical: true }), F('Issuing country'), F('Expiry date', 'DD / MM / YYYY')],
     note: [F('Title', 'e.g. Home Wi-Fi and router'), F('Note', 'Only you can read this', { area: true })],
     devkey: [F('Name', 'e.g. Cloud root key'), F('Service'), F('Environment', 'e.g. production'), F('Key ID'), F('Secret', '', { critical: true })],
@@ -323,18 +353,19 @@
 
   // ---------- State ----------
   // Card finishes are vault settings, so locking does not reset them.
-  const finishes = { 1: 'titanium', 2: 'platinum', 3: 'platinum', 4: 'champagne', 5: 'obsidian', 6: 'ivory' };
+  const finishes = { 1: 'titanium', 2: 'titanium', 3: 'obsidian', 4: 'platinum', 5: 'ivory', 6: 'champagne', 7: 'platinum', 8: 'obsidian', 9: 'ivory', 10: 'champagne' };
   // The real app stores these inside the encrypted vault, like every other item detail.
-  const cardFolder = {}; // card id → a folder the user made; otherwise the card sits in its bank's folder
   const blocked = {}; // card id → true once the user has marked it blocked (a checklist, nothing is sent)
+  // The last bank and filter the user looked at. The real app keeps this in the encrypted vault
+  // (vault-format §5.9) so that, after unlocking, it can go straight back there (product plan §4).
+  let lastView = null; // { scope: bank id | 'all' | 'unassigned', filter: 'all' | 'credit' | 'debit' }
   const usedCodes = { r1: new Set([1, 4, 7]), r2: new Set([0, 1, 2, 3, 4, 5]) };
   const fresh = () => ({
     pw: '', pwShown: false, verifying: false, unlocking: false,
     query: '', banner: true,
     revealed: null, secs: 30, sheet: null, lastAuth: 0, toast: '',
     addType: null, addPw: '', addVals: {}, addCvv: false,
-    rkStep: 'show', rkA: '', rkB: '', rkErr: false,
-    newFolder: ''
+    rkStep: 'show', rkA: '', rkB: '', rkErr: false
   });
   let S = fresh();
   let current = null;
@@ -371,15 +402,22 @@
     toastTimer = setTimeout(() => set({ toast: '' }), 2600);
   }
   // Critical fields need a fresh biometric unless one happened in the last 60 s.
-  function critical(kind, field, label) {
-    if (Date.now() - S.lastAuth < 60000) { doAction(kind, field); return; }
+  // Critical-strict fields (ATM PINs) need one every single time.
+  function critical(kind, field, label, tier) {
+    if (tier !== 'strict' && Date.now() - S.lastAuth < 60000) { doAction(kind, field, tier); return; }
     fx.sheet = true; // the sheet animates in only on the render that opens it
-    set({ sheet: { kind, field, label } });
+    set({ sheet: { kind, field, label, tier } });
     focusId('bio-confirm');
   }
-  function doAction(kind, field) {
+  const isCritical = (tier) => tier === 'critical' || tier === 'strict';
+  // Card numbers, CVVs and PINs clear after 15 s; everything else after 30 s (vault-format §5.5).
+  // The message never contains the value itself.
+  const copiedText = (tier, field) => (isCritical(tier)
+    ? `Copied${field === 'card-number' ? ' without spaces' : ''} · clears in 15 s`
+    : 'Copied · clears in 30 s');
+  function doAction(kind, field, tier) {
     if (kind === 'reveal') startReveal(field);
-    else toast('Copied · clears in 60 s');
+    else toast(copiedText(tier, field));
   }
   function focusId(id) {
     const el = document.getElementById(id);
@@ -402,6 +440,7 @@
   const revealBtn = (key, label, tier, on) => `<button type="button" id="reveal-${key}" class="icon-btn" data-action="reveal" data-arg="${key}" data-tier="${tier}" data-label="${esc(label)}" aria-label="${on ? 'Hide' : 'Reveal'} ${esc(label)}" aria-pressed="${on}">${icon(on ? 'eyeOff' : 'eye', 20)}</button>`;
   const frow = (label, valueHtml, actions = '') => `<div class="frow"><div class="frow-text"><span class="frow-label">${label}</span><span class="frow-value">${valueHtml}</span></div>${actions}</div>`;
   const criticalBadge = `<span class="badge">${icon('lock', 10, '', 'stroke-width="2.5"')}CRITICAL</span>`;
+  const strictBadge = `<span class="badge badge-crit">${icon('lock', 10, '', 'stroke-width="2.5"')}EVERY TIME</span>`;
   const timer = (on) => (on ? `<span class="timer" id="reveal-timer">Hides in ${S.secs} s</span>` : '');
   const secret = (on, shown, masked, cls = '') => `<span class="secret${cls}${on && fx.reveal ? ' fade-in' : ''}">${on ? shown : masked}</span>`;
   const finishName = (f) => FINISHES.find(([id]) => id === f)[1];
@@ -412,39 +451,45 @@
   const platformSwitch = (labelledBy) => segmented(labelledBy, { android: 'Android', ios: 'iPhone' }, platform, 'platform');
   const typefaceSwitch = (labelledBy) => segmented(labelledBy, TYPEFACES, typeface, 'typeface');
 
-  // Folders: cards group by bank unless the user moves one into a folder of their own.
-  const folderOf = (c) => cardFolder[c.id] || c.issuer;
-  const folderHref = (name) => `#/folder/${encodeURIComponent(name)}`;
-  function folders() {
+  // Bank groups are computed from each card's bank id every time: never stored, so changing a card's
+  // bank moves it, and a bank with no cards left has no tile (vault-format §5.2).
+  const allCards = () => Object.values(CARDS);
+  const scopeOf = (c) => c.bank || UNASSIGNED;
+  const scopeName = (scope) => (scope === 'all' ? 'All cards' : bankName(scope === UNASSIGNED ? null : scope));
+  function bankGroups() {
     const map = new Map();
-    for (const it of ITEMS.filter((x) => x.type === 'card')) {
-      const c = CARDS[it.card];
-      const name = folderOf(c);
-      if (!map.has(name)) map.set(name, []);
-      map.get(name).push(c);
+    for (const c of allCards()) {
+      const s = scopeOf(c);
+      if (!map.has(s)) map.set(s, []);
+      map.get(s).push(c);
     }
-    return Array.from(map, ([name, cards]) => ({ name, cards }));
+    // Most cards first, then by name; Other / Unassigned always last.
+    return Array.from(map, ([scope, cards]) => ({ scope, cards }))
+      .sort((a, b) => (a.scope === UNASSIGNED) - (b.scope === UNASSIGNED) || b.cards.length - a.cards.length || scopeName(a.scope).localeCompare(scopeName(b.scope)));
   }
   const cardCount = (n) => `${n} ${n === 1 ? 'card' : 'cards'}`;
-  // A folder of two or more cards shows as a fanned deck in the wallet; a lone card shows as itself.
-  function walletEntry(f) {
-    if (f.cards.length === 1) {
-      const c = f.cards[0];
-      return `<a class="wallet-entry" href="#/card/${c.id}" aria-label="Open ${esc(c.nick)}">${cardFace(c, true)}<span class="wallet-caption">${esc(c.nick)}</span></a>`;
-    }
-    const layers = f.cards.slice(0, 3).reverse();
-    const fan = layers.map((c, i) => `<span class="fan-card fan-${layers.length - 1 - i}">${cardFace(c, true)}</span>`).join('');
-    return `<a class="wallet-entry" href="${folderHref(f.name)}" aria-label="Open folder ${esc(f.name)}, ${cardCount(f.cards.length)}">
-      <span class="fan" aria-hidden="true">${fan}</span>
-      <span class="wallet-caption">${icon('folder', 14)}${esc(f.name)} · ${f.cards.length}</span></a>`;
+  const kindCounts = (cards) => {
+    const debit = cards.filter((c) => c.kind === 'Debit').length;
+    const credit = cards.filter((c) => c.kind === 'Credit').length;
+    return [debit ? `${debit} debit` : '', credit ? `${credit} credit` : ''].filter(Boolean).join(' · ');
+  };
+  function bankTile({ scope, cards }) {
+    const split = kindCounts(cards);
+    return `<a class="bank-tile${scope === UNASSIGNED ? ' unassigned' : ''}" href="#/bank/${scope}" aria-label="${esc(scopeName(scope))}, ${cardCount(cards.length)}${split ? ', ' + split : ''}">
+      <span class="bank-top"><span class="bank-name">${esc(scopeName(scope))}</span><span class="bank-count">${cards.length}</span></span>
+      <span class="bank-split">${split || cardCount(cards.length)}</span></a>`;
   }
+  // A card in a list: name, then "Credit · Visa · •••• 1234". Never the full number, CVV or PIN.
   function cardRow(c) {
     const soon = expiryOf(c);
     return `<a class="item" href="#/card/${c.id}"><span class="type-tile"><span class="mini finish-${finishes[c.id]}"></span></span>
       <span class="item-text"><span class="item-title">${esc(c.nick)}${blocked[c.id] ? ' <span class="badge badge-crit">BLOCKED</span>' : ''}</span>
-      <span class="item-sub">${c.network === 'AMEX' ? 'Amex' : c.network.charAt(0) + c.network.slice(1).toLowerCase()} · •••• ${c.last4} · ${soon.days <= 183 ? `<span class="warn-text">exp. ${c.expiry.replace(/\s/g, '')}</span>` : `exp. ${c.expiry.replace(/\s/g, '')}`}</span></span>
-      ${icon('chev', 18, 'chev')}</a>`;
+      <span class="item-sub">${esc(cardSub(c))}${soon.days <= 183 ? ` · <span class="warn-text">exp. ${c.expiry.replace(/\s/g, '')}</span>` : ''}</span></span>
+      ${c.fav ? icon('star', 14, 'fav', 'fill="currentColor" role="img" aria-label="Favourite"') : ''}${icon('chev', 18, 'chev')}</a>`;
   }
+  // Search sees only screen-safe fields: bank (any spelling), names, last four digits and the user's note.
+  const cardText = (c) => [c.nick, c.product, c.kind, NETWORK_NAMES[c.network], c.last4, c.note, c.issuer,
+    ...(c.bank ? [BANKS[c.bank].full, ...BANKS[c.bank].aliases] : ['other', 'unassigned'])].join(' ').toLowerCase();
 
   // Expiry watch: shown only inside the unlocked app. A notification would have to read the vault while locked.
   const DAY = 86400000;
@@ -532,7 +577,7 @@
   // search still covers every category, hidden ones included.
   function vault() {
     const q = S.query.trim().toLowerCase();
-    const matches = (it) => !q || (it.title + ' ' + it.sub).toLowerCase().includes(q);
+    const matches = (it) => !q || (it.card ? cardText(CARDS[it.card]) : (it.title + ' ' + it.sub).toLowerCase()).includes(q);
     const groups = orderedCategories()
       .filter((cat) => q || !isHidden(cat.type))
       .map((cat) => ({ cat, items: ITEMS.filter((it) => it.type === cat.type && matches(it)) }))
@@ -548,7 +593,13 @@
     const section = ({ cat, items }) => {
       const head = `<a class="sec-head" href="#/category/${cat.type}"><h2 class="sec-title">${cat.label}</h2><span class="sec-count">${items.length}</span>${icon('chev', 16, 'chev')}</a>`;
       if (cat.type === 'card' && !q) {
-        return `<section class="sec">${head}<div class="wallet" id="wallet" data-keep-scroll>${folders().map(walletEntry).join('')}</div></section>`;
+        const all = allCards();
+        const tiles = [{ scope: 'all', cards: all }, ...bankGroups()];
+        const favs = ITEMS.filter((it) => it.fav);
+        return `<section class="sec"><div class="sec-head static"><h2 class="sec-title">Browse by bank</h2><span class="sec-count">${all.length}</span>
+            <a class="btn btn-secondary btn-small add-card" href="#/add/card">${icon('plus', 18)}Add card</a></div>
+          <div class="bank-grid">${tiles.map(bankTile).join('')}</div></section>
+          ${favs.length ? `<section class="sec"><div class="sec-head static"><h2 class="sec-title">Favourites</h2><span class="sec-count">${favs.length}</span></div><div class="group">${favs.map(itemRow).join('')}</div></section>` : ''}`;
       }
       const shown = q ? items : items.slice(0, 3);
       const more = items.length > shown.length ? `<a class="see-all" href="#/category/${cat.type}">See all ${countLabel(cat, items.length)}${icon('chev', 16)}</a>` : '';
@@ -589,7 +640,7 @@
         ${body}
         ${hiddenNote}
         ${q ? '' : `<div class="organise"><a class="btn btn-secondary btn-small" href="#/sections">${icon('sliders', 18)}Organise sections</a></div>`}
-        <p class="list-foot">Kept only on this phone. Never synced, never uploaded.</p>
+        <p class="list-foot">Kept on this phone, and in your own encrypted Google Drive backup if you turn it on. Never on our servers.</p>
       </div>
       ${platform === 'ios' ? '' : `<a class="fab" href="#/add" aria-label="Add item">${icon('plus', 24, '', 'stroke-width="1.75"')}</a>`}
     </section>`;
@@ -642,9 +693,9 @@
       ? `<div class="empty"><p class="display">Nothing here yet</p><p class="small muted">Items you add will appear here.</p></div>`
       : cat.type === 'card'
         ? `<a class="btn btn-secondary lost-btn" href="#/lost">${icon('alert', 20)}Lost your wallet?</a>
-          ${folders().map((f) => `<section class="folder-sec">
-            <a class="folder-head" href="${folderHref(f.name)}">${icon('folder', 18)}<span class="folder-name">${esc(f.name)}</span><span class="sec-count">${f.cards.length}</span>${icon('chev', 16, 'chev')}</a>
-            <div class="group">${f.cards.map(cardRow).join('')}</div></section>`).join('')}`
+          ${bankGroups().map((g) => `<section class="folder-sec">
+            <a class="folder-head" href="#/bank/${g.scope}">${icon('bank', 18)}<span class="folder-name">${esc(scopeName(g.scope))}</span><span class="sec-count">${g.cards.length}</span>${icon('chev', 16, 'chev')}</a>
+            <div class="group">${g.cards.map(cardRow).join('')}</div></section>`).join('')}`
         : `<div class="group">${items.map(itemRow).join('')}</div>`;
     return `<section class="screen${fx.enter ? ' enter' : ''}" id="scr-cat-${cat.type}" data-keep-scroll>
       ${topbar('#/vault', 'Back to vault')}
@@ -675,7 +726,7 @@
       const shown = esc(f.value);
       const cls = (f.mono ? '' : ' plain') + (f.multiline ? ' multiline' : '');
       return `<div class="frow"><div class="frow-text">
-          <span class="frow-label">${esc(f.label)}${f.tier === 'critical' ? ' ' + criticalBadge : ''}</span>
+          <span class="frow-label">${esc(f.label)}${f.tier === 'critical' ? ' ' + criticalBadge : f.tier === 'strict' ? ' ' + strictBadge : ''}</span>
           ${secret(on, shown, masked, cls)}
           ${timer(on)}
           ${f.meter ? meter(f.meter) : ''}
@@ -720,45 +771,29 @@
     </section>`;
   }
 
-  // A folder: every card in it, full size.
-  function folder(param) {
-    let name = '';
-    try { name = decodeURIComponent(param || ''); } catch (e) { /* malformed link: fall through */ }
-    const all = folders();
-    const f = all.find((x) => x.name === name) || all.find((x) => x.cards.length > 1) || all[0];
-    const custom = f.cards.some((c) => cardFolder[c.id] === f.name);
-    return `<section class="screen${fx.enter ? ' enter' : ''}" id="scr-folder" data-keep-scroll>
-      ${topbar('#/category/card', 'Back to Cards')}
+  // One bank's cards (or all, or the unassigned ones), with an All / Credit / Debit filter.
+  // The bank and filter are remembered, so coming back from a shopping app lands here again.
+  function bank(param) {
+    const scope = param === 'all' || param === UNASSIGNED || BANKS[param] ? param : 'all';
+    const inScope = allCards().filter((c) => scope === 'all' || scopeOf(c) === scope);
+    const filter = lastView && lastView.scope === scope ? lastView.filter : 'all';
+    const byFilter = (f) => inScope.filter((c) => f === 'all' || c.kind.toLowerCase() === f);
+    // Favourites first, then by name (the real app also puts recently used cards higher).
+    const shown = byFilter(filter).sort((a, b) => (b.fav - a.fav) || a.nick.localeCompare(b.nick));
+    const label = (f, text) => `${text} ${byFilter(f).length}`;
+    const name = scopeName(scope);
+    const empty = `<div class="empty"><p class="display">No ${esc(name)} ${filter} cards</p><p class="small muted">Try another filter.</p></div>`;
+    return `<section class="screen${fx.enter ? ' enter' : ''}" id="scr-bank" data-keep-scroll>
+      ${topbar('#/vault', 'Back to vault')}
       <div class="gutter cat-head">
-        <span class="label">${custom ? 'Your folder' : 'Bank folder'}</span>
-        <h1 class="display">${esc(f.name)}</h1>
-        <p class="small muted">${cardCount(f.cards.length)}</p>
+        <span class="label">${scope === 'all' ? 'Cards' : 'Bank'}</span>
+        <h1 class="display">${esc(name)}</h1>
+        <p class="small muted">${cardCount(inScope.length)}${kindCounts(inScope) ? ' · ' + kindCounts(inScope) : ''}</p>
       </div>
-      <div class="gutter cat-list"><div class="card-stack">${f.cards.map((c) => `<a class="wallet-card" href="#/card/${c.id}" aria-label="Open ${esc(c.nick)}">${cardFace(c, false)}</a>`).join('')}</div></div>
-      <p class="assurance gutter cat-note">${icon('folder', 18)}<span>${custom ? 'You made this folder. Move cards in or out from each card’s details.' : 'Cards from the same bank are grouped automatically. To use a folder of your own, open a card and choose Folder.'}</span></p>
-    </section>`;
-  }
-
-  // Choose a card's folder: its bank's, one the user made, or a new one.
-  function move(id) {
-    const c = CARDS[id] || CARDS[1];
-    const current = folderOf(c);
-    const names = [c.issuer, ...new Set(Object.values(cardFolder))].filter((n, i, a) => a.indexOf(n) === i);
-    const rows = names.map((n) => `<button type="button" id="to-${encodeURIComponent(n).replace(/%/g, '_')}" class="srow pick-row" data-action="moveCard" data-arg="${c.id}:${esc(n)}" aria-pressed="${n === current}">
-        <span class="srow-main"><span class="srow-label">${esc(n)}</span>${n === c.issuer ? '<span class="srow-sub">Its bank · automatic</span>' : ''}</span>
-        ${n === current ? icon('check', 20, 'accent-icon') : ''}</button>`).join('');
-    const name = S.newFolder.trim();
-    return `<section class="screen${fx.enter ? ' enter' : ''}" id="scr-move" data-keep-scroll>
-      ${topbar(`#/card/${c.id}`, `Back to ${c.nick}`)}
-      <div class="gutter cat-head"><span class="label">${esc(c.nick)} · •••• ${c.last4}</span><h1 class="display">Move to folder</h1></div>
-      <div class="gutter cat-list"><div class="group">${rows}</div></div>
-      <form class="gutter new-folder" data-submit="createFolder" autocomplete="off">
-        <label class="label" for="new-folder">New folder</label>
-        <div class="inline">
-          <input id="new-folder" class="input" type="text" maxlength="30" placeholder="e.g. Business" value="${esc(S.newFolder)}" data-bind="newFolder" spellcheck="false" autocomplete="off">
-          <button type="submit" id="create-folder" class="btn btn-primary btn-small"${name && !names.includes(name) ? '' : ' disabled'}>Create</button>
-        </div>
-      </form>
+      <div class="gutter filter-row"><span class="label" id="filter-label">Show</span>${segmented('filter-label', { all: label('all', 'All'), credit: label('credit', 'Credit'), debit: label('debit', 'Debit') }, filter, 'bankFilter')}</div>
+      <div class="gutter cat-list">${shown.length ? `<div class="group">${shown.map(cardRow).join('')}</div>` : empty}</div>
+      ${scope === UNASSIGNED ? `<p class="assurance gutter cat-note">${icon('alert', 18)}<span>These cards have no bank yet. Open one and choose its bank to move it into that bank's group.</span></p>` : ''}
+      <div class="gutter cat-add"><a class="btn btn-secondary" href="#/add/card">${icon('plus', 20)}${scope === 'all' || scope === UNASSIGNED ? 'Add card' : `Add ${esc(name)} card`}</a></div>
     </section>`;
   }
 
@@ -808,10 +843,16 @@
     const note = c.cvv
       ? `<p class="assurance warn-note">${icon('alert', 18)}<span>This card's CVV is stored. With the number and expiry, it is everything needed to shop online with this card. Remove it if you don't need it here.</span></p>`
       : `<p class="assurance">${icon('shield', 18)}<span>No CVV stored for this card. Number, expiry and CVV together are all an online thief needs.</span></p>`;
+    // An ATM PIN is its own item; the card only links to it and never shows its digits (threat-model I11).
+    const pinItem = ITEMS.find((it) => it.type === 'pin' && it.fields.some((f) => f.label === 'Card' && f.value.endsWith(c.last4)));
+    const pinRow = pinItem
+      ? `<a class="frow frow-link" href="#/item/${pinItem.id}"><div class="frow-text"><span class="frow-label">ATM PIN</span><span class="frow-value">Stored separately · ${P().bio} every time</span></div>${icon('chev', 18, 'chev')}</a>`
+      : '';
+    const back = c.bank ? `#/bank/${c.bank}` : `#/bank/${UNASSIGNED}`;
     return `<section class="screen${fx.enter ? ' enter' : ''}" id="scr-card" data-keep-scroll>
-      ${topbar('#/category/card', 'Back to Cards')}
+      ${topbar(back, `Back to ${bankName(c.bank)}`)}
       <div class="detail-head">
-        <div class="col"><span class="label">Cards</span><h1 class="display">${esc(c.nick)}</h1></div>
+        <div class="col"><span class="label">${esc(bankName(c.bank))} · ${c.kind}</span><h1 class="display">${esc(c.nick)}${c.fav ? ' ' + icon('star', 18, 'fav', 'fill="currentColor" role="img" aria-label="Favourite"') : ''}</h1></div>
         ${cardFace(c, false)}
         <div class="finishes" role="group" aria-label="Card finish">
           ${FINISHES.map(([f, name]) => `<button type="button" id="finish-${f}" class="swatch-btn" data-action="finish" data-arg="${c.id}:${f}" aria-label="${name} finish" aria-pressed="${finishes[c.id] === f}"><span class="swatch finish-${f}"></span></button>`).join('')}
@@ -819,21 +860,27 @@
         </div>
       </div>
       <div class="fields">
-        <h2 class="label">Details</h2>
-        ${frow('Cardholder', esc(c.holder), copyBtn('card-name', 'cardholder name'))}
+        <h2 class="label">For checkout</h2>
         <div class="frow"><div class="frow-text">
           <span class="frow-label">Card number ${criticalBadge}</span>
           ${secret(onNum, c.number, '•••• •••• •••• ' + c.last4)}
-          ${timer(onNum)}
+          ${onNum ? timer(true) : '<span class="timer">Copied without spaces · clears in 15 s</span>'}
         </div>${revealBtn('card-number', 'card number', 'critical', onNum)}${copyBtn('card-number', 'card number', 'critical')}</div>
-        ${frow('Expiry', `<span class="mono">${c.expiry}</span>${expiryOf(c).days <= 183 ? `<span class="frow-note warn-text">${expiryOf(c).days < 0 ? 'Expired' : `Expires ${whenText(expiryOf(c).days)}`} · ask ${esc(c.issuer)} for a new card</span>` : ''}`, copyBtn('card-expiry', 'expiry date'))}
+        ${frow('Name on card', esc(c.holder.toUpperCase()), copyBtn('card-name', 'name on card'))}
+        ${frow('Expiry', `<span class="mono">${c.expiry.replace(/\s/g, '')}</span>${expiryOf(c).days <= 183 ? `<span class="frow-note warn-text">${expiryOf(c).days < 0 ? 'Expired' : `Expires ${whenText(expiryOf(c).days)}`} · ask ${esc(c.issuer)} for a new card</span>` : ''}`, copyBtn('card-expiry', 'expiry date'))}
         ${cvvRow}
-        ${frow('Issuer', esc(c.issuer))}
-        <a class="frow frow-link" href="#/move/${c.id}"><div class="frow-text"><span class="frow-label">Folder</span><span class="frow-value">${icon('folder', 16)} ${esc(folderOf(c))}</span></div>${icon('chev', 18, 'chev')}</a>
-        ${frow('If lost or stolen', `<span class="mono">${esc(c.hotline)}</span>${blocked[c.id] ? '<span class="frow-note warn-text">Marked blocked</span>' : ''}`, `<a class="icon-btn accent" href="tel:${c.hotline.replace(/[^+\d]/g, '')}" aria-label="Call ${esc(c.issuer)}">${icon('phone', 20)}</a>`)}
+        ${frow('Card name', esc(c.nick), copyBtn('card-title', 'card name'))}
+        <h2 class="label">About this card</h2>
+        ${c.note ? frow('Your note', `${esc(c.note)}<span class="frow-note">Your own words, not a checked offer</span>`) : ''}
+        <a class="frow frow-link" href="#/bank/${c.bank || UNASSIGNED}"><div class="frow-text"><span class="frow-label">Bank</span><span class="frow-value">${icon('bank', 16)} ${esc(bankName(c.bank))}</span></div>${icon('chev', 18, 'chev')}</a>
+        ${frow('Card type', esc(c.kind))}
+        ${frow('Network', esc(NETWORK_NAMES[c.network] || c.network))}
+        ${frow('Product', esc(c.product))}
+        ${pinRow}
+        ${frow('Customer care', `<span class="mono">${esc(c.hotline)}</span>${blocked[c.id] ? '<span class="frow-note warn-text">Marked blocked</span>' : ''}`, `<a class="icon-btn accent" href="tel:${c.hotline.replace(/[^+\d]/g, '')}" aria-label="Call ${esc(c.issuer)}">${icon('phone', 20)}</a>`)}
         <a class="btn btn-secondary lost-btn" href="#/lost">${icon('alert', 20)}Lost your wallet?</a>
         ${note}
-        <p class="assurance">${icon('lock', 18)}<span>Card PINs are never stored.</span></p>
+        <p class="assurance">${icon('lock', 18)}<span>No "copy all": each detail is copied on its own, and leaving Vaultaire hides anything you revealed.</span></p>
       </div>
     </section>`;
   }
@@ -931,8 +978,8 @@
   function settings() {
     const cvvCount = Object.values(CARDS).filter((c) => c.cvv).length;
     const protection = [
-      ['Unlock methods', `${P().Bio} + password`], ['Auto-lock', 'After 2 min'], ['Clear clipboard', 'After 60 s'],
-      ['Critical fields', `${P().Bio} after 60 s`], ['Card security codes', `Stored for ${cvvCount} of ${Object.keys(CARDS).length} cards`],
+      ['Unlock methods', `${P().Bio} + password`], ['Auto-lock', 'After 2 min · 30 s in background'], ['Clear clipboard', '15 s for card numbers, CVVs and PINs · 30 s for the rest'],
+      ['Critical fields', `${P().Bio} after 60 s · ATM PINs every time`], ['Card security codes', `Stored for ${cvvCount} of ${Object.keys(CARDS).length} cards`],
       ['Password check', 'Every 14 days'], ['Security log', '3 failed attempts']
     ];
     const device = P().checks;
@@ -952,7 +999,7 @@
         </section>
         <section class="section"><h2 class="label">Backup and recovery</h2>
           <div class="group">
-            <div class="srow"><span class="srow-main"><span class="srow-label">Create encrypted backup</span><span class="srow-sub">Needs your vault password</span></span></div>
+            <div class="srow"><span class="srow-main"><span class="srow-label">Back up to Google Drive</span><span class="srow-sub">Encrypted. Google stores the file but cannot open it: that needs your vault password and Recovery Key</span></span></div>
             <div class="srow"><span class="srow-label">Restore or import</span></div>
             <a class="srow" href="#/recovery"><span class="srow-label">Recovery Kit</span>${icon('chev', 18, 'chev')}</a>
           </div>
@@ -1003,8 +1050,7 @@
     sections: { title: 'Home sections', render: sections },
     category: { title: 'Category · Passwords', render: category, link: '#/category/login' },
     card: { title: 'Card · critical fields', render: card, link: '#/card/1' },
-    folder: { title: 'Card folder', render: folder, link: '#/folder/American%20Express' },
-    move: { title: 'Move to folder', render: move, link: '#/move/5', hidden: true },
+    bank: { title: 'Bank · SBI', render: bank, link: '#/bank/in.sbi' },
     lost: { title: 'Lost wallet', render: lost },
     item: { title: 'Item · API key', render: item, link: '#/item/k1' },
     add: { title: 'Add item', render: add },
@@ -1019,7 +1065,7 @@
     if (r.name === 'category') return categoryOf(r.param).label;
     if (r.name === 'item') return (itemById(r.param) || {}).title || 'Item';
     if (r.name === 'card') return (CARDS[r.param] || CARDS[1]).nick;
-    if (r.name === 'folder') { try { return decodeURIComponent(r.param || '') || 'Folder'; } catch (e) { return 'Folder'; } }
+    if (r.name === 'bank') return scopeName(r.param === UNASSIGNED || BANKS[r.param] ? r.param : 'all');
     return ROUTES[r.name].title;
   }
 
@@ -1071,7 +1117,7 @@
       if (prev === 'add') Object.assign(S, { addType: null, addPw: '', addVals: {}, addCvv: false });
       if (prev === 'recovery') Object.assign(S, { rkStep: 'show', rkA: '', rkB: '', rkErr: false });
       if (prev === 'password') Object.assign(S, { verifying: false });
-      if (prev === 'move') S.newFolder = '';
+      if (next.name === 'bank') lastView = { scope: next.param || 'all', filter: lastView && lastView.scope === (next.param || 'all') ? lastView.filter : 'all' };
       // "Add password" on a category page opens the form for that type directly.
       if (next.name === 'add' && next.param && TEMPLATES[next.param]) {
         Object.assign(S, { addType: next.param, addPw: next.param === 'login' ? passphrase() : '', addVals: {}, addCvv: false });
@@ -1084,13 +1130,17 @@
     if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); }
   }
 
+  // After unlocking, go back to the bank and filter last looked at (product plan §4), or home.
+  // Nothing revealed comes back: locking wiped it.
+  const afterUnlock = () => (lastView ? `#/bank/${lastView.scope}` : '#/vault');
+
   // ---------- Events ----------
   const ACTIONS = {
     // The ring closes, then the vault is composed (the real app renders nothing before the key is available).
     bioUnlock: () => {
       if (S.unlocking) return;
       set({ unlocking: true });
-      later(320, () => { location.hash = '#/vault'; });
+      later(320, () => { location.hash = afterUnlock(); });
     },
     togglePw: () => set({ pwShown: !S.pwShown }),
     dismissBanner: () => set({ banner: false }),
@@ -1125,15 +1175,20 @@
     },
     reveal: (key, el) => {
       if (S.revealed === key) { stopReveal(); render(); return; }
-      if (el.dataset.tier === 'critical') critical('reveal', key, el.dataset.label);
+      if (isCritical(el.dataset.tier)) critical('reveal', key, el.dataset.label, el.dataset.tier);
       else startReveal(key);
     },
-    copy: (key, el) => (el.dataset.tier === 'critical' ? critical('copy', key, el.dataset.label) : toast('Copied · clears in 60 s')),
+    copy: (key, el) => (isCritical(el.dataset.tier) ? critical('copy', key, el.dataset.label, el.dataset.tier) : toast(copiedText(el.dataset.tier, key))),
     confirmSheet: () => {
-      const { kind, field } = S.sheet;
+      const { kind, field, tier } = S.sheet;
       S.sheet = null;
       S.lastAuth = Date.now();
-      doAction(kind, field);
+      doAction(kind, field, tier);
+    },
+    bankFilter: (next) => {
+      if (!['all', 'credit', 'debit'].includes(next)) return;
+      lastView = { scope: route().param || 'all', filter: next };
+      render();
     },
     cancelSheet: () => set({ sheet: null }),
     pick: (type) => { fx.enter = true; set({ addType: type, addPw: type === 'login' ? passphrase() : '', addVals: {}, addCvv: false }); },
@@ -1144,15 +1199,6 @@
     rkShow: () => { fx.step = true; set({ rkStep: 'show' }); },
     platform: (next) => setPlatform(next),
     typeface: (next) => setTypeface(next),
-    moveCard: (arg) => {
-      const i = arg.indexOf(':');
-      const id = arg.slice(0, i);
-      const name = arg.slice(i + 1);
-      if (!CARDS[id]) return;
-      if (name === CARDS[id].issuer) delete cardFolder[id]; else cardFolder[id] = name;
-      location.hash = `#/card/${id}`;
-      toast(`Moved to ${name}`);
-    },
     toggleBlocked: (id) => {
       blocked[id] = !blocked[id];
       render();
@@ -1176,21 +1222,14 @@
     addPw: (v) => { S.addPw = v; return false; },
     addField: (v, el) => { S.addVals[el.dataset.key] = v; return false; },
     rkA: (v) => { S.rkA = v; S.rkErr = false; return true; },
-    rkB: (v) => { S.rkB = v; S.rkErr = false; return true; },
-    newFolder: (v) => { S.newFolder = v; return true; }
+    rkB: (v) => { S.rkB = v; S.rkErr = false; return true; }
   };
   const SUBMITS = {
     // The dial turns while the (simulated) key derivation runs: real progress, not decoration.
     unlock: () => {
       if (!S.pw || S.verifying) return;
       set({ verifying: true });
-      later(900, () => { location.hash = '#/vault'; });
-    },
-    createFolder: () => {
-      const id = route().param;
-      const name = S.newFolder.trim().slice(0, 30);
-      if (!name || !CARDS[id]) return;
-      ACTIONS.moveCard(`${id}:${name}`);
+      later(900, () => { location.hash = afterUnlock(); });
     },
     rkCheck: () => {
       const ok = normKey(S.rkA) === RECOVERY_KEY[2] && normKey(S.rkB) === RECOVERY_KEY[5];

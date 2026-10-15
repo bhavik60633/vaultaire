@@ -5,7 +5,7 @@
 | Status | **Draft 0.1, not yet reviewed.** Input to Gate G0 (spec freeze). Values marked **PROVISIONAL** are fixed at G0 after the Phase-0 measurements. |
 | Scope | Format version 1 (`format_version = 1`): key hierarchy, keyslots, record encryption, integrity, Recovery Key encoding and backup encryption |
 | Related | [`threat-model.md`](threat-model.md) (why), `vault-format.md` (byte layouts and schemas; to be written) |
-| Last updated | 2026-09-30 (spec findings S-4, S-7 to S-10 applied, pending review) |
+| Last updated | 2026-10-15 (§9.5 cached export key, lifecycle rows, Q9, Q10). 2026-09-30: spec findings S-4, S-7 to S-10 applied, pending review |
 
 This document is normative. The words **must**, **must not** and **should** carry their usual RFC 2119 meaning. An implementation that differs from this document is wrong, even if it "works".
 
@@ -87,6 +87,8 @@ Nothing else is changed: no trimming, no case folding.
 
 The strength policy (at least 12 characters **and** a zxcvbn estimate of ≥ 10¹² guesses) is enforced when a password is **set or changed**, never when it is checked. A policy change must never lock out an existing user.
 
+**In force now (milestone M2):** ADR-007's fallback rule, until the `zxcvbn` review is done: at least 12 characters after NFC; not a common password or a common word wrapped in digits and symbols; not mostly repeats or runs (`aaaa`, `abcd`, `1234`, `qwer`); and a character-set estimate of at least 10¹² guesses (`vault_core::password_policy`).
+
 ### 3.3 Label registry
 
 Every label is ASCII and starts with `vlt/v1/`. `vlt` is a fixed protocol identifier, like the file magics `VLT1` and `VLTBK` ([vault-format](vault-format.md)). It is deliberately **not** the product name, so the product can be renamed without changing any derived key, associated data or test vector.
@@ -144,7 +146,7 @@ K_bio : AES-256-GCM, PURPOSE_ENCRYPT | PURPOSE_DECRYPT
         StrongBox first; on StrongBoxUnavailableException, TEE. Record which one in the slot parameters.
 ```
 
-- On creation, `vault-core` generates **SK** (32 bytes). Keystore encrypts it: `bio_blob = AES-GCM(K_bio, iv, SK, AAD = ascii("vlt/v1/bio-blob") ‖ vault_id)`. Keystore picks the 12-byte IV. The IV and `bio_blob` go in the slot parameters.
+- On creation, `vault-core` generates **SK** (32 bytes). Keystore encrypts it: `bio_blob = AES-GCM(K_bio, iv, SK, AAD = ascii("vlt/v1/bio-blob"))`. Keystore picks the 12-byte IV. The IV and `bio_blob` go in the slot parameters. *(Milestone M2: `vault_id` is not in this AAD, because the app seals SK through the bridge without knowing the vault id. `AD_slot` (§4.5) already binds `bio_blob` to the vault through the hash of the slot parameters.)*
 - SK is then zeroized in both Kotlin and Rust.
 - To unlock, Keystore decrypts `bio_blob` inside `BiometricPrompt.authenticate(CryptoObject(cipher))`. **The biometric result is the key release itself, never a boolean** (threat-model I7).
 - `KEK_bio = HKDF(ikm = SK, salt = vault_id, info = ascii("vlt/v1/kek/bio"), L = 32)`
@@ -235,7 +237,7 @@ VK and its subkeys **never** cross the FFI.
 - the device has no secure lock screen (`KeyguardManager.isDeviceSecure() == false`), or
 - Keystore reports that `K_bio` or `K_pwd` is software-backed.
 
-The emulator's Keystore is software-backed. It is allowed only in debug builds for CI.
+The emulator's Keystore is software-backed. It is allowed only in **debug builds**, for CI and for the owner's trials in the Android emulator (product plan §6.1). Such a vault records `hw_level = 0` in its slots, and every screen of a debug build shows "Test build: keys are not hardware-protected". A release build refuses to create a vault with software keys and refuses to open a vault whose slots record `hw_level = 0`.
 
 ## 6. Record encryption
 
@@ -274,8 +276,8 @@ All four are derived at unlock and zeroized, together with VK, at lock.
 AD_record = ascii("vlt/v1/record")
           ‖ u16(format_version)
           ‖ vault_id              (16)
-          ‖ u8(record_kind)       (0x01 item, 0x02 history entry, 0x03 settings, 0x04 recovery, 0x05 security log, 0x06 manifest)
-          ‖ record_id             (16; zeros(16) for the single settings, recovery, log and manifest records)
+          ‖ u8(record_kind)       (0x01 item, 0x02 history entry, 0x03 settings, 0x04 recovery, 0x05 security log, 0x06 manifest, 0x07 organisation)
+          ‖ record_id             (16; zeros(16) for the single settings, recovery, log, manifest and organisation records)
           ‖ parent_id             (16; the owning item's id for a history entry, otherwise zeros(16))
           ‖ u8(envelope_kind)
           ‖ u16(schema_version)
@@ -384,20 +386,34 @@ Every step must pass before the next begins. Any failure aborts, and nothing is 
 
 Steps 6 and 7 fail with the same message: "Wrong password or Recovery Key, or the file is damaged."
 
+### 9.5 Cached export key for auto-backup — PROPOSED (reviewer question Q9)
+
+Auto-backup re-exports to the user's chosen file (for example in Google Drive, through the Storage Access Framework; [ADR-010](adr/ADR-010-backup-drive-saf.md)) after changes, without asking for the vault password each time.
+
+- When the user turns auto-backup on, they type the vault password. The core derives `KEK_exp` exactly as §9.2, with a fresh `salt_exp` and the export parameters, and stores `{kdf, kek}` in the Recovery record under K_meta (vault-format §5.6, key 4). `H_exp` is zeroized.
+- Each auto-backup builds the header from the cached `kdf` (so `salt_exp` and the parameters match the cached key), draws a **fresh FK, `nonce_wrap` and `nonce_payload`**, and seals as §9.3. The resulting file is indistinguishable in format from a manual export and is imported by §9.4 unchanged.
+- The cached key is **deleted** on: password change or reset, Recovery Key regeneration, vault-key rotation, and turning auto-backup off. Turning it back on derives a new one with a new `salt_exp`.
+- A manual "Export now" always derives a fresh `KEK_exp` from the typed password, as before.
+- **What this changes:** backups made with the same cached key share `salt_exp` and `KEK_exp`, so one Argon2id guess tests a password against all of them. An attacker who can read K_meta records already holds VK and the whole vault (threat-model T05, T36), so the cached key gives them nothing they lack, except the ability to open *older* backup files made with it. Files alone still need the password and the Recovery Key.
+
 ## 10. Key lifecycle
 
 | Operation | What changes | Requires |
 |---|---|---|
 | Create vault | New VK, SK, RS, salts, `vault_id`; all three slots written; manifest created | Secure lock screen; hardware-backed keys (§5.2) |
-| Change password | New `salt_pwd` and `salt_rec`; KS-PWD and KS-REC re-wrapped. VK unchanged. Suggest a new backup (old backups still need the old password). | Current password |
+| Change password | New `salt_pwd` and `salt_rec`; KS-PWD and KS-REC re-wrapped. VK unchanged. Cached export key (§9.5) deleted. Suggest a new backup (old backups still need the old password). | Current password |
 | Reset forgotten password | As "change password" | An unlocked biometric session **and** the Recovery Key (constant-time compare, §8) |
-| Regenerate Recovery Key | New RS; KS-REC re-wrapped; RS in K_meta replaced; new Recovery Kit shown. Old backups still need the old key. | Password |
+| Regenerate Recovery Key | New RS; KS-REC re-wrapped; RS in K_meta replaced; cached export key (§9.5) deleted; new Recovery Kit shown. Old backups still need the old key. | Password |
+| Turn auto-backup on | New `salt_exp`; `KEK_exp` derived and cached under K_meta (§9.5) | Password |
+| Turn auto-backup off | Cached export key deleted | Nothing |
 | Rotate vault key | New VK′; every record re-encrypted and every slot re-wrapped in **one transaction**; old VK zeroized. If the process crashes, the old state stays valid until commit. | Password; offered after a restore or when the user suspects exposure |
 | Re-create biometric key | New K_bio and SK; KS-BIO re-wrapped | Password, after K_bio is invalidated by a biometric enrolment change |
 | Periodic password check | Nothing changes. `KEK_rec` is derived from the typed password and RS (held in K_meta), KS-REC is opened, and the result is compared to the in-memory VK in constant time. | Every 14 days after biometric unlock; one 24-hour deferral |
 | Lock | VK, subkeys, the decrypted index and any revealed value are zeroized **before** any animation | Inactivity 2 min, background 30 s, screen off, manual lock, process death |
 
 A successful periodic check proves two things: the user still knows the password, and the recovery slot still opens.
+
+**Waiting times after wrong vault passwords** (threat-model T14; counters in plaintext preferences, vault-format §8). The first four wrong passwords cost nothing. After the 5th the user waits 30 s, after the 6th 1 min, the 7th 5 min, the 8th 15 min, the 9th 1 h, and after the 10th and every later one 3 h. The wait is measured with `elapsedRealtime`; if the boot count has changed since it began, the full wait starts again, so a reboot never shortens it. A successful unlock resets the count and moves `failures_since_unlock` into the security log (vault-format §5.7).
 
 ## 11. Errors and side channels
 
@@ -416,6 +432,10 @@ A successful periodic check proves two things: the user still knows the password
 | `auth_failed` | **Any** failure in import steps 6–7: wrong password, wrong Recovery Key, damaged or tampered data. One error, one message |
 | `unlock_failed` | **Any** unlock failure: wrong password, wrong device credential, failed tag or header MAC. One error, one message |
 | `non_canonical`, `malformed`, `schema_violation` | Authenticated data that breaks the format rules |
+| `weak_password` | A new password fails the strength policy (§3.2). Only when a password is set or changed |
+| `password_required`, `invalid_setting` | A settings change that weakens protection without the vault password, or a value outside its range (vault-format §5.5) |
+| `vault_exists`, `not_found`, `insecure_device`, `integrity_failed`, `storage_failed` | No vault to open, one already there, a refused device (§5.2), a vault that fails its checks at unlock, or a storage error |
+| `locked` | A call on a session that was already locked (bridge only) |
 
 - **Zeroization:** VK, subkeys, KEKs, SK, `H_*`, `HW_pwd`, RS, FK and decrypted plaintext buffers are held in `zeroize`-on-drop types, with best-effort `mlock`. On the Kotlin side, passwords are held in `CharArray` or `ByteArray` and cleared after use. **Residual risk:** Compose text fields produce immutable `String` copies that stay in memory until garbage collection (threat-model T10).
 
@@ -469,3 +489,5 @@ The `argon2` crate has no known independent audit. It is checked against the RFC
 | Q6 | Is binding `SHA-256(slot_params_bytes)` into the slot AD sufficient to stop parameter downgrade (§4.5), given the separate range check? |
 | Q7 | Card security codes are now storable on an opt-in basis (threat-model §9). Is anything beyond critical-tier handling needed at the cryptographic level? |
 | Q8 | A backup may declare m up to 512 MiB (§4.6). What memory cap relative to device RAM should the app enforce before running Argon2id, so that a low-RAM phone refuses cleanly instead of being killed? |
+| Q9 | Is caching `KEK_exp` under K_meta for auto-backup (§9.5) acceptable, given that backups made with one cached key share `salt_exp`, and that the key opens older backup files until the password or Recovery Key changes? |
+| Q10 | ATM PINs are now storable as separate items at a critical-strict tier (threat-model §9.1). Is anything needed at the cryptographic level beyond the per-reveal biometric, for example a separate envelope or subkey for PIN items? |

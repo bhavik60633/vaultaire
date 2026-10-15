@@ -108,8 +108,8 @@ rules:
     languages: [kotlin]
     severity: ERROR
     message: >-
-      Only ClipboardGuard may write to the clipboard: it marks clips as sensitive and clears them after 60 s
-      (threat-model T11).
+      Only ClipboardGuard may write to the clipboard: it marks clips as sensitive and clears them after 15 s
+      (critical values) or the vault setting, 30 s by default (threat-model T11).
     paths:
       exclude: ["**/security/ClipboardGuard.kt", "**/test/**", "**/androidTest/**"]
     pattern: $CM.setPrimaryClip(...)
