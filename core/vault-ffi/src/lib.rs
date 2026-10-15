@@ -12,6 +12,8 @@
 
 uniffi::setup_scaffolding!();
 
+mod entries;
+
 use std::fmt;
 use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -57,11 +59,11 @@ impl From<uniffi::UnexpectedUniFFICallbackError> for FfiError {
     }
 }
 
-fn code(code: &str) -> FfiError {
+pub(crate) fn code(code: &str) -> FfiError {
     FfiError::Failed { code: code.into() }
 }
 
-type FfiResult<T> = Result<T, FfiError>;
+pub(crate) type FfiResult<T> = Result<T, FfiError>;
 
 // ---------- hardware keys, implemented in Kotlin ----------
 
@@ -389,7 +391,10 @@ impl FfiSession {
             .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
-    fn with<T>(&self, f: impl FnOnce(&mut Session) -> vault_core::Result<T>) -> FfiResult<T> {
+    pub(crate) fn with<T>(
+        &self,
+        f: impl FnOnce(&mut Session) -> vault_core::Result<T>,
+    ) -> FfiResult<T> {
         let mut guard = self.guard();
         let session = guard.as_mut().ok_or_else(|| code("locked"))?;
         Ok(f(session)?)

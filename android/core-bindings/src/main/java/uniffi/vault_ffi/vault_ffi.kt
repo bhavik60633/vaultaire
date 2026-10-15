@@ -763,6 +763,10 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_vault_ffi_checksum_func_unlock_with_recovery_key(
     ): Int
+    external fun uniffi_vault_ffi_checksum_func_catalogue_banks(
+    ): Int
+    external fun uniffi_vault_ffi_checksum_func_suggest_network(
+    ): Int
     external fun uniffi_vault_ffi_checksum_method_ffisession_change_password(
     ): Int
     external fun uniffi_vault_ffi_checksum_method_ffisession_enrol_biometric(
@@ -784,6 +788,48 @@ internal object IntegrityCheckingUniffiLib {
     external fun uniffi_vault_ffi_checksum_method_ffisession_take_recovery_key(
     ): Int
     external fun uniffi_vault_ffi_checksum_method_ffisession_update_settings(
+    ): Int
+    external fun uniffi_vault_ffi_checksum_method_ffisession_add_bank(
+    ): Int
+    external fun uniffi_vault_ffi_checksum_method_ffisession_add_bank_account(
+    ): Int
+    external fun uniffi_vault_ffi_checksum_method_ffisession_add_card(
+    ): Int
+    external fun uniffi_vault_ffi_checksum_method_ffisession_add_pin(
+    ): Int
+    external fun uniffi_vault_ffi_checksum_method_ffisession_bank_groups(
+    ): Int
+    external fun uniffi_vault_ffi_checksum_method_ffisession_bank_name(
+    ): Int
+    external fun uniffi_vault_ffi_checksum_method_ffisession_cards(
+    ): Int
+    external fun uniffi_vault_ffi_checksum_method_ffisession_clear_last_card_view(
+    ): Int
+    external fun uniffi_vault_ffi_checksum_method_ffisession_delete_entry(
+    ): Int
+    external fun uniffi_vault_ffi_checksum_method_ffisession_details(
+    ): Int
+    external fun uniffi_vault_ffi_checksum_method_ffisession_last_card_view(
+    ): Int
+    external fun uniffi_vault_ffi_checksum_method_ffisession_record_use(
+    ): Int
+    external fun uniffi_vault_ffi_checksum_method_ffisession_reveal(
+    ): Int
+    external fun uniffi_vault_ffi_checksum_method_ffisession_search(
+    ): Int
+    external fun uniffi_vault_ffi_checksum_method_ffisession_set_favourite(
+    ): Int
+    external fun uniffi_vault_ffi_checksum_method_ffisession_set_last_card_view(
+    ): Int
+    external fun uniffi_vault_ffi_checksum_method_ffisession_summaries(
+    ): Int
+    external fun uniffi_vault_ffi_checksum_method_ffisession_summary(
+    ): Int
+    external fun uniffi_vault_ffi_checksum_method_ffisession_update_bank_account(
+    ): Int
+    external fun uniffi_vault_ffi_checksum_method_ffisession_update_card(
+    ): Int
+    external fun uniffi_vault_ffi_checksum_method_ffisession_update_pin(
     ): Int
     external fun uniffi_vault_ffi_checksum_method_biokeycallback_level(
     ): Int
@@ -847,6 +893,48 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_vault_ffi_fn_method_ffisession_update_settings(`ptr`: Long,`settings`: RustBuffer.ByValue,`password`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
+    external fun uniffi_vault_ffi_fn_method_ffisession_add_bank(`ptr`: Long,`name`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_vault_ffi_fn_method_ffisession_add_bank_account(`ptr`: Long,`input`: RustBuffer.ByValue,`now`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_vault_ffi_fn_method_ffisession_add_card(`ptr`: Long,`input`: RustBuffer.ByValue,`now`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_vault_ffi_fn_method_ffisession_add_pin(`ptr`: Long,`input`: RustBuffer.ByValue,`now`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_vault_ffi_fn_method_ffisession_bank_groups(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_vault_ffi_fn_method_ffisession_bank_name(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_vault_ffi_fn_method_ffisession_cards(`ptr`: Long,`scope`: RustBuffer.ByValue,`filter`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_vault_ffi_fn_method_ffisession_clear_last_card_view(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    external fun uniffi_vault_ffi_fn_method_ffisession_delete_entry(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    external fun uniffi_vault_ffi_fn_method_ffisession_details(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_vault_ffi_fn_method_ffisession_last_card_view(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_vault_ffi_fn_method_ffisession_record_use(`ptr`: Long,`id`: RustBuffer.ByValue,`now`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    external fun uniffi_vault_ffi_fn_method_ffisession_reveal(`ptr`: Long,`id`: RustBuffer.ByValue,`key`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_vault_ffi_fn_method_ffisession_search(`ptr`: Long,`query`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_vault_ffi_fn_method_ffisession_set_favourite(`ptr`: Long,`id`: RustBuffer.ByValue,`favourite`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    external fun uniffi_vault_ffi_fn_method_ffisession_set_last_card_view(`ptr`: Long,`scope`: RustBuffer.ByValue,`filter`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    external fun uniffi_vault_ffi_fn_method_ffisession_summaries(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_vault_ffi_fn_method_ffisession_summary(`ptr`: Long,`id`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_vault_ffi_fn_method_ffisession_update_bank_account(`ptr`: Long,`id`: RustBuffer.ByValue,`input`: RustBuffer.ByValue,`now`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    external fun uniffi_vault_ffi_fn_method_ffisession_update_card(`ptr`: Long,`id`: RustBuffer.ByValue,`input`: RustBuffer.ByValue,`now`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    external fun uniffi_vault_ffi_fn_method_ffisession_update_pin(`ptr`: Long,`id`: RustBuffer.ByValue,`input`: RustBuffer.ByValue,`now`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
     external fun uniffi_vault_ffi_fn_init_callback_vtable_biokeycallback(`vtable`: UniffiVTableCallbackInterfaceBioKeyCallback,
     ): Unit
     external fun uniffi_vault_ffi_fn_init_callback_vtable_pwdkeycallback(`vtable`: UniffiVTableCallbackInterfacePwdKeyCallback,
@@ -865,6 +953,10 @@ internal object UniffiLib {
     ): Long
     external fun uniffi_vault_ffi_fn_func_unlock_with_recovery_key(`path`: RustBuffer.ByValue,`password`: RustBuffer.ByValue,`recoveryKey`: RustBuffer.ByValue,`allowSoftwareKeys`: Byte,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
+    external fun uniffi_vault_ffi_fn_func_catalogue_banks(uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_vault_ffi_fn_func_suggest_network(`number`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun ffi_vault_ffi_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun ffi_vault_ffi_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1005,6 +1097,12 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if ((lib.uniffi_vault_ffi_checksum_func_unlock_with_recovery_key() and 0xFFFF) != 20021) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if ((lib.uniffi_vault_ffi_checksum_func_catalogue_banks() and 0xFFFF) != 20210) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_vault_ffi_checksum_func_suggest_network() and 0xFFFF) != 48055) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if ((lib.uniffi_vault_ffi_checksum_method_ffisession_change_password() and 0xFFFF) != 50423) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1036,6 +1134,69 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if ((lib.uniffi_vault_ffi_checksum_method_ffisession_update_settings() and 0xFFFF) != 10743) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_vault_ffi_checksum_method_ffisession_add_bank() and 0xFFFF) != 45884) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_vault_ffi_checksum_method_ffisession_add_bank_account() and 0xFFFF) != 44864) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_vault_ffi_checksum_method_ffisession_add_card() and 0xFFFF) != 38271) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_vault_ffi_checksum_method_ffisession_add_pin() and 0xFFFF) != 30766) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_vault_ffi_checksum_method_ffisession_bank_groups() and 0xFFFF) != 59185) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_vault_ffi_checksum_method_ffisession_bank_name() and 0xFFFF) != 35030) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_vault_ffi_checksum_method_ffisession_cards() and 0xFFFF) != 59940) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_vault_ffi_checksum_method_ffisession_clear_last_card_view() and 0xFFFF) != 42802) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_vault_ffi_checksum_method_ffisession_delete_entry() and 0xFFFF) != 64929) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_vault_ffi_checksum_method_ffisession_details() and 0xFFFF) != 14803) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_vault_ffi_checksum_method_ffisession_last_card_view() and 0xFFFF) != 25938) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_vault_ffi_checksum_method_ffisession_record_use() and 0xFFFF) != 30077) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_vault_ffi_checksum_method_ffisession_reveal() and 0xFFFF) != 33977) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_vault_ffi_checksum_method_ffisession_search() and 0xFFFF) != 16168) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_vault_ffi_checksum_method_ffisession_set_favourite() and 0xFFFF) != 59652) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_vault_ffi_checksum_method_ffisession_set_last_card_view() and 0xFFFF) != 26571) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_vault_ffi_checksum_method_ffisession_summaries() and 0xFFFF) != 21725) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_vault_ffi_checksum_method_ffisession_summary() and 0xFFFF) != 16042) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_vault_ffi_checksum_method_ffisession_update_bank_account() and 0xFFFF) != 45673) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_vault_ffi_checksum_method_ffisession_update_card() and 0xFFFF) != 24949) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_vault_ffi_checksum_method_ffisession_update_pin() and 0xFFFF) != 41868) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if ((lib.uniffi_vault_ffi_checksum_method_biokeycallback_level() and 0xFFFF) != 7250) {
@@ -1521,6 +1682,51 @@ public interface FfiSessionInterface {
     
     fun `updateSettings`(`settings`: FfiSettings, `password`: kotlin.ByteArray?)
     
+    fun `addBank`(`name`: kotlin.String): kotlin.String
+    
+    fun `addBankAccount`(`input`: FfiBankAccountInput, `now`: kotlin.ULong): kotlin.ByteArray
+    
+    fun `addCard`(`input`: FfiCardInput, `now`: kotlin.ULong): kotlin.ByteArray
+    
+    fun `addPin`(`input`: FfiPinInput, `now`: kotlin.ULong): kotlin.ByteArray
+    
+    fun `bankGroups`(): List<FfiBankGroup>
+    
+    fun `bankName`(`id`: kotlin.String): kotlin.String?
+    
+    fun `cards`(`scope`: FfiScope, `filter`: kotlin.UInt): List<FfiSummary>
+    
+    fun `clearLastCardView`()
+    
+    fun `deleteEntry`(`id`: kotlin.ByteArray)
+    
+    fun `details`(`id`: kotlin.ByteArray): FfiDetails
+    
+    fun `lastCardView`(): FfiCardView?
+    
+    fun `recordUse`(`id`: kotlin.ByteArray, `now`: kotlin.ULong)
+    
+    /**
+     * One value, as UTF-8 bytes the caller wipes after use.
+     */
+    fun `reveal`(`id`: kotlin.ByteArray, `key`: kotlin.String): kotlin.ByteArray
+    
+    fun `search`(`query`: kotlin.String): List<FfiSummary>
+    
+    fun `setFavourite`(`id`: kotlin.ByteArray, `favourite`: kotlin.Boolean)
+    
+    fun `setLastCardView`(`scope`: FfiScope, `filter`: kotlin.UInt)
+    
+    fun `summaries`(): List<FfiSummary>
+    
+    fun `summary`(`id`: kotlin.ByteArray): FfiSummary?
+    
+    fun `updateBankAccount`(`id`: kotlin.ByteArray, `input`: FfiBankAccountInput, `now`: kotlin.ULong)
+    
+    fun `updateCard`(`id`: kotlin.ByteArray, `input`: FfiCardInput, `now`: kotlin.ULong)
+    
+    fun `updatePin`(`id`: kotlin.ByteArray, `input`: FfiPinInput, `now`: kotlin.ULong)
+    
     companion object
 }
 
@@ -1791,6 +1997,326 @@ open class FfiSession: Disposable, AutoCloseable, FfiSessionInterface
     
 
     
+    @Throws(FfiException::class)override fun `addBank`(`name`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FfiException) { _status ->
+    UniffiLib.uniffi_vault_ffi_fn_method_ffisession_add_bank(
+        it,
+        
+        FfiConverterString.lower(`name`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(FfiException::class)override fun `addBankAccount`(`input`: FfiBankAccountInput, `now`: kotlin.ULong): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FfiException) { _status ->
+    UniffiLib.uniffi_vault_ffi_fn_method_ffisession_add_bank_account(
+        it,
+        
+        FfiConverterTypeFfiBankAccountInput.lower(`input`),
+        FfiConverterULong.lower(`now`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(FfiException::class)override fun `addCard`(`input`: FfiCardInput, `now`: kotlin.ULong): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FfiException) { _status ->
+    UniffiLib.uniffi_vault_ffi_fn_method_ffisession_add_card(
+        it,
+        
+        FfiConverterTypeFfiCardInput.lower(`input`),
+        FfiConverterULong.lower(`now`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(FfiException::class)override fun `addPin`(`input`: FfiPinInput, `now`: kotlin.ULong): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FfiException) { _status ->
+    UniffiLib.uniffi_vault_ffi_fn_method_ffisession_add_pin(
+        it,
+        
+        FfiConverterTypeFfiPinInput.lower(`input`),
+        FfiConverterULong.lower(`now`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(FfiException::class)override fun `bankGroups`(): List<FfiBankGroup> {
+            return FfiConverterSequenceTypeFfiBankGroup.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FfiException) { _status ->
+    UniffiLib.uniffi_vault_ffi_fn_method_ffisession_bank_groups(
+        it,
+        _status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(FfiException::class)override fun `bankName`(`id`: kotlin.String): kotlin.String? {
+            return FfiConverterOptionalString.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FfiException) { _status ->
+    UniffiLib.uniffi_vault_ffi_fn_method_ffisession_bank_name(
+        it,
+        
+        FfiConverterString.lower(`id`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(FfiException::class)override fun `cards`(`scope`: FfiScope, `filter`: kotlin.UInt): List<FfiSummary> {
+            return FfiConverterSequenceTypeFfiSummary.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FfiException) { _status ->
+    UniffiLib.uniffi_vault_ffi_fn_method_ffisession_cards(
+        it,
+        
+        FfiConverterTypeFfiScope.lower(`scope`),
+        FfiConverterUInt.lower(`filter`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(FfiException::class)override fun `clearLastCardView`()
+        = 
+    callWithHandle {
+    uniffiRustCallWithError(FfiException) { _status ->
+    UniffiLib.uniffi_vault_ffi_fn_method_ffisession_clear_last_card_view(
+        it,
+        _status)
+}
+    }
+    
+    
+
+    
+    @Throws(FfiException::class)override fun `deleteEntry`(`id`: kotlin.ByteArray)
+        = 
+    callWithHandle {
+    uniffiRustCallWithError(FfiException) { _status ->
+    UniffiLib.uniffi_vault_ffi_fn_method_ffisession_delete_entry(
+        it,
+        
+        FfiConverterByteArray.lower(`id`),_status)
+}
+    }
+    
+    
+
+    
+    @Throws(FfiException::class)override fun `details`(`id`: kotlin.ByteArray): FfiDetails {
+            return FfiConverterTypeFfiDetails.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FfiException) { _status ->
+    UniffiLib.uniffi_vault_ffi_fn_method_ffisession_details(
+        it,
+        
+        FfiConverterByteArray.lower(`id`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(FfiException::class)override fun `lastCardView`(): FfiCardView? {
+            return FfiConverterOptionalTypeFfiCardView.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FfiException) { _status ->
+    UniffiLib.uniffi_vault_ffi_fn_method_ffisession_last_card_view(
+        it,
+        _status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(FfiException::class)override fun `recordUse`(`id`: kotlin.ByteArray, `now`: kotlin.ULong)
+        = 
+    callWithHandle {
+    uniffiRustCallWithError(FfiException) { _status ->
+    UniffiLib.uniffi_vault_ffi_fn_method_ffisession_record_use(
+        it,
+        
+        FfiConverterByteArray.lower(`id`),
+        FfiConverterULong.lower(`now`),_status)
+}
+    }
+    
+    
+
+    
+    /**
+     * One value, as UTF-8 bytes the caller wipes after use.
+     */
+    @Throws(FfiException::class)override fun `reveal`(`id`: kotlin.ByteArray, `key`: kotlin.String): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FfiException) { _status ->
+    UniffiLib.uniffi_vault_ffi_fn_method_ffisession_reveal(
+        it,
+        
+        FfiConverterByteArray.lower(`id`),
+        FfiConverterString.lower(`key`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(FfiException::class)override fun `search`(`query`: kotlin.String): List<FfiSummary> {
+            return FfiConverterSequenceTypeFfiSummary.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FfiException) { _status ->
+    UniffiLib.uniffi_vault_ffi_fn_method_ffisession_search(
+        it,
+        
+        FfiConverterString.lower(`query`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(FfiException::class)override fun `setFavourite`(`id`: kotlin.ByteArray, `favourite`: kotlin.Boolean)
+        = 
+    callWithHandle {
+    uniffiRustCallWithError(FfiException) { _status ->
+    UniffiLib.uniffi_vault_ffi_fn_method_ffisession_set_favourite(
+        it,
+        
+        FfiConverterByteArray.lower(`id`),
+        FfiConverterBoolean.lower(`favourite`),_status)
+}
+    }
+    
+    
+
+    
+    @Throws(FfiException::class)override fun `setLastCardView`(`scope`: FfiScope, `filter`: kotlin.UInt)
+        = 
+    callWithHandle {
+    uniffiRustCallWithError(FfiException) { _status ->
+    UniffiLib.uniffi_vault_ffi_fn_method_ffisession_set_last_card_view(
+        it,
+        
+        FfiConverterTypeFfiScope.lower(`scope`),
+        FfiConverterUInt.lower(`filter`),_status)
+}
+    }
+    
+    
+
+    
+    @Throws(FfiException::class)override fun `summaries`(): List<FfiSummary> {
+            return FfiConverterSequenceTypeFfiSummary.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FfiException) { _status ->
+    UniffiLib.uniffi_vault_ffi_fn_method_ffisession_summaries(
+        it,
+        _status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(FfiException::class)override fun `summary`(`id`: kotlin.ByteArray): FfiSummary? {
+            return FfiConverterOptionalTypeFfiSummary.lift(
+    callWithHandle {
+    uniffiRustCallWithError(FfiException) { _status ->
+    UniffiLib.uniffi_vault_ffi_fn_method_ffisession_summary(
+        it,
+        
+        FfiConverterByteArray.lower(`id`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(FfiException::class)override fun `updateBankAccount`(`id`: kotlin.ByteArray, `input`: FfiBankAccountInput, `now`: kotlin.ULong)
+        = 
+    callWithHandle {
+    uniffiRustCallWithError(FfiException) { _status ->
+    UniffiLib.uniffi_vault_ffi_fn_method_ffisession_update_bank_account(
+        it,
+        
+        FfiConverterByteArray.lower(`id`),
+        FfiConverterTypeFfiBankAccountInput.lower(`input`),
+        FfiConverterULong.lower(`now`),_status)
+}
+    }
+    
+    
+
+    
+    @Throws(FfiException::class)override fun `updateCard`(`id`: kotlin.ByteArray, `input`: FfiCardInput, `now`: kotlin.ULong)
+        = 
+    callWithHandle {
+    uniffiRustCallWithError(FfiException) { _status ->
+    UniffiLib.uniffi_vault_ffi_fn_method_ffisession_update_card(
+        it,
+        
+        FfiConverterByteArray.lower(`id`),
+        FfiConverterTypeFfiCardInput.lower(`input`),
+        FfiConverterULong.lower(`now`),_status)
+}
+    }
+    
+    
+
+    
+    @Throws(FfiException::class)override fun `updatePin`(`id`: kotlin.ByteArray, `input`: FfiPinInput, `now`: kotlin.ULong)
+        = 
+    callWithHandle {
+    uniffiRustCallWithError(FfiException) { _status ->
+    UniffiLib.uniffi_vault_ffi_fn_method_ffisession_update_pin(
+        it,
+        
+        FfiConverterByteArray.lower(`id`),
+        FfiConverterTypeFfiPinInput.lower(`input`),
+        FfiConverterULong.lower(`now`),_status)
+}
+    }
+    
+    
+
+    
 
     
 
@@ -1825,6 +2351,438 @@ public object FfiConverterTypeFfiSession: FfiConverter<FfiSession, Long> {
 
     override fun write(value: FfiSession, buf: ByteBuffer) {
         buf.putLong(lower(value))
+    }
+}
+
+
+
+data class FfiBankAccountInput (
+    var `bankId`: kotlin.String?
+    , 
+    var `holder`: kotlin.String?
+    , 
+    var `accountNumber`: FfiSecret
+    , 
+    var `ifsc`: kotlin.String?
+    , 
+    var `branch`: kotlin.String?
+    , 
+    var `customerId`: FfiSecret
+    , 
+    var `netbankingUser`: FfiSecret
+    , 
+    var `netbankingPassword`: FfiSecret
+    , 
+    var `transactionPassword`: FfiSecret
+    , 
+    var `appPassword`: FfiSecret
+    , 
+    var `mpin`: FfiSecret
+    , 
+    var `tpin`: FfiSecret
+    , 
+    var `upiPin`: FfiSecret
+    , 
+    var `registeredMobile`: kotlin.String?
+    , 
+    var `rmName`: kotlin.String?
+    , 
+    var `rmPhone`: kotlin.String?
+    , 
+    var `conciergePhone`: kotlin.String?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiBankAccountInput: FfiConverterRustBuffer<FfiBankAccountInput> {
+    override fun read(buf: ByteBuffer): FfiBankAccountInput {
+        return FfiBankAccountInput(
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterTypeFfiSecret.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterTypeFfiSecret.read(buf),
+            FfiConverterTypeFfiSecret.read(buf),
+            FfiConverterTypeFfiSecret.read(buf),
+            FfiConverterTypeFfiSecret.read(buf),
+            FfiConverterTypeFfiSecret.read(buf),
+            FfiConverterTypeFfiSecret.read(buf),
+            FfiConverterTypeFfiSecret.read(buf),
+            FfiConverterTypeFfiSecret.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiBankAccountInput) = (
+            FfiConverterOptionalString.allocationSize(value.`bankId`) +
+            FfiConverterOptionalString.allocationSize(value.`holder`) +
+            FfiConverterTypeFfiSecret.allocationSize(value.`accountNumber`) +
+            FfiConverterOptionalString.allocationSize(value.`ifsc`) +
+            FfiConverterOptionalString.allocationSize(value.`branch`) +
+            FfiConverterTypeFfiSecret.allocationSize(value.`customerId`) +
+            FfiConverterTypeFfiSecret.allocationSize(value.`netbankingUser`) +
+            FfiConverterTypeFfiSecret.allocationSize(value.`netbankingPassword`) +
+            FfiConverterTypeFfiSecret.allocationSize(value.`transactionPassword`) +
+            FfiConverterTypeFfiSecret.allocationSize(value.`appPassword`) +
+            FfiConverterTypeFfiSecret.allocationSize(value.`mpin`) +
+            FfiConverterTypeFfiSecret.allocationSize(value.`tpin`) +
+            FfiConverterTypeFfiSecret.allocationSize(value.`upiPin`) +
+            FfiConverterOptionalString.allocationSize(value.`registeredMobile`) +
+            FfiConverterOptionalString.allocationSize(value.`rmName`) +
+            FfiConverterOptionalString.allocationSize(value.`rmPhone`) +
+            FfiConverterOptionalString.allocationSize(value.`conciergePhone`)
+    )
+
+    override fun write(value: FfiBankAccountInput, buf: ByteBuffer) {
+            FfiConverterOptionalString.write(value.`bankId`, buf)
+            FfiConverterOptionalString.write(value.`holder`, buf)
+            FfiConverterTypeFfiSecret.write(value.`accountNumber`, buf)
+            FfiConverterOptionalString.write(value.`ifsc`, buf)
+            FfiConverterOptionalString.write(value.`branch`, buf)
+            FfiConverterTypeFfiSecret.write(value.`customerId`, buf)
+            FfiConverterTypeFfiSecret.write(value.`netbankingUser`, buf)
+            FfiConverterTypeFfiSecret.write(value.`netbankingPassword`, buf)
+            FfiConverterTypeFfiSecret.write(value.`transactionPassword`, buf)
+            FfiConverterTypeFfiSecret.write(value.`appPassword`, buf)
+            FfiConverterTypeFfiSecret.write(value.`mpin`, buf)
+            FfiConverterTypeFfiSecret.write(value.`tpin`, buf)
+            FfiConverterTypeFfiSecret.write(value.`upiPin`, buf)
+            FfiConverterOptionalString.write(value.`registeredMobile`, buf)
+            FfiConverterOptionalString.write(value.`rmName`, buf)
+            FfiConverterOptionalString.write(value.`rmPhone`, buf)
+            FfiConverterOptionalString.write(value.`conciergePhone`, buf)
+    }
+}
+
+
+
+data class FfiBankGroup (
+    var `bankId`: kotlin.String?
+    , 
+    var `name`: kotlin.String
+    , 
+    var `total`: kotlin.UInt
+    , 
+    var `credit`: kotlin.UInt
+    , 
+    var `debit`: kotlin.UInt
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiBankGroup: FfiConverterRustBuffer<FfiBankGroup> {
+    override fun read(buf: ByteBuffer): FfiBankGroup {
+        return FfiBankGroup(
+            FfiConverterOptionalString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiBankGroup) = (
+            FfiConverterOptionalString.allocationSize(value.`bankId`) +
+            FfiConverterString.allocationSize(value.`name`) +
+            FfiConverterUInt.allocationSize(value.`total`) +
+            FfiConverterUInt.allocationSize(value.`credit`) +
+            FfiConverterUInt.allocationSize(value.`debit`)
+    )
+
+    override fun write(value: FfiBankGroup, buf: ByteBuffer) {
+            FfiConverterOptionalString.write(value.`bankId`, buf)
+            FfiConverterString.write(value.`name`, buf)
+            FfiConverterUInt.write(value.`total`, buf)
+            FfiConverterUInt.write(value.`credit`, buf)
+            FfiConverterUInt.write(value.`debit`, buf)
+    }
+}
+
+
+
+data class FfiCardInput (
+    var `bankId`: kotlin.String?
+    , 
+    /**
+     * 1 Debit, 2 Credit, 3 Other.
+     */
+    var `kind`: kotlin.UInt
+    , 
+    var `product`: kotlin.String?
+    , 
+    var `nickname`: kotlin.String?
+    , 
+    var `holder`: kotlin.String?
+    , 
+    var `number`: FfiSecret
+    , 
+    var `expiry`: kotlin.String?
+    , 
+    var `network`: kotlin.String?
+    , 
+    var `cvv`: FfiSecret
+    , 
+    var `userNote`: kotlin.String?
+    , 
+    var `customerCare`: kotlin.String?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiCardInput: FfiConverterRustBuffer<FfiCardInput> {
+    override fun read(buf: ByteBuffer): FfiCardInput {
+        return FfiCardInput(
+            FfiConverterOptionalString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterTypeFfiSecret.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterTypeFfiSecret.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiCardInput) = (
+            FfiConverterOptionalString.allocationSize(value.`bankId`) +
+            FfiConverterUInt.allocationSize(value.`kind`) +
+            FfiConverterOptionalString.allocationSize(value.`product`) +
+            FfiConverterOptionalString.allocationSize(value.`nickname`) +
+            FfiConverterOptionalString.allocationSize(value.`holder`) +
+            FfiConverterTypeFfiSecret.allocationSize(value.`number`) +
+            FfiConverterOptionalString.allocationSize(value.`expiry`) +
+            FfiConverterOptionalString.allocationSize(value.`network`) +
+            FfiConverterTypeFfiSecret.allocationSize(value.`cvv`) +
+            FfiConverterOptionalString.allocationSize(value.`userNote`) +
+            FfiConverterOptionalString.allocationSize(value.`customerCare`)
+    )
+
+    override fun write(value: FfiCardInput, buf: ByteBuffer) {
+            FfiConverterOptionalString.write(value.`bankId`, buf)
+            FfiConverterUInt.write(value.`kind`, buf)
+            FfiConverterOptionalString.write(value.`product`, buf)
+            FfiConverterOptionalString.write(value.`nickname`, buf)
+            FfiConverterOptionalString.write(value.`holder`, buf)
+            FfiConverterTypeFfiSecret.write(value.`number`, buf)
+            FfiConverterOptionalString.write(value.`expiry`, buf)
+            FfiConverterOptionalString.write(value.`network`, buf)
+            FfiConverterTypeFfiSecret.write(value.`cvv`, buf)
+            FfiConverterOptionalString.write(value.`userNote`, buf)
+            FfiConverterOptionalString.write(value.`customerCare`, buf)
+    }
+}
+
+
+
+/**
+ * The last card view: a scope and a filter (0 all, 1 credit, 2 debit).
+ */
+data class FfiCardView (
+    var `scope`: FfiScope
+    , 
+    var `filter`: kotlin.UInt
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiCardView: FfiConverterRustBuffer<FfiCardView> {
+    override fun read(buf: ByteBuffer): FfiCardView {
+        return FfiCardView(
+            FfiConverterTypeFfiScope.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiCardView) = (
+            FfiConverterTypeFfiScope.allocationSize(value.`scope`) +
+            FfiConverterUInt.allocationSize(value.`filter`)
+    )
+
+    override fun write(value: FfiCardView, buf: ByteBuffer) {
+            FfiConverterTypeFfiScope.write(value.`scope`, buf)
+            FfiConverterUInt.write(value.`filter`, buf)
+    }
+}
+
+
+
+data class FfiCatalogueBank (
+    var `id`: kotlin.String
+    , 
+    var `name`: kotlin.String
+    , 
+    var `fullName`: kotlin.String
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiCatalogueBank: FfiConverterRustBuffer<FfiCatalogueBank> {
+    override fun read(buf: ByteBuffer): FfiCatalogueBank {
+        return FfiCatalogueBank(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiCatalogueBank) = (
+            FfiConverterString.allocationSize(value.`id`) +
+            FfiConverterString.allocationSize(value.`name`) +
+            FfiConverterString.allocationSize(value.`fullName`)
+    )
+
+    override fun write(value: FfiCatalogueBank, buf: ByteBuffer) {
+            FfiConverterString.write(value.`id`, buf)
+            FfiConverterString.write(value.`name`, buf)
+            FfiConverterString.write(value.`fullName`, buf)
+    }
+}
+
+
+
+data class FfiDetails (
+    var `summary`: FfiSummary
+    , 
+    var `fields`: List<FfiFieldView>
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiDetails: FfiConverterRustBuffer<FfiDetails> {
+    override fun read(buf: ByteBuffer): FfiDetails {
+        return FfiDetails(
+            FfiConverterTypeFfiSummary.read(buf),
+            FfiConverterSequenceTypeFfiFieldView.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiDetails) = (
+            FfiConverterTypeFfiSummary.allocationSize(value.`summary`) +
+            FfiConverterSequenceTypeFfiFieldView.allocationSize(value.`fields`)
+    )
+
+    override fun write(value: FfiDetails, buf: ByteBuffer) {
+            FfiConverterTypeFfiSummary.write(value.`summary`, buf)
+            FfiConverterSequenceTypeFfiFieldView.write(value.`fields`, buf)
+    }
+}
+
+
+
+data class FfiFieldView (
+    var `key`: kotlin.String
+    , 
+    var `label`: kotlin.String
+    , 
+    var `kind`: kotlin.UInt
+    , 
+    var `sensitivity`: kotlin.UInt
+    , 
+    var `copyable`: kotlin.Boolean
+    , 
+    var `value`: kotlin.String?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiFieldView: FfiConverterRustBuffer<FfiFieldView> {
+    override fun read(buf: ByteBuffer): FfiFieldView {
+        return FfiFieldView(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiFieldView) = (
+            FfiConverterString.allocationSize(value.`key`) +
+            FfiConverterString.allocationSize(value.`label`) +
+            FfiConverterUInt.allocationSize(value.`kind`) +
+            FfiConverterUInt.allocationSize(value.`sensitivity`) +
+            FfiConverterBoolean.allocationSize(value.`copyable`) +
+            FfiConverterOptionalString.allocationSize(value.`value`)
+    )
+
+    override fun write(value: FfiFieldView, buf: ByteBuffer) {
+            FfiConverterString.write(value.`key`, buf)
+            FfiConverterString.write(value.`label`, buf)
+            FfiConverterUInt.write(value.`kind`, buf)
+            FfiConverterUInt.write(value.`sensitivity`, buf)
+            FfiConverterBoolean.write(value.`copyable`, buf)
+            FfiConverterOptionalString.write(value.`value`, buf)
     }
 }
 
@@ -1871,6 +2829,57 @@ public object FfiConverterTypeFfiLogEntry: FfiConverterRustBuffer<FfiLogEntry> {
             FfiConverterULong.write(value.`at`, buf)
             FfiConverterUInt.write(value.`event`, buf)
             FfiConverterOptionalULong.write(value.`count`, buf)
+    }
+}
+
+
+
+data class FfiPinInput (
+    /**
+     * 1–8 (vault-format §5.1 PIN purposes).
+     */
+    var `purpose`: kotlin.UInt
+    , 
+    var `label`: kotlin.String
+    , 
+    var `value`: FfiSecret
+    , 
+    var `linkedTo`: kotlin.ByteArray?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiPinInput: FfiConverterRustBuffer<FfiPinInput> {
+    override fun read(buf: ByteBuffer): FfiPinInput {
+        return FfiPinInput(
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterTypeFfiSecret.read(buf),
+            FfiConverterOptionalByteArray.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiPinInput) = (
+            FfiConverterUInt.allocationSize(value.`purpose`) +
+            FfiConverterString.allocationSize(value.`label`) +
+            FfiConverterTypeFfiSecret.allocationSize(value.`value`) +
+            FfiConverterOptionalByteArray.allocationSize(value.`linkedTo`)
+    )
+
+    override fun write(value: FfiPinInput, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`purpose`, buf)
+            FfiConverterString.write(value.`label`, buf)
+            FfiConverterTypeFfiSecret.write(value.`value`, buf)
+            FfiConverterOptionalByteArray.write(value.`linkedTo`, buf)
     }
 }
 
@@ -2035,6 +3044,122 @@ public object FfiConverterTypeFfiSlotInfo: FfiConverterRustBuffer<FfiSlotInfo> {
 
 
 
+data class FfiSummary (
+    var `id`: kotlin.ByteArray
+    , 
+    /**
+     * 1 card, 2 PIN, 3 bank account, 4 other.
+     */
+    var `kind`: kotlin.UInt
+    , 
+    var `title`: kotlin.String
+    , 
+    var `subtitle`: kotlin.String?
+    , 
+    var `bankId`: kotlin.String?
+    , 
+    var `cardKind`: kotlin.UInt?
+    , 
+    var `last4`: kotlin.String?
+    , 
+    var `network`: kotlin.String?
+    , 
+    var `pinPurpose`: kotlin.UInt?
+    , 
+    var `favourite`: kotlin.Boolean
+    , 
+    var `hasCvv`: kotlin.Boolean
+    , 
+    var `linkedTo`: List<kotlin.ByteArray>
+    , 
+    var `product`: kotlin.String?
+    , 
+    var `nickname`: kotlin.String?
+    , 
+    var `userNote`: kotlin.String?
+    , 
+    var `updatedAt`: kotlin.ULong
+    , 
+    var `lastUsedAt`: kotlin.ULong?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiSummary: FfiConverterRustBuffer<FfiSummary> {
+    override fun read(buf: ByteBuffer): FfiSummary {
+        return FfiSummary(
+            FfiConverterByteArray.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalUInt.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalUInt.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterSequenceByteArray.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterOptionalULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FfiSummary) = (
+            FfiConverterByteArray.allocationSize(value.`id`) +
+            FfiConverterUInt.allocationSize(value.`kind`) +
+            FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterOptionalString.allocationSize(value.`subtitle`) +
+            FfiConverterOptionalString.allocationSize(value.`bankId`) +
+            FfiConverterOptionalUInt.allocationSize(value.`cardKind`) +
+            FfiConverterOptionalString.allocationSize(value.`last4`) +
+            FfiConverterOptionalString.allocationSize(value.`network`) +
+            FfiConverterOptionalUInt.allocationSize(value.`pinPurpose`) +
+            FfiConverterBoolean.allocationSize(value.`favourite`) +
+            FfiConverterBoolean.allocationSize(value.`hasCvv`) +
+            FfiConverterSequenceByteArray.allocationSize(value.`linkedTo`) +
+            FfiConverterOptionalString.allocationSize(value.`product`) +
+            FfiConverterOptionalString.allocationSize(value.`nickname`) +
+            FfiConverterOptionalString.allocationSize(value.`userNote`) +
+            FfiConverterULong.allocationSize(value.`updatedAt`) +
+            FfiConverterOptionalULong.allocationSize(value.`lastUsedAt`)
+    )
+
+    override fun write(value: FfiSummary, buf: ByteBuffer) {
+            FfiConverterByteArray.write(value.`id`, buf)
+            FfiConverterUInt.write(value.`kind`, buf)
+            FfiConverterString.write(value.`title`, buf)
+            FfiConverterOptionalString.write(value.`subtitle`, buf)
+            FfiConverterOptionalString.write(value.`bankId`, buf)
+            FfiConverterOptionalUInt.write(value.`cardKind`, buf)
+            FfiConverterOptionalString.write(value.`last4`, buf)
+            FfiConverterOptionalString.write(value.`network`, buf)
+            FfiConverterOptionalUInt.write(value.`pinPurpose`, buf)
+            FfiConverterBoolean.write(value.`favourite`, buf)
+            FfiConverterBoolean.write(value.`hasCvv`, buf)
+            FfiConverterSequenceByteArray.write(value.`linkedTo`, buf)
+            FfiConverterOptionalString.write(value.`product`, buf)
+            FfiConverterOptionalString.write(value.`nickname`, buf)
+            FfiConverterOptionalString.write(value.`userNote`, buf)
+            FfiConverterULong.write(value.`updatedAt`, buf)
+            FfiConverterOptionalULong.write(value.`lastUsedAt`, buf)
+    }
+}
+
+
+
 
 
 /**
@@ -2129,6 +3254,183 @@ public object FfiConverterTypeFfiKeyLevel: FfiConverterRustBuffer<FfiKeyLevel> {
 
     override fun write(value: FfiKeyLevel, buf: ByteBuffer) {
         buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+sealed class FfiScope {
+    
+    object All : FfiScope()
+    
+    
+    object Unassigned : FfiScope()
+    
+    
+    data class Bank(
+        val `bankId`: kotlin.String) : FfiScope()
+        
+    {
+        
+
+        companion object
+    }
+    
+
+    
+
+    
+    
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiScope : FfiConverterRustBuffer<FfiScope>{
+    override fun read(buf: ByteBuffer): FfiScope {
+        return when(buf.getInt()) {
+            1 -> FfiScope.All
+            2 -> FfiScope.Unassigned
+            3 -> FfiScope.Bank(
+                FfiConverterString.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: FfiScope): ULong = when(value) {
+        is FfiScope.All -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FfiScope.Unassigned -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FfiScope.Bank -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`bankId`)
+            )
+        }
+    }
+
+    override fun write(value: FfiScope, buf: ByteBuffer) {
+        when(value) {
+            is FfiScope.All -> {
+                buf.putInt(1)
+                Unit
+            }
+            is FfiScope.Unassigned -> {
+                buf.putInt(2)
+                Unit
+            }
+            is FfiScope.Bank -> {
+                buf.putInt(3)
+                FfiConverterString.write(value.`bankId`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+/**
+ * A secret value from the app: new bytes, unchanged on an edit, or none.
+ */
+sealed class FfiSecret {
+    
+    object Keep : FfiSecret()
+    
+    
+    object Empty : FfiSecret()
+    
+    
+    data class Set(
+        val `value`: kotlin.ByteArray) : FfiSecret()
+        
+    {
+        
+
+        companion object
+    }
+    
+
+    
+
+    
+    
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFfiSecret : FfiConverterRustBuffer<FfiSecret>{
+    override fun read(buf: ByteBuffer): FfiSecret {
+        return when(buf.getInt()) {
+            1 -> FfiSecret.Keep
+            2 -> FfiSecret.Empty
+            3 -> FfiSecret.Set(
+                FfiConverterByteArray.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: FfiSecret): ULong = when(value) {
+        is FfiSecret.Keep -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FfiSecret.Empty -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is FfiSecret.Set -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterByteArray.allocationSize(value.`value`)
+            )
+        }
+    }
+
+    override fun write(value: FfiSecret, buf: ByteBuffer) {
+        when(value) {
+            is FfiSecret.Keep -> {
+                buf.putInt(1)
+                Unit
+            }
+            is FfiSecret.Empty -> {
+                buf.putInt(2)
+                Unit
+            }
+            is FfiSecret.Set -> {
+                buf.putInt(3)
+                FfiConverterByteArray.write(value.`value`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
     }
 }
 
@@ -2355,6 +3657,38 @@ public object FfiConverterTypePwdKeyCallback: FfiConverterCallbackInterface<PwdK
 /**
  * @suppress
  */
+public object FfiConverterOptionalUInt: FfiConverterRustBuffer<kotlin.UInt?> {
+    override fun read(buf: ByteBuffer): kotlin.UInt? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterUInt.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.UInt?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterUInt.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.UInt?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterUInt.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalULong: FfiConverterRustBuffer<kotlin.ULong?> {
     override fun read(buf: ByteBuffer): kotlin.ULong? {
         if (buf.get().toInt() == 0) {
@@ -2451,6 +3785,38 @@ public object FfiConverterOptionalByteArray: FfiConverterRustBuffer<kotlin.ByteA
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeFfiCardView: FfiConverterRustBuffer<FfiCardView?> {
+    override fun read(buf: ByteBuffer): FfiCardView? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeFfiCardView.read(buf)
+    }
+
+    override fun allocationSize(value: FfiCardView?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeFfiCardView.allocationSize(value)
+        }
+    }
+
+    override fun write(value: FfiCardView?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeFfiCardView.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeFfiSealed: FfiConverterRustBuffer<FfiSealed?> {
     override fun read(buf: ByteBuffer): FfiSealed? {
         if (buf.get().toInt() == 0) {
@@ -2473,6 +3839,38 @@ public object FfiConverterOptionalTypeFfiSealed: FfiConverterRustBuffer<FfiSeale
         } else {
             buf.put(1)
             FfiConverterTypeFfiSealed.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeFfiSummary: FfiConverterRustBuffer<FfiSummary?> {
+    override fun read(buf: ByteBuffer): FfiSummary? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeFfiSummary.read(buf)
+    }
+
+    override fun allocationSize(value: FfiSummary?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeFfiSummary.allocationSize(value)
+        }
+    }
+
+    override fun write(value: FfiSummary?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeFfiSummary.write(value, buf)
         }
     }
 }
@@ -2515,6 +3913,118 @@ public object FfiConverterOptionalTypeBioKeyCallback: FfiConverterRustBuffer<Bio
 /**
  * @suppress
  */
+public object FfiConverterSequenceByteArray: FfiConverterRustBuffer<List<kotlin.ByteArray>> {
+    override fun read(buf: ByteBuffer): List<kotlin.ByteArray> {
+        val len = buf.getInt()
+        return List<kotlin.ByteArray>(len) {
+            FfiConverterByteArray.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<kotlin.ByteArray>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterByteArray.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<kotlin.ByteArray>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterByteArray.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiBankGroup: FfiConverterRustBuffer<List<FfiBankGroup>> {
+    override fun read(buf: ByteBuffer): List<FfiBankGroup> {
+        val len = buf.getInt()
+        return List<FfiBankGroup>(len) {
+            FfiConverterTypeFfiBankGroup.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiBankGroup>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiBankGroup.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiBankGroup>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiBankGroup.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiCatalogueBank: FfiConverterRustBuffer<List<FfiCatalogueBank>> {
+    override fun read(buf: ByteBuffer): List<FfiCatalogueBank> {
+        val len = buf.getInt()
+        return List<FfiCatalogueBank>(len) {
+            FfiConverterTypeFfiCatalogueBank.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiCatalogueBank>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiCatalogueBank.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiCatalogueBank>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiCatalogueBank.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiFieldView: FfiConverterRustBuffer<List<FfiFieldView>> {
+    override fun read(buf: ByteBuffer): List<FfiFieldView> {
+        val len = buf.getInt()
+        return List<FfiFieldView>(len) {
+            FfiConverterTypeFfiFieldView.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiFieldView>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiFieldView.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiFieldView>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiFieldView.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeFfiLogEntry: FfiConverterRustBuffer<List<FfiLogEntry>> {
     override fun read(buf: ByteBuffer): List<FfiLogEntry> {
         val len = buf.getInt()
@@ -2533,6 +4043,34 @@ public object FfiConverterSequenceTypeFfiLogEntry: FfiConverterRustBuffer<List<F
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeFfiLogEntry.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeFfiSummary: FfiConverterRustBuffer<List<FfiSummary>> {
+    override fun read(buf: ByteBuffer): List<FfiSummary> {
+        val len = buf.getInt()
+        return List<FfiSummary>(len) {
+            FfiConverterTypeFfiSummary.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FfiSummary>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFfiSummary.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FfiSummary>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFfiSummary.write(it, buf)
         }
     }
 }
@@ -2637,6 +4175,33 @@ public object FfiConverterSequenceTypeFfiLogEntry: FfiConverterRustBuffer<List<F
         FfiConverterByteArray.lower(`password`),
         FfiConverterByteArray.lower(`recoveryKey`),
         FfiConverterBoolean.lower(`allowSoftwareKeys`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * The bundled bank catalogue (ADR-011), for the bank picker.
+         */ fun `catalogueBanks`(): List<FfiCatalogueBank> {
+            return FfiConverterSequenceTypeFfiCatalogueBank.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_vault_ffi_fn_func_catalogue_banks(
+    
+        _status)
+}
+    )
+    }
+    
+
+        /**
+         * The network a card number's first digits belong to, if known.
+         */ fun `suggestNetwork`(`number`: kotlin.String): kotlin.String? {
+            return FfiConverterOptionalString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_vault_ffi_fn_func_suggest_network(
+    
+        
+        FfiConverterString.lower(`number`),_status)
 }
     )
     }
