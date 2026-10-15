@@ -26,6 +26,8 @@ written. From then on `python tools/frozen_tests.py check` (run in CI) fails if 
 | 13. Entries across the bridge (milestone M3) | [`android/core-bindings/src/test/java/dev/vaultaire/core/EntriesBridgeTest.kt`](../android/core-bindings/src/test/java/dev/vaultaire/core/EntriesBridgeTest.kt) | **Frozen 2026-10-15** by the owner; code being written. 11 tests, run against the real Rust core |
 | 14. The M3 screens (milestone M3) | [`android/app/src/test/java/dev/vaultaire/ui/`](../android/app/src/test/java/dev/vaultaire/ui/) (5 files, one of them `RealVault.kt`, a real vault for the screen tests) | **Frozen 2026-10-15** by the owner; code being written. 34 tests: home and bank pages, card and PIN pages with copy rules, adding and editing, returning after unlock (check 10), settings. Wording follows the design mockup |
 
+| 15. The card itself: floating, glowing, turns over (owner request) | [`component-15/CardFaceTest.kt`](component-15/CardFaceTest.kt), moves to `android/app/src/test/java/dev/vaultaire/ui/` | **Waiting for the owner's review.** 8 tests: the front masks the number until a fingerprint, the back shows the CVV under the same rules, a PIN is only ever a link, the finish is kept. The animation itself is judged from recorded previews |
+
 **Milestone M1** is components 4–7 together (51 tests), frozen in one go (owner decision: batches per milestone). **M1 is complete: all 51 tests green, none changed.**
 
 The Semgrep rule `secret-compared-with-eq` now skips `tests/`, like `no-printing-in-core`: the fake fingerprint hardware in the frozen `vault_store.rs` compares a tag with `!=`, tests never ship, and a frozen test cannot be edited.
