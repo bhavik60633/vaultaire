@@ -211,4 +211,32 @@ class Screenshots {
             dir.deleteRecursively()
         }
     }
+
+    /** The scanner and the form it fills (the camera's picture is blank in a test). */
+    @Test
+    fun scanner() {
+        val app = ApplicationProvider.getApplicationContext<android.app.Application>()
+        org.robolectric.Shadows.shadowOf(app).grantPermissions(android.Manifest.permission.CAMERA)
+        val dir = Files.createTempDirectory("vaultaire-scanner").toFile()
+        val vault = RealVault(app, dir)
+        val camera = dev.vaultaire.ui.FakeCamera()
+        try {
+            compose.setContent {
+                androidx.compose.runtime.CompositionLocalProvider(dev.vaultaire.scan.LocalCardCamera provides camera) {
+                    VaultaireApp(vault, testBuild = false)
+                }
+            }
+            click("addCard")
+            save("18-add-card-scan")
+            click("scanCard")
+            save("19-scanner")
+            repeat(3) {
+                compose.runOnIdle { camera.show("HDFC BANK", "5555 5555 5555 4444", "VALID THRU 08/29", "ASHA RAO") }
+            }
+            save("20-scanned")
+        } finally {
+            vault.lock()
+            dir.deleteRecursively()
+        }
+    }
 }
