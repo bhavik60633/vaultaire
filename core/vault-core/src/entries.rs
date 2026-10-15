@@ -205,6 +205,8 @@ pub struct Summary {
     pub user_note: Option<String>,
     pub updated_at: u64,
     pub last_used_at: Option<u64>,
+    /// Cards only: how the card is drawn (vault-format §5.1, 1 Obsidian … 5 Champagne).
+    pub finish: Option<u64>,
 }
 
 /// One row of an entry's page. `value` is present only for normal (sensitivity 1) fields.
@@ -513,6 +515,16 @@ impl Session {
 
     pub fn set_favourite(&mut self, id: &[u8; 16], favourite: bool) -> Result<()> {
         self.rewrite_index(id, |index| with_key(index, 7, Value::Bool(favourite)))
+    }
+
+    /// How a card is drawn: 1 Obsidian, 2 Titanium, 3 Platinum, 4 Ivory, 5 Champagne. Only cards
+    /// have a finish.
+    pub fn set_card_finish(&mut self, id: &[u8; 16], finish: u64) -> Result<()> {
+        let index = self.index_of(id).ok_or(VaultError::NotFound)?;
+        if uint_at(index, 1) != Some(item_type::CARD) || !(1..=5).contains(&finish) {
+            return Err(VaultError::SchemaViolation);
+        }
+        self.rewrite_index(id, |index| with_key(index, 12, Value::Uint(finish)))
     }
 
     pub fn record_use(&mut self, id: &[u8; 16], now: u64) -> Result<()> {
@@ -966,6 +978,7 @@ fn summary_of(id: &[u8; 16], index: &Value) -> Option<Summary> {
         user_note: field("card.user_note"),
         updated_at: uint_at(index, 9).unwrap_or(0),
         last_used_at: uint_at(index, 10),
+        finish: uint_at(index, 12),
     })
 }
 

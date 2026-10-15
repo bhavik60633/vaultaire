@@ -83,7 +83,18 @@ data class EntrySummary(
     val userNote: String?,
     val updatedAtS: Long,
     val lastUsedAtS: Long?,
+    /** Cards only: how the card is drawn. */
+    val finish: CardFinish? = null,
 )
+
+/** A card's finish, in the vault's order (vault-format §5.1). */
+enum class CardFinish(val label: String) {
+    OBSIDIAN("Obsidian"),
+    TITANIUM("Titanium"),
+    PLATINUM("Platinum"),
+    IVORY("Ivory"),
+    CHAMPAGNE("Champagne"),
+}
 
 /** One row of an entry's page; [value] only for normal (sensitivity 1) fields. */
 data class FieldView(

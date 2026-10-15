@@ -10,6 +10,7 @@ e0e403954147c5855088f6a892bbb1b7b931862263ace5ad1c781ee197027c84  android/app/sr
 344669abc6e0d0b8b49be8573cd39ac1bbe7cf9397a99de5c68b515d59a70a10  android/app/src/test/java/dev/vaultaire/security/RevealGateTest.kt
 c49070d0dc8e6672ca6861a2ea6c11ea743d7784a660785a6d4eeda0f7268571  android/app/src/test/java/dev/vaultaire/security/RevealedValuesTest.kt
 5f035f453bc7fb4ad9bf999bb3139720c98d66834573a7c0a791cb19b515ebfe  android/app/src/test/java/dev/vaultaire/ui/BannersTest.kt
+f69f69f2ff2382a867c6515c0bde53b196bf4415bba258ba50333f8ad4cb295c  android/app/src/test/java/dev/vaultaire/ui/CardFaceTest.kt
 a6f2fbe7c4838d388f81708a2d6597203f8c6c6cd2fce0215195e86c961fe0fd  android/app/src/test/java/dev/vaultaire/ui/EditTest.kt
 475ffd9d9d78dcd2db55be6f8c571e9f3a6efa6b279670b831852d89eca3631b  android/app/src/test/java/dev/vaultaire/ui/EntryPageTest.kt
 8f714951fc8292359730ae7c244d2b07f5945e42b3c15bf795348ea2760f4d8e  android/app/src/test/java/dev/vaultaire/ui/FakeGateway.kt

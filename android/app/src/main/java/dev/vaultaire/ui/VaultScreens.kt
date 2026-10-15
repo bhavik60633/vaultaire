@@ -43,6 +43,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import dev.vaultaire.core.BankAccountInput
+import dev.vaultaire.core.CardFinish
 import dev.vaultaire.core.CardFilter
 import dev.vaultaire.core.CardInput
 import dev.vaultaire.core.CardKind
@@ -511,6 +512,7 @@ private fun EntryPage(
     var revealedValue by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var turned by remember { mutableStateOf(false) }
     val handler = remember { Handler(Looper.getMainLooper()) }
     val linkedPin = remember(version) {
         if (summary.kind == EntryKind.CARD) session.summaries().firstOrNull { it.kind == EntryKind.PIN && id in it.linkedTo } else null
@@ -609,6 +611,37 @@ private fun EntryPage(
                     VIcon("star", tint = Obsidian.accent, size = 18.dp)
                 }
             }
+        }
+        if (summary.kind == EntryKind.CARD) {
+            val numberField = details.fields.firstOrNull { it.key == "card.number" }
+            val cvvField = details.fields.firstOrNull { it.key == "card.cvv" }
+            fun text(key: String) = details.fields.firstOrNull { it.key == key }?.value
+            CardStage(
+                CardLook(
+                    bank = summary.bankId?.let { session.bankName(it) },
+                    kind = summary.cardKind?.name?.lowercase()?.replaceFirstChar { it.uppercase() },
+                    holder = text("card.holder"),
+                    expiry = text("card.expiry"),
+                    network = summary.network,
+                    number = if (revealedKey == "card.number") {
+                        revealedValue?.let { grouped("card.number", it) }.orEmpty()
+                    } else {
+                        "•••• •••• •••• ${summary.last4.orEmpty()}".trimEnd()
+                    },
+                    hasCvv = cvvField != null,
+                    hasPin = linkedPin != null,
+                    finish = summary.finish ?: CardFinish.OBSIDIAN,
+                ),
+                turned = turned,
+                onTurn = { turned = !turned },
+                onNumber = { numberField?.let { if (revealedKey == it.key) hide() else reveal(it) } },
+                onCopyCvv = { cvvField?.let { copy(it) } },
+                onPin = { linkedPin?.let { go(Page.Entry(it.id, Page.Entry(id, Page.Home))) } },
+                onFinish = { f ->
+                    runCatching { session.setCardFinish(id, f) }
+                    changed()
+                },
+            )
         }
         FieldLabel(if (summary.kind == EntryKind.CARD) "For checkout" else "Details")
         for (field in details.fields) {

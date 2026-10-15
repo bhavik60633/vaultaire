@@ -103,6 +103,8 @@ pub struct FfiSummary {
     pub user_note: Option<String>,
     pub updated_at: u64,
     pub last_used_at: Option<u64>,
+    /// Cards only: 1 Obsidian, 2 Titanium, 3 Platinum, 4 Ivory, 5 Champagne.
+    pub finish: Option<u32>,
 }
 
 #[derive(Debug, uniffi::Record)]
@@ -296,6 +298,7 @@ impl From<Summary> for FfiSummary {
             user_note: s.user_note,
             updated_at: s.updated_at,
             last_used_at: s.last_used_at,
+            finish: s.finish.and_then(|f| u32::try_from(f).ok()),
         }
     }
 }
@@ -431,6 +434,11 @@ impl FfiSession {
     pub fn set_favourite(&self, id: Vec<u8>, favourite: bool) -> FfiResult<()> {
         let id = id16(&id)?;
         self.with(|s| s.set_favourite(&id, favourite))
+    }
+
+    pub fn set_card_finish(&self, id: Vec<u8>, finish: u32) -> FfiResult<()> {
+        let id = id16(&id)?;
+        self.with(|s| s.set_card_finish(&id, u64::from(finish)))
     }
 
     pub fn record_use(&self, id: Vec<u8>, now: u64) -> FfiResult<()> {

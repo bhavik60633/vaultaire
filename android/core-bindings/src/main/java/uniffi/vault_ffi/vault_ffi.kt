@@ -817,6 +817,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_vault_ffi_checksum_method_ffisession_search(
     ): Int
+    external fun uniffi_vault_ffi_checksum_method_ffisession_set_card_finish(
+    ): Int
     external fun uniffi_vault_ffi_checksum_method_ffisession_set_favourite(
     ): Int
     external fun uniffi_vault_ffi_checksum_method_ffisession_set_last_card_view(
@@ -921,6 +923,8 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_vault_ffi_fn_method_ffisession_search(`ptr`: Long,`query`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_vault_ffi_fn_method_ffisession_set_card_finish(`ptr`: Long,`id`: RustBuffer.ByValue,`finish`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
     external fun uniffi_vault_ffi_fn_method_ffisession_set_favourite(`ptr`: Long,`id`: RustBuffer.ByValue,`favourite`: Byte,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
     external fun uniffi_vault_ffi_fn_method_ffisession_set_last_card_view(`ptr`: Long,`scope`: RustBuffer.ByValue,`filter`: Int,uniffi_out_err: UniffiRustCallStatus, 
@@ -1176,6 +1180,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if ((lib.uniffi_vault_ffi_checksum_method_ffisession_search() and 0xFFFF) != 16168) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_vault_ffi_checksum_method_ffisession_set_card_finish() and 0xFFFF) != 27899) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if ((lib.uniffi_vault_ffi_checksum_method_ffisession_set_favourite() and 0xFFFF) != 59652) {
@@ -1713,6 +1720,8 @@ public interface FfiSessionInterface {
     
     fun `search`(`query`: kotlin.String): List<FfiSummary>
     
+    fun `setCardFinish`(`id`: kotlin.ByteArray, `finish`: kotlin.UInt)
+    
     fun `setFavourite`(`id`: kotlin.ByteArray, `favourite`: kotlin.Boolean)
     
     fun `setLastCardView`(`scope`: FfiScope, `filter`: kotlin.UInt)
@@ -2207,6 +2216,21 @@ open class FfiSession: Disposable, AutoCloseable, FfiSessionInterface
     }
     )
     }
+    
+
+    
+    @Throws(FfiException::class)override fun `setCardFinish`(`id`: kotlin.ByteArray, `finish`: kotlin.UInt)
+        = 
+    callWithHandle {
+    uniffiRustCallWithError(FfiException) { _status ->
+    UniffiLib.uniffi_vault_ffi_fn_method_ffisession_set_card_finish(
+        it,
+        
+        FfiConverterByteArray.lower(`id`),
+        FfiConverterUInt.lower(`finish`),_status)
+}
+    }
+    
     
 
     
@@ -3081,6 +3105,11 @@ data class FfiSummary (
     var `updatedAt`: kotlin.ULong
     , 
     var `lastUsedAt`: kotlin.ULong?
+    , 
+    /**
+     * Cards only: 1 Obsidian, 2 Titanium, 3 Platinum, 4 Ivory, 5 Champagne.
+     */
+    var `finish`: kotlin.UInt?
     
 ){
     
@@ -3114,6 +3143,7 @@ public object FfiConverterTypeFfiSummary: FfiConverterRustBuffer<FfiSummary> {
             FfiConverterOptionalString.read(buf),
             FfiConverterULong.read(buf),
             FfiConverterOptionalULong.read(buf),
+            FfiConverterOptionalUInt.read(buf),
         )
     }
 
@@ -3134,7 +3164,8 @@ public object FfiConverterTypeFfiSummary: FfiConverterRustBuffer<FfiSummary> {
             FfiConverterOptionalString.allocationSize(value.`nickname`) +
             FfiConverterOptionalString.allocationSize(value.`userNote`) +
             FfiConverterULong.allocationSize(value.`updatedAt`) +
-            FfiConverterOptionalULong.allocationSize(value.`lastUsedAt`)
+            FfiConverterOptionalULong.allocationSize(value.`lastUsedAt`) +
+            FfiConverterOptionalUInt.allocationSize(value.`finish`)
     )
 
     override fun write(value: FfiSummary, buf: ByteBuffer) {
@@ -3155,6 +3186,7 @@ public object FfiConverterTypeFfiSummary: FfiConverterRustBuffer<FfiSummary> {
             FfiConverterOptionalString.write(value.`userNote`, buf)
             FfiConverterULong.write(value.`updatedAt`, buf)
             FfiConverterOptionalULong.write(value.`lastUsedAt`, buf)
+            FfiConverterOptionalUInt.write(value.`finish`, buf)
     }
 }
 

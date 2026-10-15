@@ -236,6 +236,9 @@ class VaultSession internal constructor(private val ffi: FfiSession) {
 
     fun setFavourite(id: EntryId, on: Boolean) = bridge { ffi.setFavourite(id.bytes(), on) }
 
+    fun setCardFinish(id: EntryId, finish: CardFinish) =
+        bridge { ffi.setCardFinish(id.bytes(), (finish.ordinal + 1).toUInt()) }
+
     fun recordUse(id: EntryId, nowS: Long) = bridge { ffi.recordUse(id.bytes(), nowS.toULong()) }
 
     fun bankGroups(): List<BankGroup> = bridge { ffi.bankGroups() }.map {
@@ -430,4 +433,5 @@ private fun FfiSummary.toKotlin() = EntrySummary(
     userNote = userNote,
     updatedAtS = updatedAt.toLong(),
     lastUsedAtS = lastUsedAt?.toLong(),
+    finish = finish?.toInt()?.let { CardFinish.entries.getOrNull(it - 1) },
 )
