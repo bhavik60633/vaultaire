@@ -43,6 +43,9 @@ android {
                 if (project.hasProperty("screenshots")) {
                     it.systemProperty("vaultaire.screenshots", layout.buildDirectory.dir("screenshots").get().asFile.path)
                 }
+                // The screen tests drive a real vault: the Rust core built for this computer.
+                it.systemProperty("jna.library.path", rootDir.resolve("../core/target/release").canonicalPath)
+                it.dependsOn(":core-bindings:buildHostCore")
                 it.jvmArgs(
                     "--add-exports=java.base/jdk.internal.access=ALL-UNNAMED",
                     "--add-opens=java.base/java.io=ALL-UNNAMED",
@@ -62,6 +65,7 @@ dependencies {
     implementation("androidx.fragment:fragment:1.9.1")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("net.java.dev.jna:jna:5.19.1")
     testImplementation("org.robolectric:robolectric:4.17")
     testImplementation("androidx.test:core:1.7.0")
     testImplementation("androidx.test.ext:junit:1.3.0")

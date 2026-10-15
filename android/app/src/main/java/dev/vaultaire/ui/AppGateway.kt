@@ -41,7 +41,7 @@ import kotlinx.coroutines.withContext
  * the password waiting times and auto-lock. Lives as long as its activity; the activity is never
  * recreated for configuration changes, and leaving it locks the vault.
  */
-class AppGateway(private val activity: FragmentActivity, private val debugBuild: Boolean) : VaultGateway {
+class AppGateway(private val activity: FragmentActivity, private val debugBuild: Boolean) : VaultGateway, VaultData {
 
     private val app = activity.applicationContext
     private val prefs = Prefs(app)
@@ -58,9 +58,47 @@ class AppGateway(private val activity: FragmentActivity, private val debugBuild:
     override val unlocked = MutableStateFlow(false)
 
     val autoLock = AutoLock(Clock.system) { closeSession() }
-    val revealGate = RevealGate(Clock.system)
+    override val revealGate = RevealGate(Clock.system)
     val revealed = RevealedValues(Clock.system)
-    val clipboard = ClipboardGuard(app)
+    override val clipboard = ClipboardGuard(app)
+
+    // ---------- VaultData ----------
+
+    override fun session(): VaultSession = session ?: throw VaultException("locked")
+
+    override fun nowS(): Long = System.currentTimeMillis() / 1000
+
+    /**
+     * A fresh strong fingerprint, bound to the fingerprint key through a CryptoObject so that the
+     * prompt can't be answered by anything but the phone's sensor (crypto spec §4.2).
+     */
+    override suspend fun confirmFingerprint(): Boolean {
+        return try {
+            val info = withContext(Dispatchers.IO) { engine.slotInfo() }
+            val alias = info.bioAlias ?: return false
+            val sealed = info.bioSealed ?: return false
+            val key = Keystore.load(alias) ?: return false
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply {
+                init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, sealed.iv))
+                updateAAD(BIO_AAD)
+            }
+            val released = authenticate(Prompts.reveal(), BiometricPrompt.CryptoObject(cipher))
+                ?.cryptoObject?.cipher ?: return false
+            released.doFinal(sealed.blob).fill(0)
+            revealGate.biometricConfirmed()
+            autoLock.userActivity()
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    override fun settingsChanged() {
+        val settings = session?.settings() ?: return
+        autoLock.setTimeouts(settings.autoLockS, settings.backgroundLockS)
+        revealGate.criticalWindowS = settings.criticalWindowS
+        clipboard.normalTtlS = settings.clipboardTtlS
+    }
 
     override fun vaultExists(): Boolean = engine.exists()
 

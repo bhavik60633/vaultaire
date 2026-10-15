@@ -725,35 +725,35 @@ impl Session {
         let mut fields: Vec<Value> = Vec::new();
         let mut secrets: Vec<([u8; 16], String)> = Vec::new();
         let mut values: Vec<(&str, String)> = Vec::new();
-        for &(key, label, field_kind, default_sens) in rows {
-            let sens = if key == "pin.value"
+        for &(name, label, field_kind, default_sens) in rows {
+            let sens = if name == "pin.value"
                 && matches!(entry, Entry::Pin(p) if p.purpose == PinPurpose::AtmPin)
             {
                 sensitivity::CRITICAL_STRICT
             } else {
                 default_sens
             };
-            let value: Option<String> = match given(key) {
+            let value: Option<String> = match given(name) {
                 Given::Shown(v) => v.map(str::to_string),
-                Given::Hidden(Secret::Set(v)) => Some(if key == "card.number" {
+                Given::Hidden(Secret::Set(v)) => Some(if name == "card.number" {
                     v.chars().filter(|c| *c != ' ').collect()
                 } else {
                     v.clone()
                 }),
                 Given::Hidden(Secret::Empty) => None,
                 Given::Hidden(Secret::Keep) => match old {
-                    Some((old_index, old_secret)) => old_secret_value(old_index, old_secret, key),
+                    Some((old_index, old_secret)) => old_secret_value(old_index, old_secret, name),
                     None => return Err(VaultError::SchemaViolation),
                 },
             };
             let Some(value) = value else { continue };
-            let field_id = match old.and_then(|(i, _)| old_field_id(i, key)) {
+            let field_id = match old.and_then(|(i, _)| old_field_id(i, name)) {
                 Some(fid) => fid,
                 None => prims::random()?,
             };
             let mut descriptor = vec![
                 (1, Value::Bytes(field_id.to_vec())),
-                (2, Value::Text(key.to_string())),
+                (2, Value::Text(name.to_string())),
                 (3, Value::Text(label.to_string())),
                 (4, Value::Uint(field_kind)),
                 (5, Value::Uint(sens)),
@@ -765,7 +765,7 @@ impl Session {
                 secrets.push((field_id, value.clone()));
             }
             fields.push(Value::map(descriptor));
-            values.push((key, value));
+            values.push((name, value));
         }
         let get = |key: &str| {
             values

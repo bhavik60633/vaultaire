@@ -97,7 +97,21 @@ fun VaultaireApp(gateway: VaultGateway, testBuild: Boolean) {
                     Step.CreatePassword -> CreatePassword(gateway, testBuild) { step = Step.ShowRecoveryKey(it) }
                     is Step.ShowRecoveryKey -> ShowRecoveryKey(current.key, testBuild) { step = Step.Fingerprint }
                     Step.Fingerprint -> FingerprintStep(gateway, testBuild) { step = Step.Home }
-                    Step.Home -> Home(failures, testBuild, onDismiss = { failures = 0 }) { gateway.lock() }
+                    Step.Home -> {
+                        val data = gateway as? VaultData
+                        if (data != null) {
+                            // Recomputed at every unlock: the vault's own record of the last bank.
+                            val start = remember(unlocked) { startPage(data) }
+                            VaultArea(
+                                data, start, failures,
+                                onDismissFailures = { failures = 0 },
+                                onLock = { gateway.lock() },
+                                frame = { actions, content -> Screen(testBuild, actions, content) },
+                            )
+                        } else {
+                            Home(failures, testBuild, onDismiss = { failures = 0 }) { gateway.lock() }
+                        }
+                    }
                 }
             }
         }
@@ -125,8 +139,11 @@ private fun Screen(
             if (testBuild) TestBuildNote()
             content()
         }
+        // Scrollable too, so that on a short screen with a large font the buttons stay reachable.
         Column(
-            Modifier.padding(start = 24.dp, end = 24.dp, bottom = 16.dp, top = 8.dp),
+            Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(start = 24.dp, end = 24.dp, bottom = 16.dp, top = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             actions()
