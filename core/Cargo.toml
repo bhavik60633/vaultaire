@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["vault-core"]
+members = ["vault-core", "vault-ffi", "uniffi-bindgen"]
 
 [workspace.package]
 edition = "2024"
@@ -23,6 +23,8 @@ rusqlite = { version = "=0.40.2", features = ["bundled"] }
 minicbor = { version = "=2.3.0", features = ["alloc"] }
 unicode-normalization = "=0.1.25"
 thiserror = "=2.0.21"
+# ADR-008: the Rust-Kotlin bridge. The generator (`cli`) is enabled only in the uniffi-bindgen tool.
+uniffi = { version = "=0.32.2", default-features = false }
 # Dev-only: reading the JSON test vectors (docs/adr/README.md, dev dependencies).
 serde_json = "=1.0.151"
 hex = "=0.4.3"

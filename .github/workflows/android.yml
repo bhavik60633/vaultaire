@@ -54,7 +54,15 @@ jobs:
         run: |
           rustup target add aarch64-linux-android x86_64-linux-android
           cargo install --locked cargo-ndk@4.1.2
-          cargo ndk -t arm64-v8a -t x86_64 -P 31 -o ../android/core-bindings/src/main/jniLibs build --release --locked
+          cargo ndk -t arm64-v8a -t x86_64 -P 31 -o ../android/core-bindings/src/main/jniLibs build -p vault-ffi --release --locked
+      - name: The Kotlin bindings match the Rust bridge
+        working-directory: core
+        run: |
+          cargo build -p vault-ffi --locked
+          cargo run -p uniffi-bindgen --release --locked -- generate --library target/debug/libvault_ffi.so \
+            --language kotlin --out-dir ../android/core-bindings/src/main/java --no-format
+          git diff --exit-code -- ../android/core-bindings/src/main/java/uniffi
+      # The unit tests also build the Rust core for this runner (Gradle task buildHostCore).
       - name: Lint, unit tests and the R8 release build (dependency verification strict)
         working-directory: android
         run: ./gradlew --no-daemon --dependency-verification strict lint testDebugUnitTest assembleRelease

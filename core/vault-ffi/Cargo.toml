@@ -1,0 +1,28 @@
+[package]
+name = "vault-ffi"
+version = "0.1.0"
+description = "The bridge from the Android app to vault-core (UniFFI; ADR-001, ADR-008)"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lib]
+name = "vault_ffi"
+# cdylib for Android and for the JVM unit tests (libvault_ffi.so); lib for the bindings generator.
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+vault-core = { path = "../vault-core", version = "=0.1.0" }
+uniffi.workspace = true
+zeroize.workspace = true
+
+[lints.rust]
+# The UniFFI scaffolding generates the `extern "C"` glue, which is unsafe by nature. This is the
+# one crate where that is allowed (blueprint §25; Semgrep rule `no-unsafe-outside-ffi`).
+unsafe_code = "allow"
+missing_debug_implementations = "warn"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+indexing_slicing = "warn"

@@ -146,7 +146,7 @@ K_bio : AES-256-GCM, PURPOSE_ENCRYPT | PURPOSE_DECRYPT
         StrongBox first; on StrongBoxUnavailableException, TEE. Record which one in the slot parameters.
 ```
 
-- On creation, `vault-core` generates **SK** (32 bytes). Keystore encrypts it: `bio_blob = AES-GCM(K_bio, iv, SK, AAD = ascii("vlt/v1/bio-blob") ‖ vault_id)`. Keystore picks the 12-byte IV. The IV and `bio_blob` go in the slot parameters.
+- On creation, `vault-core` generates **SK** (32 bytes). Keystore encrypts it: `bio_blob = AES-GCM(K_bio, iv, SK, AAD = ascii("vlt/v1/bio-blob"))`. Keystore picks the 12-byte IV. The IV and `bio_blob` go in the slot parameters. *(Milestone M2: `vault_id` is not in this AAD, because the app seals SK through the bridge without knowing the vault id. `AD_slot` (§4.5) already binds `bio_blob` to the vault through the hash of the slot parameters.)*
 - SK is then zeroized in both Kotlin and Rust.
 - To unlock, Keystore decrypts `bio_blob` inside `BiometricPrompt.authenticate(CryptoObject(cipher))`. **The biometric result is the key release itself, never a boolean** (threat-model I7).
 - `KEK_bio = HKDF(ikm = SK, salt = vault_id, info = ascii("vlt/v1/kek/bio"), L = 32)`

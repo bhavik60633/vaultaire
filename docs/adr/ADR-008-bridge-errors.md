@@ -17,7 +17,8 @@ ADR-001 chose a Rust core called from Kotlin through UniFFI, and the Phase-0 spi
 
 **Build-time versus shipped code:**
 
-- UniFFI's **code generator** (`uniffi-bindgen`: `askama`, `goblin`, `toml`, `cargo_metadata` and more) runs only on the developer's machine and in CI, as a **separate binary target**. None of it is compiled into the app.
+- UniFFI's **code generator** (`uniffi-bindgen`: `askama`, `goblin`, `toml`, `cargo_metadata` and more) runs only on the developer's machine and in CI, as a **separate crate** (`core/uniffi-bindgen`, the only one with the `cli` feature). None of it is compiled into the app: the Android build compiles `-p vault-ffi` only.
+- The generated Kotlin (`android/core-bindings/src/main/java/uniffi/vault_ffi/vault_ffi.kt`) is committed, so it can be reviewed. CI regenerates it and fails if it differs.
 - With `default-features = false`, the runtime part of `uniffi` still compiles about 20 crates (for example `anyhow`, `bytes`, `once_cell`, `indexmap`), much of which link-time optimisation removes. This is the price of generated bindings, and far less risky than hand-written JNI.
 - `thiserror` is a procedural macro: it runs **at build time** and leaves ordinary code behind.
 

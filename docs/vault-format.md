@@ -152,6 +152,7 @@ CREATE TABLE meta_record (
 
 - A key marked "—" must be absent. A present key that does not belong to the slot type is an error.
 - Keystore aliases have the form `vlt.v1.bio.<hex(slot_id)>` or `vlt.v1.pwd.<hex(slot_id)>`, where `hex` is lowercase and 32 characters long. They carry no user data. Like the crypto labels, they use the fixed protocol identifier `vlt`, not the product name.
+- The app needs the alias before the slot exists (the key must be created first), so it asks the core for a fresh `slot_id` (`new_slot_id`, from the OS random source), creates the key under that alias, and hands the id back with the key. Before unlocking, it reads the aliases and the BIO slot's `iv` and `bio_blob` without opening anything (`slot_info`); none of these is secret.
 - A vault has exactly one slot of each type, except that KS-BIO is absent in password-only mode, or after biometric invalidation until the user re-enrols.
 
 ### 4.5 Record kinds and envelope kinds

@@ -112,6 +112,11 @@ pub trait PwdHardware: Send + Sync {
     fn level(&self) -> KeyLevel;
     /// `HMAC(K_pwd, hw_in)`, computed inside the hardware.
     fn hmac(&self, hw_in: &[u8; 32]) -> Result<[u8; 32]>;
+    /// The slot id this key was created for: its Keystore alias is `vlt.v1.pwd.<hex(slot_id)>`
+    /// (vault-format §4.4). `None` lets the core choose one.
+    fn slot_id(&self) -> Option<[u8; 16]> {
+        None
+    }
 }
 
 /// `K_bio` (crypto spec §4.2): seals the slot key at creation; releases it only after a strong
@@ -120,6 +125,32 @@ pub trait BioHardware: Send + Sync {
     fn level(&self) -> KeyLevel;
     fn seal_sk(&self, sk: &[u8; 32]) -> Result<SealedSk>;
     fn open_sk(&self, sealed: &SealedSk) -> Result<[u8; 32]>;
+    /// The slot id this key was created for: its Keystore alias is `vlt.v1.bio.<hex(slot_id)>`.
+    /// `None` lets the core choose one.
+    fn slot_id(&self) -> Option<[u8; 16]> {
+        None
+    }
+}
+
+/// What the app needs before unlocking, read from the keyslot table without opening anything:
+/// which Keystore keys to use, and the fingerprint slot's sealed key. None of it is secret
+/// (vault-format §4.4).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SlotInfo {
+    pub pwd_alias: String,
+    pub bio: Option<BioSlotInfo>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BioSlotInfo {
+    pub alias: String,
+    pub sealed: SealedSk,
+}
+
+/// A fresh slot id from the OS random source, for the app to name a new Keystore key before the
+/// slot is written.
+pub fn new_slot_id() -> Result<[u8; 16]> {
+    prims::random()
 }
 
 /// Choices made when a vault is created or restored.
@@ -360,6 +391,39 @@ impl Vault {
         let session = stored.into_session(vk)?;
         session.append_log(LogEvent::UnlockRecovery, None)?;
         Ok(session)
+    }
+
+    /// The keyslots' Keystore aliases and the fingerprint slot's sealed key (see [`SlotInfo`]).
+    pub fn slot_info(path: &Path, allow_software_keys: bool) -> Result<SlotInfo> {
+        let stored = Stored::open(path, allow_software_keys)?;
+        let mut info = SlotInfo {
+            pwd_alias: String::new(),
+            bio: None,
+        };
+        for slot in &stored.slots {
+            match &slot.params {
+                SlotParams::Pwd { alias, .. } => info.pwd_alias = alias.clone(),
+                SlotParams::Bio {
+                    alias,
+                    iv,
+                    bio_blob,
+                    ..
+                } => {
+                    info.bio = Some(BioSlotInfo {
+                        alias: alias.clone(),
+                        sealed: SealedSk {
+                            iv: *iv,
+                            blob: bio_blob.to_vec(),
+                        },
+                    })
+                }
+                SlotParams::Rec { .. } => {}
+            }
+        }
+        if info.pwd_alias.is_empty() {
+            return Err(VaultError::IntegrityFailed);
+        }
+        Ok(info)
     }
 
     /// Restores a backup onto this phone (vault-format §10.4): a new vault key, the same Recovery
@@ -890,7 +954,10 @@ fn create_vault(
         rows.push(bio_slot(bio, &vault_id, &vk)?);
     }
     {
-        let slot_id: [u8; 16] = prims::random()?;
+        let slot_id: [u8; 16] = match pwd.slot_id() {
+            Some(id) => id,
+            None => prims::random()?,
+        };
         let kdf = slot_kdf()?;
         let params = SlotParams::Pwd {
             hw_level: pwd.level().hw_level(),
@@ -1002,7 +1069,10 @@ fn check_levels(
 
 /// A KS-BIO slot: a fresh slot key, sealed by `K_bio`, wraps VK (crypto spec §4.2).
 fn bio_slot(bio: &dyn BioHardware, vault_id: &[u8; 16], vk: &[u8; 32]) -> Result<KeyslotRow> {
-    let slot_id: [u8; 16] = prims::random()?;
+    let slot_id: [u8; 16] = match bio.slot_id() {
+        Some(id) => id,
+        None => prims::random()?,
+    };
     let sk: Key32 = Zeroizing::new(prims::random()?);
     let sealed = bio.seal_sk(&sk)?;
     let bio_blob: [u8; 48] = sealed
