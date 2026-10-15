@@ -848,6 +848,32 @@ impl Session {
         Ok(())
     }
 
+    /// The decrypted index envelope of one entry (crate-internal, for `entries`).
+    pub(crate) fn index_of(&self, id: &[u8; 16]) -> Option<&Value> {
+        self.items.get(id)
+    }
+
+    /// Every entry's id and index envelope, in id order (crate-internal, for `entries`).
+    pub(crate) fn indexes(&self) -> impl Iterator<Item = (&[u8; 16], &Value)> {
+        self.items.iter()
+    }
+
+    /// One entry's secret envelope, decrypted (crate-internal, for edits that keep secrets).
+    pub(crate) fn secret_of(&self, id: &[u8; 16]) -> Result<Value> {
+        if !self.items.contains_key(id) {
+            return Err(VaultError::NotFound);
+        }
+        let (nonce, ct): (Vec<u8>, Vec<u8>) = self
+            .conn
+            .query_row(
+                "SELECT sec_nonce, sec_ct FROM item WHERE id = ?1",
+                params![id.as_slice()],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .map_err(storage)?;
+        self.open_item(id, EnvelopeKind::Secret, &nonce, &ct)
+    }
+
     fn read_log(&self) -> Result<Vec<LogEntry>> {
         match read_meta(
             &self.conn,
