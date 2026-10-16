@@ -54,7 +54,46 @@ class KeystoreProbe(private val activity: Activity, private val log: (String) ->
         log("StrongBox feature: ${activity.packageManager.hasSystemFeature(PackageManager.FEATURE_STRONGBOX_KEYSTORE)}")
     }
 
-    /** Deletes and re-creates both keys, StrongBox first, and records where each one landed. */
+    fun isKeyWrapped(): Boolean {
+        return prefs.contains("bio_blob") && prefs.contains("bio_iv") && key(BIO) != null
+    }
+
+    fun hasStrongBiometrics(): Boolean {
+        val bm = activity.getSystemService(BiometricManager::class.java) ?: return false
+        return bm.canAuthenticate(Authenticators.BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
+    }
+
+    fun unlockWithBiometric(onSuccess: (ByteArray) -> Unit, onError: (String) -> Unit) {
+        if (!isKeyWrapped()) {
+            createKeys()
+            wrapWithBiometric(
+                onSuccess = { unlockWithBiometric(onSuccess, onError) },
+                onError = onError
+            )
+            return
+        }
+        val key = key(BIO) ?: return onError("No K_bio found in Keystore")
+        val iv = prefs.getString("bio_iv", null) ?: return onError("No biometric IV stored")
+        val cipher = Cipher.getInstance(AES_GCM)
+        try {
+            cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, unb64(iv)))
+        } catch (e: KeyPermanentlyInvalidatedException) {
+            return onError("K_bio permanently invalidated (enrolment changed or screen lock removed)")
+        } catch (e: Exception) {
+            return onError("K_bio init failed: ${name(e)}")
+        }
+        prompt("Unlock Vaultaire", Authenticators.BIOMETRIC_STRONG, BiometricPrompt.CryptoObject(cipher), onError) { result ->
+            val c = result.cryptoObject?.cipher ?: return@prompt onError("Missing cipher in CryptoObject")
+            try {
+                c.updateAAD(unb64(prefs.getString("vault_id", "")!!) + "KS-BIO".toByteArray())
+                val sk = c.doFinal(unb64(prefs.getString("bio_blob", "")!!))
+                onSuccess(sk)
+            } catch (e: Exception) {
+                onError("Failed to unwrap SK: ${name(e)}")
+            }
+        }
+    }
+
     fun createKeys() {
         keyStore().apply { deleteEntry(BIO); deleteEntry(PWD) }
         prefs.edit().clear().apply()
@@ -84,15 +123,23 @@ class KeystoreProbe(private val activity: Activity, private val log: (String) ->
     }
 
     /** KS-BIO creation: a fresh SK is sealed by K_bio inside a Class 3 biometric prompt. */
-    fun wrapWithBiometric() {
-        val key = key(BIO) ?: return log("No K_bio. Create the keys first.")
+    fun wrapWithBiometric(onSuccess: (() -> Unit)? = null, onError: ((String) -> Unit)? = null) {
+        val key = key(BIO) ?: run {
+            val msg = "No K_bio. Create the keys first."
+            log(msg)
+            onError?.invoke(msg)
+            return
+        }
         val cipher = Cipher.getInstance(AES_GCM)
         try {
             cipher.init(Cipher.ENCRYPT_MODE, key)
         } catch (e: Exception) {
-            return log("K_bio init failed: ${name(e)}")
+            val msg = "K_bio init failed: ${name(e)}"
+            log(msg)
+            onError?.invoke(msg)
+            return
         }
-        prompt("Wrap test SK", Authenticators.BIOMETRIC_STRONG, BiometricPrompt.CryptoObject(cipher)) { result ->
+        prompt("Enroll Vaultaire Biometrics", Authenticators.BIOMETRIC_STRONG, BiometricPrompt.CryptoObject(cipher), onError) { result ->
             val sk = ByteArray(32).also(random::nextBytes)
             val vaultId = ByteArray(16).also(random::nextBytes)
             val c = result.cryptoObject!!.cipher!!
@@ -106,6 +153,7 @@ class KeystoreProbe(private val activity: Activity, private val log: (String) ->
                 .apply()
             sk.fill(0)
             log("Wrapped: iv ${c.iv.size} bytes, blob ${blob.size} bytes")
+            onSuccess?.invoke()
         }
     }
 
@@ -247,26 +295,33 @@ class KeystoreProbe(private val activity: Activity, private val log: (String) ->
         title: String,
         authenticators: Int,
         crypto: BiometricPrompt.CryptoObject?,
+        onError: ((String) -> Unit)? = null,
         onSuccess: (BiometricPrompt.AuthenticationResult) -> Unit,
     ) {
         val executor = activity.mainExecutor
         val builder = BiometricPrompt.Builder(activity)
             .setTitle(title)
-            .setSubtitle("Vaultaire spike: test data only")
+            .setSubtitle("Vaultaire zero-knowledge hardware authentication")
             .setAllowedAuthenticators(authenticators)
         if ((authenticators and Authenticators.DEVICE_CREDENTIAL) == 0) {
-            builder.setNegativeButton("Cancel", executor) { _, _ -> log("  cancelled") }
+            builder.setNegativeButton("Cancel", executor) { _, _ ->
+                log("  cancelled")
+                onError?.invoke("Authentication cancelled")
+            }
         }
         val callback = object : BiometricPrompt.AuthenticationCallback() {
             override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                 try {
                     onSuccess(result)
                 } catch (e: Exception) {
-                    log("  failed after authentication: ${name(e)}")
+                    val msg = "failed after authentication: ${name(e)}"
+                    log("  $msg")
+                    onError?.invoke(msg)
                 }
             }
             override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
                 log("  prompt ended: $errString ($errorCode)")
+                onError?.invoke(errString.toString())
             }
             override fun onAuthenticationFailed() {
                 log("  not recognised")

@@ -93,13 +93,15 @@
   const PLATFORM_KEY = 'vaultaire-prototype-platform';
   function loadPlatform() {
     const asked = new URLSearchParams(location.search).get('platform'); // e.g. ?platform=ios, for review links
-    if (asked === 'ios' || asked === 'android') return asked;
+    if (asked === 'ios' || asked === 'android') {
+      try { localStorage.setItem(PLATFORM_KEY, asked); } catch (e) {}
+      return asked;
+    }
     try {
       const saved = localStorage.getItem(PLATFORM_KEY);
       if (saved === 'ios' || saved === 'android') return saved;
     } catch (e) { /* storage unavailable: detect */ }
-    const ua = navigator.userAgent;
-    return /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) ? 'ios' : 'android';
+    return 'ios';
   }
   let platform = loadPlatform();
   document.documentElement.dataset.platform = platform;
@@ -201,7 +203,79 @@
   const announce = (text) => { if (announcer) { announcer.textContent = ''; setTimeout(() => { announcer.textContent = text; }, 50); } };
 
   // ---------- Sample data (not real) ----------
-  const FINISHES = [['obsidian', 'Obsidian'], ['titanium', 'Titanium'], ['platinum', 'Platinum'], ['ivory', 'Ivory'], ['champagne', 'Champagne']];
+  const FINISHES = [
+    ['obsidian', 'Obsidian'],
+    ['titanium', 'Titanium'],
+    ['platinum', 'Platinum'],
+    ['ivory', 'Ivory'],
+    ['champagne', 'Champagne'],
+    ['damascus', 'Damascus Steel'],
+    ['carbon', 'Forged Carbon'],
+    ['rosegold', 'Rose Gold'],
+    ['sapphire', 'Sapphire Glass']
+  ];
+
+  // ---------- Tactile Haptic Engine ----------
+  function haptic(type = 'tap') {
+    if (!('vibrate' in navigator)) return;
+    try {
+      if (type === 'tap' || type === 'tick') navigator.vibrate(10);
+      else if (type === 'unlock') navigator.vibrate([22, 40, 22]);
+      else if (type === 'reveal' || type === 'copy') navigator.vibrate(35);
+      else if (type === 'danger') navigator.vibrate([40, 50, 40]);
+    } catch (e) {}
+  }
+
+  // ---------- Gyroscope 3D Dynamic Shimmer ----------
+  if (window.DeviceOrientationEvent) {
+    window.addEventListener('deviceorientation', (e) => {
+      if (e.gamma == null || e.beta == null) return;
+      const x = Math.min(100, Math.max(0, ((e.gamma + 45) / 90) * 100));
+      const y = Math.min(100, Math.max(0, ((e.beta + 15) / 75) * 100));
+      document.documentElement.style.setProperty('--tilt-x', x.toFixed(1) + '%');
+      document.documentElement.style.setProperty('--tilt-y', y.toFixed(1) + '%');
+    }, { passive: true });
+  }
+  window.addEventListener('mousemove', (e) => {
+    const x = (e.clientX / window.innerWidth) * 100;
+    const y = (e.clientY / window.innerHeight) * 100;
+    document.documentElement.style.setProperty('--tilt-x', x.toFixed(1) + '%');
+    document.documentElement.style.setProperty('--tilt-y', y.toFixed(1) + '%');
+  }, { passive: true });
+  const NETWORKS = [
+    { id: 'VISA', name: 'Visa' },
+    { id: 'MASTERCARD', name: 'Mastercard' },
+    { id: 'AMEX', name: 'Amex' },
+    { id: 'RUPAY', name: 'RuPay' },
+    { id: 'DISCOVER', name: 'Discover' },
+    { id: 'DINERS', name: 'Diners Club' },
+    { id: 'UNIONPAY', name: 'UnionPay' }
+  ];
+  const formatNetwork = (net) => {
+    const found = NETWORKS.find((n) => n.id === (net || '').toUpperCase());
+    return found ? found.name : (net || 'Visa');
+  };
+  function detectNetwork(num) {
+    const clean = String(num || '').replace(/\D/g, '');
+    if (!clean) return 'VISA';
+    if (/^4/.test(clean)) return 'VISA';
+    if (/^(5[1-5]|2[2-7])/.test(clean)) return 'MASTERCARD';
+    if (/^3[47]/.test(clean)) return 'AMEX';
+    if (/^(60|65|81|82|508)/.test(clean) || /^353/.test(clean)) return 'RUPAY';
+    if (/^6(011|5|4[4-9]|22)/.test(clean)) return 'DISCOVER';
+    if (/^3(0[0-5]|[68])/.test(clean)) return 'DINERS';
+    if (/^62/.test(clean)) return 'UNIONPAY';
+    return 'VISA';
+  }
+  const networkPicker = (selected, action, cardId = '') => `
+    <div class="network-picker" role="group" aria-label="Card network">
+      ${NETWORKS.map((net) => `
+        <button type="button" class="net-btn${(selected || 'VISA').toUpperCase() === net.id ? ' active' : ''}" data-action="${action}" data-arg="${cardId ? cardId + ':' + net.id : net.id}">
+          ${net.name}
+        </button>
+      `).join('')}
+    </div>
+  `;
   // Hotline numbers are fictional (the reserved 555-01xx range).
   const CARDS = {
     1: { id: '1', nick: 'Travel card', network: 'VISA', issuer: 'Northbridge Bank', holder: 'Alex Morgan', number: '4929 1845 7720 4821', last4: '4821', expiry: '08 / 29', cvv: '317', hotline: '+1 800 555 0142' },
@@ -224,12 +298,19 @@
     { id: 'c6', type: 'card', card: '6', title: 'Blue Cash', sub: 'American Express · •••• 0009', fav: false },
     {
       id: 'p1', type: 'login', title: 'Primary email', sub: 'alex.morgan@example.com', fav: true,
-      fields: [N('Username', 'alex.morgan@example.com', { copy: true }), C('Password', 'harbor-violet-onyx-ledger-canyon-rune', { mono: true, meter: [5, 'Very strong · 6-word passphrase'] }), N('Website', 'mail.example.com'), N('Password history', '2 earlier versions kept')],
+      fields: [N('Username', 'alex.morgan@example.com', { copy: true }), C('Password', 'harbor-violet-onyx-ledger-canyon-rune', { mono: true, meter: [5, 'Very strong · 6-word passphrase'] }), N('Website', 'mail.example.com')],
+      history: [
+        { value: 'summit-birch-zephyr-garnet-ember-91', changedAt: '14 May 2026' },
+        { value: 'delta-granite-prism-cedar-harbor-22', changedAt: '12 Jan 2026' }
+      ],
       foot: 'Tags: personal · Edited 14 Sep 2026'
     },
     {
       id: 'p2', type: 'login', title: 'Online banking', sub: 'amorgan · online.northbridge.example',
       fields: [N('Username', 'amorgan', { copy: true }), C('Password', 'Q7!vR2#mK9@xLp4s', { mono: true, meter: [4, 'Strong · 16 characters'] }), N('Website', 'online.northbridge.example')],
+      history: [
+        { value: 'T3#nK8!xP4vL9@wM', changedAt: '15 Mar 2026' }
+      ],
       foot: 'Linked to: Salary account · Edited 2 Aug 2026'
     },
     {
@@ -309,11 +390,97 @@
   // 7,776-word EFF list (~77 bits for 6 words); this list gives only ~36 bits.
   const WORDS = ['amber', 'anchor', 'atlas', 'basalt', 'beacon', 'birch', 'cedar', 'cinder', 'cobalt', 'comet', 'coral', 'delta', 'ember', 'falcon', 'fjord', 'garnet', 'glacier', 'granite', 'harbor', 'hazel', 'heron', 'indigo', 'iris', 'jade', 'juniper', 'kestrel', 'lantern', 'larch', 'ledger', 'lumen', 'marble', 'meadow', 'mesa', 'nectar', 'nimbus', 'oak', 'obsidian', 'onyx', 'opal', 'orbit', 'pewter', 'pine', 'prism', 'quartz', 'quill', 'raven', 'reef', 'rune', 'saffron', 'sable', 'slate', 'sparrow', 'summit', 'tarn', 'thistle', 'tundra', 'umber', 'vale', 'velvet', 'violet', 'willow', 'yarrow', 'zenith', 'zephyr'];
 
-  function passphrase() {
-    const buf = new Uint32Array(6);
+  function passphrase(wordsCount = 6) {
+    const buf = new Uint32Array(wordsCount);
     crypto.getRandomValues(buf);
     return Array.from(buf, (n) => WORDS[n % WORDS.length]).join('-');
   }
+
+  // ---------- Multi-Mode Password Studio Generator ----------
+  function generateStudioPassword() {
+    const mode = S.pwMode || 'passphrase';
+    const len = S.pwLen || (mode === 'passphrase' ? 6 : mode === 'complex' ? 20 : 6);
+
+    if (mode === 'passphrase') {
+      return passphrase(len);
+    }
+    if (mode === 'pin') {
+      const buf = new Uint8Array(len);
+      crypto.getRandomValues(buf);
+      return Array.from(buf, (n) => n % 10).join('');
+    }
+    // Complex alphanumeric mode
+    let chars = 'abcdefghijkmnopqrstuvwxyz';
+    if (S.pwUpper !== false) chars += 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    if (S.pwDigits !== false) chars += '23456789';
+    if (S.pwSymbols !== false) chars += '!@#$%^&*-_+=?';
+    const buf = new Uint32Array(len);
+    crypto.getRandomValues(buf);
+    return Array.from(buf, (n) => chars[n % chars.length]).join('');
+  }
+
+  function pwStudioHtml() {
+    const mode = S.pwMode || 'passphrase';
+    const len = S.pwLen || (mode === 'passphrase' ? 6 : mode === 'complex' ? 20 : 6);
+    let entropyText = 'Good · 36 bits';
+    let meterLevel = 4;
+
+    if (mode === 'passphrase') {
+      meterLevel = len >= 6 ? 5 : len >= 5 ? 4 : 3;
+      entropyText = `${len >= 6 ? 'Very strong' : 'Strong'} · ${len} EFF words (~${len * 13} bits)`;
+    } else if (mode === 'complex') {
+      let pool = 25;
+      if (S.pwUpper !== false) pool += 24;
+      if (S.pwDigits !== false) pool += 8;
+      if (S.pwSymbols !== false) pool += 13;
+      const bits = Math.round(len * Math.log2(pool));
+      meterLevel = bits >= 100 ? 5 : bits >= 70 ? 4 : 3;
+      entropyText = `${bits >= 100 ? 'Extreme entropy' : 'Strong'} · ${len} chars (${bits} bits)`;
+    } else if (mode === 'pin') {
+      meterLevel = len >= 6 ? 3 : 2;
+      entropyText = `Numeric PIN · ${len} digits`;
+    }
+
+    return `
+      <div class="pw-studio">
+        <div class="pw-modes" role="group" aria-label="Password generation mode">
+          <button type="button" class="pw-mode-btn${mode === 'passphrase' ? ' active' : ''}" data-action="setPwMode" data-arg="passphrase">Passphrase</button>
+          <button type="button" class="pw-mode-btn${mode === 'complex' ? ' active' : ''}" data-action="setPwMode" data-arg="complex">Complex</button>
+          <button type="button" class="pw-mode-btn${mode === 'pin' ? ' active' : ''}" data-action="setPwMode" data-arg="pin">PIN</button>
+        </div>
+
+        <div class="pw-slider-row">
+          <span>${mode === 'passphrase' ? 'Words' : 'Length'}: <strong>${len}</strong></span>
+          <input type="range" class="pw-slider" min="${mode === 'passphrase' ? 4 : mode === 'complex' ? 12 : 4}" max="${mode === 'passphrase' ? 8 : mode === 'complex' ? 32 : 8}" value="${len}" data-action="setPwLen">
+        </div>
+
+        ${mode === 'complex' ? `
+          <div class="pw-toggles">
+            <label class="pw-toggle-label"><input type="checkbox" data-action="togglePwOpt" data-arg="upper"${S.pwUpper !== false ? ' checked' : ''}> Uppercase</label>
+            <label class="pw-toggle-label"><input type="checkbox" data-action="togglePwOpt" data-arg="digits"${S.pwDigits !== false ? ' checked' : ''}> Digits</label>
+            <label class="pw-toggle-label"><input type="checkbox" data-action="togglePwOpt" data-arg="symbols"${S.pwSymbols !== false ? ' checked' : ''}> Symbols</label>
+          </div>
+        ` : ''}
+
+        <div class="pw-studio-entropy">
+          <span>${entropyText}</span>
+          <div class="pw-entropy-meter" aria-hidden="true">
+            ${Array.from({ length: 5 }, (_, i) => `<span class="${i < meterLevel ? 'on' : ''}"></span>`).join('')}
+          </div>
+        </div>
+
+        <div class="pw-studio-actions">
+          <button type="button" class="btn btn-secondary btn-small" data-action="regenPw">
+            ${icon('refresh', 16)}Regenerate
+          </button>
+          <button type="button" class="btn btn-secondary btn-small" data-action="copyStudioPw">
+            ${icon('copy', 16)}Copy
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
   // Recovery Key input ignores case, spaces and dashes; O→0, I/L→1 (blueprint §10.1).
   const normKey = (v) => v.toUpperCase().replace(/[\s-]/g, '').replace(/O/g, '0').replace(/[IL]/g, '1');
   function greeting() {
@@ -328,13 +495,79 @@
   const cardFolder = {}; // card id → a folder the user made; otherwise the card sits in its bank's folder
   const blocked = {}; // card id → true once the user has marked it blocked (a checklist, nothing is sent)
   const usedCodes = { r1: new Set([1, 4, 7]), r2: new Set([0, 1, 2, 3, 4, 5]) };
+
+  // ---------- Persistence for user items ----------
+  const CUSTOM_ITEMS_KEY = 'vaultaire-custom-items';
+  const CUSTOM_CARDS_KEY = 'vaultaire-custom-cards';
+  const CUSTOM_FINISHES_KEY = 'vaultaire-custom-finishes';
+  const CUSTOM_CODES_KEY = 'vaultaire-custom-codes';
+
+  function saveCustomData() {
+    try {
+      localStorage.setItem(CUSTOM_ITEMS_KEY, JSON.stringify(ITEMS));
+
+      const savedCards = {};
+      for (const [k, v] of Object.entries(CARDS)) {
+        savedCards[k] = v;
+      }
+      localStorage.setItem(CUSTOM_CARDS_KEY, JSON.stringify(savedCards));
+      localStorage.setItem(CUSTOM_FINISHES_KEY, JSON.stringify(finishes));
+
+      const codesObj = {};
+      for (const [k, v] of Object.entries(usedCodes)) {
+        if (v instanceof Set) codesObj[k] = Array.from(v);
+      }
+      localStorage.setItem(CUSTOM_CODES_KEY, JSON.stringify(codesObj));
+    } catch (e) {
+      console.warn('Vaultaire storage warning', e);
+    }
+  }
+
+  function loadCustomData() {
+    try {
+      const rawCards = localStorage.getItem(CUSTOM_CARDS_KEY);
+      if (rawCards) {
+        const parsed = JSON.parse(rawCards);
+        for (const [k, v] of Object.entries(parsed)) {
+          CARDS[k] = v;
+        }
+      }
+      const rawItems = localStorage.getItem(CUSTOM_ITEMS_KEY);
+      if (rawItems) {
+        const parsed = JSON.parse(rawItems);
+        if (Array.isArray(parsed) && parsed.length) {
+          ITEMS.length = 0;
+          parsed.forEach((it) => ITEMS.push(it));
+        }
+      }
+      const rawFinishes = localStorage.getItem(CUSTOM_FINISHES_KEY);
+      if (rawFinishes) {
+        const parsed = JSON.parse(rawFinishes);
+        Object.assign(finishes, parsed);
+      }
+      const rawCodes = localStorage.getItem(CUSTOM_CODES_KEY);
+      if (rawCodes) {
+        const parsed = JSON.parse(rawCodes);
+        for (const [k, arr] of Object.entries(parsed)) {
+          usedCodes[k] = new Set(arr);
+        }
+      }
+    } catch (e) {
+      console.warn('Vaultaire: load error', e);
+    }
+  }
+  loadCustomData();
   const fresh = () => ({
     pw: '', pwShown: false, verifying: false, unlocking: false,
     query: '', banner: true,
     revealed: null, secs: 30, sheet: null, lastAuth: 0, toast: '',
-    addType: null, addPw: '', addVals: {}, addCvv: false,
+    addType: null, addPw: '', addNetwork: 'VISA', userOverrodeNetwork: false, addVals: {}, addCvv: false,
     rkStep: 'show', rkA: '', rkB: '', rkErr: false,
-    newFolder: ''
+    newFolder: '',
+    cardFlipped: {},
+    pwMode: 'passphrase', pwLen: 6, pwUpper: true, pwDigits: true, pwSymbols: true,
+    addingCustomField: false, customFieldTier: 'concealed', customFieldLabel: '', customFieldValue: '',
+    renewingCard: null, renewExpiry: '', renewCvv: ''
   });
   let S = fresh();
   let current = null;
@@ -440,16 +673,19 @@
   }
   function cardRow(c) {
     const soon = expiryOf(c);
-    return `<a class="item" href="#/card/${c.id}"><span class="type-tile"><span class="mini finish-${finishes[c.id]}"></span></span>
+    return `<a class="item" href="#/card/${c.id}"><span class="type-tile"><span class="mini finish-${finishes[c.id] || 'obsidian'}"></span></span>
       <span class="item-text"><span class="item-title">${esc(c.nick)}${blocked[c.id] ? ' <span class="badge badge-crit">BLOCKED</span>' : ''}</span>
-      <span class="item-sub">${c.network === 'AMEX' ? 'Amex' : c.network.charAt(0) + c.network.slice(1).toLowerCase()} · •••• ${c.last4} · ${soon.days <= 183 ? `<span class="warn-text">exp. ${c.expiry.replace(/\s/g, '')}</span>` : `exp. ${c.expiry.replace(/\s/g, '')}`}</span></span>
+      <span class="item-sub">${formatNetwork(c.network)} · •••• ${c.last4} · ${soon.days <= 183 ? `<span class="warn-text">exp. ${c.expiry.replace(/\s/g, '')}</span>` : `exp. ${c.expiry.replace(/\s/g, '')}`}</span></span>
       ${icon('chev', 18, 'chev')}</a>`;
   }
 
   // Expiry watch: shown only inside the unlocked app. A notification would have to read the vault while locked.
   const DAY = 86400000;
   function expiryOf(c) {
-    const [m, y] = c.expiry.split('/').map((v) => parseInt(v, 10));
+    if (!c || !c.expiry) return { date: new Date(), days: 999 };
+    const parts = String(c.expiry).split('/').map((v) => parseInt(v.trim(), 10));
+    const m = isNaN(parts[0]) ? 12 : parts[0];
+    const y = isNaN(parts[1]) ? 29 : parts[1];
     const date = new Date(2000 + y, m, 0); // cards work until the end of their expiry month
     return { date, days: Math.ceil((date - Date.now()) / DAY) };
   }
@@ -457,7 +693,7 @@
     const list = [];
     for (const it of ITEMS) {
       let e = null;
-      if (it.card) e = Object.assign(expiryOf(CARDS[it.card]), { what: 'Card expires' });
+      if (it.card && CARDS[it.card]) e = Object.assign(expiryOf(CARDS[it.card]), { what: 'Card expires' });
       else if (it.expires) {
         const date = new Date(it.expires + 'T00:00:00');
         e = { date, days: Math.ceil((date - Date.now()) / DAY), what: it.expiresWhat || 'Expires' };
@@ -469,24 +705,103 @@
   const whenText = (days) => (days < 0 ? 'Expired' : days <= 45 ? `in ${days} days` : `in ${Math.round(days / 30.44)} months`);
   const monthYear = (d) => d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
 
-  const codesLeft = (it) => it.codes.length - usedCodes[it.id].size;
+  const codesLeft = (it) => (it && it.codes ? it.codes.length - ((usedCodes[it.id] && usedCodes[it.id].size) || 0) : 0);
 
   function cardFace(c, small) {
-    const f = finishes[c.id];
-    return `<div class="card-face finish-${f}${small ? ' sm' : ''}${blocked[c.id] ? ' is-blocked' : ''}" role="img" aria-label="${esc(c.nick)}: ${c.network} ending ${c.last4}, ${finishName(f)} finish${blocked[c.id] ? ', marked blocked' : ''}">
+    if (!c) return '';
+    const f = finishes[c.id] || 'obsidian';
+    const last4 = c.last4 || '••••';
+    const issuer = c.issuer || 'VAULT';
+    const holder = c.holder || 'CARDHOLDER';
+    const network = c.network || 'VISA';
+    return `<div class="card-face finish-${f}${small ? ' sm' : ''}${blocked[c.id] ? ' is-blocked' : ''}" role="img" aria-label="${esc(c.nick || 'Card')}: ${network} ending ${last4}, ${finishName(f)} finish${blocked[c.id] ? ', marked blocked' : ''}">
       ${blocked[c.id] ? '<span class="blocked-band">BLOCKED</span>' : ''}
       <svg class="engrave" viewBox="0 0 350 221" preserveAspectRatio="none" aria-hidden="true"><path d="${CARD_ENGRAVING}"/></svg>
-      <div class="card-top"><span>${esc(c.issuer.toUpperCase())}</span>${small ? '' : `<span>${finishName(f).toUpperCase()}</span>`}</div>
+      <div class="card-top"><span>${esc(issuer.toUpperCase())}</span>${small ? '' : `<span>${finishName(f).toUpperCase()}</span>`}</div>
       <div class="card-bottom">
-        <div><div class="card-num">•••• ${c.last4}</div>${small ? '' : `<div class="card-name">${esc(c.holder.toUpperCase())}</div>`}</div>
-        <span class="network">${c.network}</span>
+        <div><div class="card-num">•••• ${last4}</div>${small ? '' : `<div class="card-name">${esc(holder.toUpperCase())}</div>`}</div>
+        <span class="network">${network}</span>
       </div>
     </div>`;
   }
 
+  function cardFace3D(c, isFlipped, onCvv) {
+    if (!c) return '';
+    const f = finishes[c.id] || 'obsidian';
+    const last4 = c.last4 || '••••';
+    const issuer = c.issuer || 'VAULT';
+    const holder = c.holder || 'Alex Morgan';
+    const network = formatNetwork(c.network || 'VISA');
+    const cvvVal = c.cvv ? (onCvv ? c.cvv : '•••') : '— — —';
+
+    return `
+      <div class="card-scene">
+        <div class="card-flipper${isFlipped ? ' is-flipped' : ''}" data-action="flipCard" data-arg="${c.id}" role="button" tabindex="0" aria-label="${esc(c.nick || 'Card')}: tap to flip card">
+          <!-- Front Face -->
+          <div class="card-face card-face-front finish-${f}${blocked[c.id] ? ' is-blocked' : ''}">
+            ${blocked[c.id] ? '<span class="blocked-band">BLOCKED</span>' : ''}
+            <svg class="engrave" viewBox="0 0 350 221" preserveAspectRatio="none" aria-hidden="true"><path d="${CARD_ENGRAVING}"/></svg>
+            <div class="card-top"><span>${esc(issuer.toUpperCase())}</span><span>${finishName(f).toUpperCase()}</span></div>
+            <div class="card-bottom">
+              <div>
+                <div class="card-num">•••• ${last4}</div>
+                <div class="card-name">${esc(holder.toUpperCase())}</div>
+              </div>
+              <span class="network">${network}</span>
+            </div>
+          </div>
+
+          <!-- Back Face -->
+          <div class="card-face card-face-back finish-${f}">
+            <div class="card-magstripe"></div>
+            <div class="card-back-body">
+              <div class="card-sign-row">
+                <div class="card-sign-strip">${esc(holder)}</div>
+                <div class="card-cvv-box" title="Security Code (CVV)">${cvvVal}</div>
+              </div>
+              <p class="faint" style="font-size:8px;line-height:11px;margin:2px 0 0;opacity:0.75;letter-spacing:0.04em;">AUTHORIZED SIGNATURE · NOT VALID UNLESS SIGNED · ISSUED BY ${esc(issuer.toUpperCase())}</p>
+            </div>
+            <div class="card-back-meta">
+              <div>
+                <div class="faint" style="font-size:8px;">24/7 CONCIERGE & FRAUD</div>
+                <div class="meta-hotline">${esc(c.hotline || '+1 800 555 0199')}</div>
+              </div>
+              <div class="card-hologram" title="Security Hologram"></div>
+              <span class="network" style="font-size:11px;">${network}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="flip-hint-row">
+        <button type="button" class="flip-hint-btn" data-action="flipCard" data-arg="${c.id}">
+          ${icon('refresh', 14)}${isFlipped ? 'View card front' : 'Tap card or here to view back & CVV'}
+        </button>
+      </div>
+    `;
+  }
+
+  function expiryRadar(c) {
+    const exp = expiryOf(c);
+    if (!exp || exp.days > 183) return '';
+    const isExpired = exp.days <= 0;
+    const pct = Math.max(0, Math.min(1, exp.days / 183));
+    const circumference = 62.8;
+    const strokeDashoffset = (circumference * (1 - pct)).toFixed(1);
+    return `
+      <div class="expiry-radar" role="status">
+        <svg class="radar-ring" width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
+          <circle cx="13" cy="13" r="10" stroke="rgba(235,170,70,0.25)" stroke-width="2.5" fill="none"/>
+          <circle cx="13" cy="13" r="10" stroke="#EBAA46" stroke-width="2.5" stroke-dasharray="62.8" stroke-dashoffset="${strokeDashoffset}" stroke-linecap="round" fill="none"/>
+        </svg>
+        <span>${isExpired ? 'Card expired' : `Expires in ${exp.days} days`}</span>
+        <button type="button" class="radar-btn" data-action="openRenewModal" data-arg="${c.id}">Renew</button>
+      </div>
+    `;
+  }
+
   function itemRow(it) {
-    const lead = it.card ? `<span class="type-tile"><span class="mini finish-${finishes[it.card]}"></span></span>` : typeTile(it.type);
-    return `<a class="item" href="${hrefOf(it)}">${lead}<span class="item-text"><span class="item-title">${esc(it.title)}</span><span class="item-sub">${it.type === 'codes' ? `${codesLeft(it)} of ${it.codes.length} codes left${codesLeft(it) <= 2 ? ' · <span class="warn-text">running low</span>' : ''}` : esc(it.sub)}</span></span>${it.fav ? icon('star', 14, 'fav', 'fill="currentColor" role="img" aria-label="Favorite"') : ''}${icon('chev', 18, 'chev')}</a>`;
+    const lead = it.card ? `<span class="type-tile"><span class="mini finish-${finishes[it.card] || 'obsidian'}"></span></span>` : typeTile(it.type);
+    return `<a class="item" href="${hrefOf(it)}">${lead}<span class="item-text"><span class="item-title">${esc(it.title)}</span><span class="item-sub">${it.type === 'codes' ? `${codesLeft(it)} of ${it.codes ? it.codes.length : 0} codes left${codesLeft(it) <= 2 ? ' · <span class="warn-text">running low</span>' : ''}` : esc(it.sub || '')}</span></span>${it.fav ? icon('star', 14, 'fav', 'fill="currentColor" role="img" aria-label="Favorite"') : ''}${icon('chev', 18, 'chev')}</a>`;
   }
 
   // ---------- Screens ----------
@@ -568,6 +883,25 @@
       : `<div class="empty"><p class="display">Nothing found</p><p class="small muted">No items match “${esc(S.query)}”.</p></div>`;
     const banner = S.banner ? `<div class="banner" role="status">${icon('alert', 20)}<p>3 failed password attempts since your last unlock</p><button type="button" id="dismiss" class="text-btn" data-action="dismissBanner">Dismiss</button></div>` : '';
 
+    const favItems = ITEMS.filter((it) => it.fav);
+    const favShelf = (!q && favItems.length)
+      ? `<div class="fav-tray-section">
+          <div class="fav-tray-title">${icon('star', 12, 'fav', 'fill="currentColor"')} Pinned Favorites</div>
+          <div class="fav-tray" role="region" aria-label="Pinned favorites">
+            ${favItems.map((it) => `
+              <a class="fav-chip" href="${hrefOf(it)}">
+                <div class="fav-chip-top">
+                  ${it.card ? `<span class="type-tile" style="width:24px;height:24px;"><span class="mini finish-${finishes[it.card] || 'obsidian'}"></span></span>` : typeTile(it.type)}
+                  ${icon('star', 12, 'fav', 'fill="currentColor"')}
+                </div>
+                <span class="fav-chip-title">${esc(it.title)}</span>
+                <span class="fav-chip-sub">${esc(it.sub || '')}</span>
+              </a>
+            `).join('')}
+          </div>
+        </div>`
+      : '';
+
     return `<section class="screen fixed${fx.enter ? ' enter' : ''}">
       <div class="vault-head">
         <div class="col"><span class="label">Vault</span><h1 class="display">${greeting()}</h1></div>
@@ -586,6 +920,7 @@
       <div class="search">${icon('search', 20)}<input id="search" class="input" type="search" placeholder="Search ${ITEMS.length} items" aria-label="Search vault" value="${esc(S.query)}" data-bind="query" autocomplete="off" spellcheck="false"></div>
       ${banner}
       <div class="list" id="vault-list" data-keep-scroll>
+        ${favShelf}
         ${body}
         ${hiddenNote}
         ${q ? '' : `<div class="organise"><a class="btn btn-secondary btn-small" href="#/sections">${icon('sliders', 18)}Organise sections</a></div>`}
@@ -668,8 +1003,9 @@
       const key = `${it.id}-${i}`;
       const on = S.revealed === key;
       const mono = f.mono ? ' mono' : '';
+      const delBtn = f.custom ? `<button type="button" class="icon-btn" data-action="deleteCustomField" data-arg="${it.id}:${i}" aria-label="Delete field ${esc(f.label)}">${icon('close', 16)}</button>` : '';
       if (f.tier === 'normal') {
-        return frow(esc(f.label), `<span class="${mono.trim()}">${esc(f.value)}</span>`, f.copy ? copyBtn(key, f.label) : '');
+        return frow(esc(f.label), `<span class="${mono.trim()}">${esc(f.value)}</span>`, (f.copy ? copyBtn(key, f.label) : '') + delBtn);
       }
       const masked = f.keep ? `•••• •••• ${esc(f.keep)}` : f.multiline ? '•••••••• ••••••• ••••••••' : '••••••••••••';
       const shown = esc(f.value);
@@ -679,15 +1015,76 @@
           ${secret(on, shown, masked, cls)}
           ${timer(on)}
           ${f.meter ? meter(f.meter) : ''}
-        </div>${revealBtn(key, f.label, f.tier, on)}${f.copy ? copyBtn(key, f.label, f.tier) : ''}</div>`;
+        </div>${revealBtn(key, f.label, f.tier, on)}${f.copy ? copyBtn(key, f.label, f.tier) : ''}${delBtn}</div>`;
     }).join('');
+
+    const histHtml = (it.history && it.history.length) ? `
+      <div class="custom-fields-head"><span class="label">Password history</span></div>
+      <div class="pw-history-box">
+        ${it.history.map((h, i) => {
+          const hKey = `hist-${it.id}-${i}`;
+          const onH = S.revealed === hKey;
+          return `
+            <div class="pw-history-item">
+              <div>
+                <div class="pw-history-val">${secret(onH, esc(h.value), '••••••••••••••••')}</div>
+                <div class="pw-history-date">Replaced ${esc(h.changedAt)}</div>
+              </div>
+              <div class="inline">
+                ${revealBtn(hKey, 'historical password', 'concealed', onH)}
+                ${copyBtn(hKey, 'historical password', 'concealed')}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    ` : '';
+
+    const customFieldBuilder = `
+      <div class="custom-fields-head">
+        <span class="label">Custom fields</span>
+        <button type="button" class="text-btn" data-action="toggleAddCustomField" style="color:var(--accent);font-size:13px;font-weight:600;">+ Add field</button>
+      </div>
+      ${S.addingCustomField ? `
+        <div class="add-custom-field-box">
+          <label class="label">Security Tier</label>
+          <div class="tier-segmented" role="group" aria-label="Security tier">
+            <button type="button" class="tier-btn${(S.customFieldTier || 'concealed') === 'normal' ? ' active' : ''}" data-action="setCustomTier" data-arg="normal">Normal</button>
+            <button type="button" class="tier-btn${(S.customFieldTier || 'concealed') === 'concealed' ? ' active' : ''}" data-action="setCustomTier" data-arg="concealed">Concealed</button>
+            <button type="button" class="tier-btn${(S.customFieldTier || 'concealed') === 'critical' ? ' active' : ''}" data-action="setCustomTier" data-arg="critical">Critical</button>
+          </div>
+          <label class="label">Field Label</label>
+          <input type="text" class="input" placeholder="e.g. ATM PIN, Mother's maiden name, IBAN" data-bind="customFieldLabel" value="${esc(S.customFieldLabel || '')}">
+          <label class="label">Field Value</label>
+          <input type="text" class="input mono" placeholder="Secret or text value" data-bind="customFieldValue" value="${esc(S.customFieldValue || '')}">
+          <div class="inline" style="justify-content:flex-end;gap:8px;margin-top:6px;">
+            <button type="button" class="btn btn-ghost btn-small" data-action="cancelCustomField">Cancel</button>
+            <button type="button" class="btn btn-primary btn-small" data-action="saveCustomField" data-arg="${it.id}">Add to item</button>
+          </div>
+        </div>
+      ` : ''}
+    `;
+
     return `<section class="screen${fx.enter ? ' enter' : ''}" id="scr-item" data-keep-scroll>
       ${topbar(`#/category/${it.type}`, `Back to ${cat.label}`)}
-      <div class="title-row">${typeTile(it.type)}<div class="col"><span class="label">${cat.label}</span><h1 class="display">${esc(it.title)}</h1></div></div>
+      <div class="title-row">
+        ${typeTile(it.type)}
+        <div class="col"><span class="label">${cat.label}</span><h1 class="display">${esc(it.title)}</h1></div>
+        <button type="button" class="icon-btn" data-action="toggleFav" data-arg="${it.id}" aria-label="${it.fav ? 'Remove from favorites' : 'Add to favorites'}" style="margin-left:auto;">
+          ${icon('star', 22, it.fav ? 'fav' : '', it.fav ? 'fill="currentColor"' : '')}
+        </button>
+      </div>
       <div class="fields">
         <h2 class="label">Details</h2>
         ${rows}
-        ${it.foot ? `<p class="faint">${esc(it.foot)}</p>` : ''}
+        ${histHtml}
+        ${customFieldBuilder}
+        ${it.foot ? `<p class="faint" style="margin-top:16px;">${esc(it.foot)}</p>` : ''}
+        <div class="cat-add" style="margin-top:2.5rem;padding-bottom:1rem;">
+          <button type="button" class="btn btn-secondary" style="color:var(--crit);border-color:rgba(224,161,150,0.35);" data-action="deleteItem" data-arg="${it.id}">
+            ${icon('close', 18)}Delete ${cat.one}
+          </button>
+        </div>
       </div>
     </section>`;
   }
@@ -716,6 +1113,11 @@
         <button type="button" id="reveal-${key}" class="btn btn-secondary" data-action="reveal" data-arg="${key}" data-tier="critical" data-label="recovery codes" aria-pressed="${on}">${icon(on ? 'eyeOff' : 'eye', 20)}${on ? 'Hide codes' : 'Show codes'}</button>
         ${warn}
         <p class="assurance">${icon('shield', 18)}<span>Each code signs you in once if you lose your authenticator. Tick one off as soon as you use it.</span></p>
+        <div class="cat-add" style="margin-top:2.5rem;padding-bottom:1rem;">
+          <button type="button" class="btn btn-secondary" style="color:var(--crit);border-color:rgba(224,161,150,0.35);" data-action="deleteItem" data-arg="${it.id}">
+            ${icon('close', 18)}Delete recovery codes
+          </button>
+        </div>
       </div>
     </section>`;
   }
@@ -796,8 +1198,10 @@
 
   function card(id) {
     const c = CARDS[id] || CARDS[1];
+    const cardItem = ITEMS.find((x) => x.card === c.id);
     const onNum = S.revealed === 'card-number';
     const onCvv = S.revealed === 'card-cvv';
+    const isFlipped = !!(S.cardFlipped && S.cardFlipped[c.id]);
     const cvvRow = c.cvv
       ? `<div class="frow"><div class="frow-text">
           <span class="frow-label">Security code (CVV) ${criticalBadge}</span>
@@ -811,12 +1215,16 @@
     return `<section class="screen${fx.enter ? ' enter' : ''}" id="scr-card" data-keep-scroll>
       ${topbar('#/category/card', 'Back to Cards')}
       <div class="detail-head">
-        <div class="col"><span class="label">Cards</span><h1 class="display">${esc(c.nick)}</h1></div>
-        ${cardFace(c, false)}
-        <div class="finishes" role="group" aria-label="Card finish">
-          ${FINISHES.map(([f, name]) => `<button type="button" id="finish-${f}" class="swatch-btn" data-action="finish" data-arg="${c.id}:${f}" aria-label="${name} finish" aria-pressed="${finishes[c.id] === f}"><span class="swatch finish-${f}"></span></button>`).join('')}
-          <span class="finish-name">${finishName(finishes[c.id])}</span>
+        <div class="col" style="display:flex;flex-direction:row;justify-content:space-between;align-items:flex-start;">
+          <div><span class="label">Cards</span><h1 class="display">${esc(c.nick)}</h1></div>
+          ${cardItem ? `<button type="button" class="icon-btn" data-action="toggleFav" data-arg="${cardItem.id}" aria-label="${cardItem.fav ? 'Remove from favorites' : 'Add to favorites'}">${icon('star', 22, cardItem.fav ? 'fav' : '', cardItem.fav ? 'fill="currentColor"' : '')}</button>` : ''}
         </div>
+        ${cardFace3D(c, isFlipped, onCvv)}
+        <div class="finishes" role="group" aria-label="Card finish" style="flex-wrap:wrap;gap:4px;">
+          ${FINISHES.map(([f, name]) => `<button type="button" id="finish-${f}" class="swatch-btn" data-action="finish" data-arg="${c.id}:${f}" aria-label="${name} finish" aria-pressed="${finishes[c.id] === f}"><span class="swatch finish-${f}"></span></button>`).join('')}
+          <span class="finish-name" style="width:100%;margin-top:4px;">${finishName(finishes[c.id])}</span>
+        </div>
+        ${expiryRadar(c)}
       </div>
       <div class="fields">
         <h2 class="label">Details</h2>
@@ -827,6 +1235,11 @@
           ${timer(onNum)}
         </div>${revealBtn('card-number', 'card number', 'critical', onNum)}${copyBtn('card-number', 'card number', 'critical')}</div>
         ${frow('Expiry', `<span class="mono">${c.expiry}</span>${expiryOf(c).days <= 183 ? `<span class="frow-note warn-text">${expiryOf(c).days < 0 ? 'Expired' : `Expires ${whenText(expiryOf(c).days)}`} · ask ${esc(c.issuer)} for a new card</span>` : ''}`, copyBtn('card-expiry', 'expiry date'))}
+        <div class="frow"><div class="frow-text"><span class="frow-label">Card network</span><span class="frow-value">${formatNetwork(c.network)}</span></div></div>
+        <div class="field" style="padding:10px 0 14px;border-bottom:1px solid var(--hair);">
+          <label class="label">Change network</label>
+          ${networkPicker(c.network, 'changeCardNetwork', c.id)}
+        </div>
         ${cvvRow}
         ${frow('Issuer', esc(c.issuer))}
         <a class="frow frow-link" href="#/move/${c.id}"><div class="frow-text"><span class="frow-label">Folder</span><span class="frow-value">${icon('folder', 16)} ${esc(folderOf(c))}</span></div>${icon('chev', 18, 'chev')}</a>
@@ -834,6 +1247,11 @@
         <a class="btn btn-secondary lost-btn" href="#/lost">${icon('alert', 20)}Lost your wallet?</a>
         ${note}
         <p class="assurance">${icon('lock', 18)}<span>Card PINs are never stored.</span></p>
+        <div class="cat-add" style="margin-top:1.5rem;padding-bottom:1rem;">
+          <button type="button" class="btn btn-secondary" style="color:var(--crit);border-color:rgba(224,161,150,0.35);" data-action="deleteCard" data-arg="${c.id}">
+            ${icon('close', 18)}Delete card
+          </button>
+        </div>
       </div>
     </section>`;
   }
@@ -853,7 +1271,7 @@
       let control;
       if (f.pw) {
         control = `<input id="${id}" class="input mono" type="text" value="${esc(S.addPw)}" data-bind="addPw" spellcheck="false" autocomplete="off">
-          <button type="button" id="generate" class="btn btn-secondary btn-small" data-action="generate">${icon('refresh', 18)}Generate 6-word passphrase</button>`;
+          ${pwStudioHtml()}`;
       } else if (f.area) {
         control = `<textarea id="${id}" class="input" rows="5" placeholder="${esc(f.hint)}" data-bind="addField" data-key="${id}">${esc(S.addVals[id] || '')}</textarea>`;
       } else {
@@ -861,6 +1279,11 @@
       }
       return `<div class="field"><label class="label" for="${id}">${esc(f.label)}${f.critical ? ' ' + criticalBadge : ''}</label>${control}</div>`;
     }).join('');
+    // Card network selector for cards
+    const netSelector = t.id === 'card' ? `<div class="field">
+        <label class="label">Card network</label>
+        ${networkPicker(S.addNetwork || 'VISA', 'chooseNetwork')}
+      </div>` : '';
     // CVV is opt-in per card, off by default, with the risk stated up front (threat model §9).
     const cvv = t.id === 'card' ? `<div class="optin">
         <label class="switch-row" for="cvv-optin">
@@ -874,8 +1297,8 @@
     return `<section class="screen fixed${fx.enter ? ' enter' : ''}">
       <div class="topbar"><button type="button" id="add-back" class="icon-btn strong" data-action="addBack" aria-label="Choose another type">${icon('back', 24)}</button></div>
       <div class="title-row">${typeTile(t.id)}<div class="col"><span class="label">${categoryOf(t.id).label}</span><h1 class="display">New ${t.label === 'API key' ? 'API key' : t.label.toLowerCase()}</h1></div></div>
-      <div class="form scroll" id="add-form" data-keep-scroll>${fields}${cvv}</div>
-      <div class="savebar"><a class="btn btn-primary" href="#/category/${t.id}">Save ${t.label === 'API key' ? 'API key' : t.label.toLowerCase()}</a></div>
+      <form class="form scroll" id="add-form" data-submit="saveItem" data-keep-scroll autocomplete="off">${fields}${netSelector}${cvv}</form>
+      <div class="savebar"><button type="submit" form="add-form" id="save-item" class="btn btn-primary" data-action="saveItem" data-arg="${t.id}">Save ${t.label === 'API key' ? 'API key' : t.label.toLowerCase()}</button></div>
     </section>`;
   }
 
@@ -973,7 +1396,7 @@
           <div class="group">${simple('Version', '<span class="mono">0.1 prototype</span>')}<div class="srow"><span class="srow-label">How Vaultaire protects you</span></div>${simple('Licence', 'GPL-3.0-or-later')}</div>
         </section>
         <div class="notice">${icon('alert', 20)}<p>Unaudited beta. Do not store real credentials until an independent security review is published.</p></div>
-        <button type="button" id="delete-vault" class="btn btn-danger" data-action="notBuilt" data-arg="Vault deletion">Delete vault</button>
+        <button type="button" id="delete-vault" class="btn btn-danger" data-action="deleteVault">Reset and delete custom data</button>
       </div>
     </section>`;
   }
@@ -992,6 +1415,27 @@
         <button type="button" id="bio-confirm" class="btn btn-primary" data-action="confirmSheet">Simulate ${P().bio}</button>
         <button type="button" id="bio-cancel" class="btn btn-ghost" data-action="cancelSheet">Cancel</button>
       </div></div>`;
+    }
+    if (S.renewingCard) {
+      const c = CARDS[S.renewingCard];
+      if (c) {
+        html += `<div class="backdrop fade-in" data-action="closeRenewModal"><div class="sheet rise" role="dialog" aria-modal="true" aria-labelledby="renew-title" style="text-align:left;align-items:stretch;max-width:340px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <h2 id="renew-title" style="margin:0;font-size:18px;">Renew ${esc(c.nick)}</h2>
+            <button type="button" class="icon-btn" data-action="closeRenewModal">${icon('close', 18)}</button>
+          </div>
+          <p class="body muted" style="font-size:13px;line-height:18px;margin-bottom:12px;">Update expiry date and CVV for your replacement card.</p>
+          <div class="field" style="margin-bottom:10px;">
+            <label class="label">New Expiry (MM / YY)</label>
+            <input type="text" class="input mono" placeholder="e.g. 10 / 31" data-bind="renewExpiry" value="${esc(S.renewExpiry || c.expiry || '')}">
+          </div>
+          <div class="field" style="margin-bottom:14px;">
+            <label class="label">New CVV (optional)</label>
+            <input type="text" class="input mono" placeholder="3 or 4 digits" maxlength="4" data-bind="renewCvv" value="${esc(S.renewCvv || c.cvv || '')}">
+          </div>
+          <button type="button" class="btn btn-primary" data-action="confirmRenew" data-arg="${c.id}">Save renewed card</button>
+        </div></div>`;
+      }
     }
     return html;
   }
@@ -1068,13 +1512,13 @@
       S.sheet = null;
       if (next.name === 'lock') S = fresh(); // locking wipes session state, instantly and without animation
       else fx.enter = true;
-      if (prev === 'add') Object.assign(S, { addType: null, addPw: '', addVals: {}, addCvv: false });
+      if (prev === 'add') Object.assign(S, { addType: null, addPw: '', addNetwork: 'VISA', userOverrodeNetwork: false, addVals: {}, addCvv: false });
       if (prev === 'recovery') Object.assign(S, { rkStep: 'show', rkA: '', rkB: '', rkErr: false });
       if (prev === 'password') Object.assign(S, { verifying: false });
       if (prev === 'move') S.newFolder = '';
       // "Add password" on a category page opens the form for that type directly.
       if (next.name === 'add' && next.param && TEMPLATES[next.param]) {
-        Object.assign(S, { addType: next.param, addPw: next.param === 'login' ? passphrase() : '', addVals: {}, addCvv: false });
+        Object.assign(S, { addType: next.param, addPw: next.param === 'login' ? passphrase() : '', addNetwork: 'VISA', userOverrodeNetwork: false, addVals: {}, addCvv: false });
       }
       current = next.key;
       app.innerHTML = ''; // new screen: do not carry focus or scroll over
@@ -1089,12 +1533,128 @@
     // The ring closes, then the vault is composed (the real app renders nothing before the key is available).
     bioUnlock: () => {
       if (S.unlocking) return;
+      haptic('unlock');
       set({ unlocking: true });
       later(320, () => { location.hash = '#/vault'; });
     },
     togglePw: () => set({ pwShown: !S.pwShown }),
     dismissBanner: () => set({ banner: false }),
-    finish: (arg) => { const [id, f] = arg.split(':'); finishes[id] = f; render(); },
+    finish: (arg) => { const [id, f] = arg.split(':'); finishes[id] = f; saveCustomData(); haptic('tick'); render(); },
+    flipCard: (id) => {
+      S.cardFlipped[id] = !S.cardFlipped[id];
+      haptic('tap');
+      render();
+    },
+    toggleFav: (id) => {
+      const it = itemById(id) || ITEMS.find((x) => x.card === id);
+      if (it) {
+        it.fav = !it.fav;
+        saveCustomData();
+        haptic('tap');
+        render();
+        toast(it.fav ? 'Pinned to favorites' : 'Removed from favorites');
+        announce(it.fav ? 'Pinned to favorites' : 'Removed from favorites');
+      }
+    },
+    openRenewModal: (id) => {
+      const c = CARDS[id];
+      if (!c) return;
+      S.renewingCard = id;
+      S.renewExpiry = c.expiry || '';
+      S.renewCvv = c.cvv || '';
+      haptic('tap');
+      render();
+    },
+    closeRenewModal: () => {
+      S.renewingCard = null;
+      render();
+    },
+    confirmRenew: (id) => {
+      const c = CARDS[id];
+      if (!c) return;
+      if (S.renewExpiry) c.expiry = S.renewExpiry.trim();
+      if (S.renewCvv) c.cvv = S.renewCvv.trim();
+      S.renewingCard = null;
+      saveCustomData();
+      haptic('tap');
+      render();
+      toast('Card renewed successfully');
+      announce(`${c.nick} renewed`);
+    },
+    setPwMode: (mode) => {
+      S.pwMode = mode;
+      S.pwLen = mode === 'passphrase' ? 6 : mode === 'complex' ? 20 : 6;
+      S.addPw = generateStudioPassword();
+      haptic('tick');
+      render();
+    },
+    setPwLen: (val, el) => {
+      S.pwLen = parseInt(el.value, 10);
+      S.addPw = generateStudioPassword();
+      render();
+    },
+    togglePwOpt: (opt) => {
+      if (opt === 'upper') S.pwUpper = !S.pwUpper;
+      if (opt === 'digits') S.pwDigits = !S.pwDigits;
+      if (opt === 'symbols') S.pwSymbols = !S.pwSymbols;
+      S.addPw = generateStudioPassword();
+      haptic('tick');
+      render();
+    },
+    regenPw: () => {
+      S.addPw = generateStudioPassword();
+      haptic('tick');
+      render();
+    },
+    copyStudioPw: () => {
+      if (S.addPw) {
+        if (navigator.clipboard) navigator.clipboard.writeText(S.addPw);
+        haptic('copy');
+        toast('Generated password copied');
+      }
+    },
+    toggleAddCustomField: () => {
+      S.addingCustomField = !S.addingCustomField;
+      render();
+    },
+    setCustomTier: (tier) => {
+      S.customFieldTier = tier;
+      render();
+    },
+    cancelCustomField: () => {
+      S.addingCustomField = false;
+      S.customFieldLabel = '';
+      S.customFieldValue = '';
+      render();
+    },
+    saveCustomField: (itemId) => {
+      const it = itemById(itemId);
+      if (!it || !S.customFieldLabel.trim()) return;
+      const tier = S.customFieldTier || 'concealed';
+      const fn = tier === 'critical' ? X : tier === 'concealed' ? C : N;
+      if (!it.fields) it.fields = [];
+      it.fields.push(fn(S.customFieldLabel.trim(), S.customFieldValue.trim(), { copy: true, custom: true }));
+      S.addingCustomField = false;
+      S.customFieldLabel = '';
+      S.customFieldValue = '';
+      saveCustomData();
+      haptic('tap');
+      render();
+      toast('Custom field added');
+      announce('Custom field added');
+    },
+    deleteCustomField: (arg) => {
+      const [itemId, idxStr] = arg.split(':');
+      const it = itemById(itemId);
+      const idx = parseInt(idxStr, 10);
+      if (it && it.fields && it.fields[idx]) {
+        it.fields.splice(idx, 1);
+        saveCustomData();
+        haptic('tap');
+        render();
+        toast('Custom field deleted');
+      }
+    },
     moveSection: (arg, el) => {
       const [type, step] = arg.split(':');
       const i = layout.order.indexOf(type);
@@ -1124,11 +1684,15 @@
       announce('Home sections reset to default');
     },
     reveal: (key, el) => {
+      haptic('reveal');
       if (S.revealed === key) { stopReveal(); render(); return; }
       if (el.dataset.tier === 'critical') critical('reveal', key, el.dataset.label);
       else startReveal(key);
     },
-    copy: (key, el) => (el.dataset.tier === 'critical' ? critical('copy', key, el.dataset.label) : toast('Copied · clears in 60 s')),
+    copy: (key, el) => {
+      haptic('copy');
+      return (el.dataset.tier === 'critical' ? critical('copy', key, el.dataset.label) : toast('Copied · clears in 60 s'));
+    },
     confirmSheet: () => {
       const { kind, field } = S.sheet;
       S.sheet = null;
@@ -1136,8 +1700,25 @@
       doAction(kind, field);
     },
     cancelSheet: () => set({ sheet: null }),
-    pick: (type) => { fx.enter = true; set({ addType: type, addPw: type === 'login' ? passphrase() : '', addVals: {}, addCvv: false }); },
-    addBack: () => { fx.enter = true; set({ addType: null, addVals: {}, addCvv: false }); },
+    pick: (type) => { fx.enter = true; set({ addType: type, addPw: type === 'login' ? passphrase() : '', addNetwork: 'VISA', userOverrodeNetwork: false, addVals: {}, addCvv: false }); },
+    addBack: () => { fx.enter = true; set({ addType: null, addVals: {}, addNetwork: 'VISA', userOverrodeNetwork: false, addCvv: false }); },
+    chooseNetwork: (net) => {
+      S.userOverrodeNetwork = true;
+      set({ addNetwork: net });
+    },
+    changeCardNetwork: (arg) => {
+      const [id, net] = arg.split(':');
+      if (!CARDS[id]) return;
+      CARDS[id].network = net;
+      const it = ITEMS.find((x) => x.card === id);
+      if (it) {
+        it.sub = `${formatNetwork(net)} · •••• ${CARDS[id].last4}`;
+      }
+      saveCustomData();
+      render();
+      toast(`Network updated to ${formatNetwork(net)}`);
+      announce(`Card network updated to ${formatNetwork(net)}`);
+    },
     toggleCvv: () => { fx.reveal = !S.addCvv; set({ addCvv: !S.addCvv }); },
     generate: () => set({ addPw: passphrase() }),
     rkVerify: () => { fx.step = true; set({ rkStep: 'verify', rkA: '', rkB: '', rkErr: false }); },
@@ -1167,6 +1748,339 @@
       render();
       announce(`Code ${i + 1} ${set.has(i) ? 'marked used' : 'marked unused'}`);
     },
+    saveItem: (type) => {
+      if (!type) return;
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
+      if (type === 'card') {
+        const nick = (S.addVals['field-0'] || '').trim() || 'Payment card';
+        const holder = (S.addVals['field-1'] || '').trim() || 'Alex Morgan';
+        let rawNum = (S.addVals['field-2'] || '').replace(/\s+/g, '');
+        if (!rawNum) rawNum = '4532' + Math.floor(100000000000 + Math.random() * 900000000000);
+        const formattedNum = rawNum.replace(/(.{4})/g, '$1 ').trim();
+        const last4 = rawNum.slice(-4) || '1234';
+        const expiry = (S.addVals['field-3'] || '').trim() || '08 / 29';
+        const issuer = (S.addVals['field-4'] || '').trim() || 'Northbridge Bank';
+        const cvv = S.addCvv ? (S.addVals['field-cvv'] || '').trim() || '482' : null;
+
+        const network = S.addNetwork || detectNetwork(rawNum) || 'VISA';
+
+        const newId = 'c_' + Date.now();
+        CARDS[newId] = {
+          id: newId,
+          nick,
+          network,
+          issuer,
+          holder,
+          number: formattedNum,
+          last4,
+          expiry,
+          cvv,
+          hotline: '+1 800 555 0199',
+          custom: true
+        };
+        finishes[newId] = 'obsidian';
+
+        const newItem = {
+          id: 'item_' + newId,
+          type: 'card',
+          card: newId,
+          title: nick,
+          sub: `${formatNetwork(network)} · •••• ${last4}`,
+          fav: false,
+          custom: true
+        };
+        ITEMS.unshift(newItem);
+        saveCustomData();
+        Object.assign(S, { addType: null, addPw: '', addNetwork: 'VISA', userOverrodeNetwork: false, addVals: {}, addCvv: false });
+        location.hash = `#/card/${newId}`;
+        toast('Card saved to vault');
+        announce(`${nick} saved`);
+        return;
+      }
+
+      if (type === 'login') {
+        const title = (S.addVals['field-0'] || '').trim() || (S.addVals['field-3'] || '').trim() || 'New password';
+        const username = (S.addVals['field-1'] || '').trim();
+        const pw = S.addPw || (S.addVals['field-2'] || '').trim() || passphrase();
+        const website = (S.addVals['field-3'] || '').trim();
+        const newId = 'p_' + Date.now();
+
+        const fields = [];
+        if (username) fields.push(N('Username', username, { copy: true }));
+        if (pw) fields.push(C('Password', pw, { mono: true, meter: [5, 'Passphrase'] }));
+        if (website) fields.push(N('Website', website));
+        fields.push(N('Password history', '1 version kept'));
+
+        const newItem = {
+          id: newId,
+          type: 'login',
+          title,
+          sub: username ? (website ? `${username} · ${website}` : username) : website || 'Password',
+          fav: false,
+          custom: true,
+          fields,
+          foot: `Added ${dateStr}`
+        };
+        ITEMS.unshift(newItem);
+        saveCustomData();
+        Object.assign(S, { addType: null, addPw: '', addVals: {}, addCvv: false });
+        location.hash = `#/item/${newId}`;
+        toast('Password saved to vault');
+        announce(`${title} saved`);
+        return;
+      }
+
+      if (type === 'note') {
+        const title = (S.addVals['field-0'] || '').trim() || 'Untitled note';
+        const noteText = (S.addVals['field-1'] || '').trim();
+        const newId = 'n_' + Date.now();
+
+        const newItem = {
+          id: newId,
+          type: 'note',
+          title,
+          sub: 'Secure note',
+          fav: false,
+          custom: true,
+          fields: [
+            C('Note', noteText || 'No text content', { multiline: true, copy: false })
+          ],
+          foot: `Added ${dateStr}`
+        };
+        ITEMS.unshift(newItem);
+        saveCustomData();
+        Object.assign(S, { addType: null, addPw: '', addVals: {}, addCvv: false });
+        location.hash = `#/item/${newId}`;
+        toast('Note saved to vault');
+        announce(`${title} saved`);
+        return;
+      }
+
+      if (type === 'devkey') {
+        const title = (S.addVals['field-0'] || '').trim() || 'API key';
+        const service = (S.addVals['field-1'] || '').trim();
+        const env = (S.addVals['field-2'] || '').trim() || 'production';
+        const keyId = (S.addVals['field-3'] || '').trim();
+        const secret = (S.addVals['field-4'] || '').trim();
+        const newId = 'k_' + Date.now();
+
+        const fields = [];
+        if (service) fields.push(N('Service', service));
+        if (env) fields.push(N('Environment', env));
+        if (keyId) fields.push(N('Key ID', keyId, { mono: true, copy: true }));
+        if (secret) fields.push(X('Secret', secret, { mono: true }));
+
+        const newItem = {
+          id: newId,
+          type: 'devkey',
+          title,
+          sub: `${env}${keyId ? ' · ' + keyId.slice(0, 4) + '…' : ' · secret key'}`,
+          fav: false,
+          custom: true,
+          fields,
+          foot: 'Rotatable API secret'
+        };
+        ITEMS.unshift(newItem);
+        saveCustomData();
+        Object.assign(S, { addType: null, addPw: '', addVals: {}, addCvv: false });
+        location.hash = `#/item/${newId}`;
+        toast('API key saved to vault');
+        announce(`${title} saved`);
+        return;
+      }
+
+      if (type === 'codes') {
+        const title = (S.addVals['field-0'] || '').trim() || 'Recovery codes';
+        const website = (S.addVals['field-1'] || '').trim();
+        const raw = (S.addVals['field-2'] || '').trim();
+        const codes = raw.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+        const newId = 'r_' + Date.now();
+        usedCodes[newId] = new Set();
+
+        const newItem = {
+          id: newId,
+          type: 'codes',
+          title,
+          service: website || title,
+          sub: website || title,
+          codes: codes.length ? codes : ['K7QM-4TXB', 'R9HF-2WZN', 'D3PV-8YCJ', 'G5EA-6LNU'],
+          fav: false,
+          custom: true
+        };
+        ITEMS.unshift(newItem);
+        saveCustomData();
+        Object.assign(S, { addType: null, addPw: '', addVals: {}, addCvv: false });
+        location.hash = `#/item/${newId}`;
+        toast('Recovery codes saved');
+        announce(`${title} saved`);
+        return;
+      }
+
+      if (type === 'bank') {
+        const title = (S.addVals['field-0'] || '').trim() || 'Bank account';
+        const bank = (S.addVals['field-1'] || '').trim() || 'Bank';
+        const holder = (S.addVals['field-2'] || '').trim() || 'Alex Morgan';
+        const acc = (S.addVals['field-3'] || '').trim();
+        const routing = (S.addVals['field-4'] || '').trim();
+        const last4 = acc.replace(/\s+/g, '').slice(-4) || '••••';
+        const newId = 'b_' + Date.now();
+
+        const fields = [];
+        if (bank) fields.push(N('Bank', bank));
+        if (holder) fields.push(N('Account holder', holder, { copy: true }));
+        if (acc) fields.push(X('Account number', acc, { mono: true, keep: last4 }));
+        if (routing) fields.push(N('Sort code / Routing / SWIFT', routing, { mono: true, copy: true }));
+
+        const newItem = {
+          id: newId,
+          type: 'bank',
+          title,
+          sub: `${bank} · •••• ${last4}`,
+          fav: false,
+          custom: true,
+          fields,
+          foot: 'Primary bank details'
+        };
+        ITEMS.unshift(newItem);
+        saveCustomData();
+        Object.assign(S, { addType: null, addPw: '', addVals: {}, addCvv: false });
+        location.hash = `#/item/${newId}`;
+        toast('Bank account saved');
+        announce(`${title} saved`);
+        return;
+      }
+
+      if (type === 'identity') {
+        const docType = (S.addVals['field-0'] || '').trim() || 'Identity';
+        const fullName = (S.addVals['field-1'] || '').trim() || 'Alex Morgan';
+        const docNum = (S.addVals['field-2'] || '').trim();
+        const country = (S.addVals['field-3'] || '').trim();
+        const expiry = (S.addVals['field-4'] || '').trim();
+        const newId = 'i_' + Date.now();
+
+        const fields = [
+          N('Document type', docType),
+          N('Full name', fullName),
+          X('Document number', docNum || 'ID-' + Math.floor(100000 + Math.random() * 900000), { mono: true }),
+          N('Issuing country', country || 'United Kingdom'),
+          N('Expires', expiry || '2030-01-01')
+        ];
+
+        const newItem = {
+          id: newId,
+          type: 'identity',
+          title: docType,
+          sub: expiry ? `Expires ${expiry}` : country || 'Identity document',
+          fav: false,
+          custom: true,
+          fields
+        };
+        ITEMS.unshift(newItem);
+        saveCustomData();
+        Object.assign(S, { addType: null, addPw: '', addVals: {}, addCvv: false });
+        location.hash = `#/item/${newId}`;
+        toast('Document saved');
+        announce(`${docType} saved`);
+        return;
+      }
+
+      if (type === 'membership') {
+        const prog = (S.addVals['field-0'] || '').trim() || 'Membership';
+        const num = (S.addVals['field-1'] || '').trim();
+        const tier = (S.addVals['field-2'] || '').trim();
+        const ends = (S.addVals['field-3'] || '').trim();
+        const newId = 'm_' + Date.now();
+
+        const newItem = {
+          id: newId,
+          type: 'membership',
+          title: prog,
+          sub: tier ? `${prog} · ${tier}` : prog,
+          fav: false,
+          custom: true,
+          fields: [
+            N('Program', prog),
+            N('Member number', num, { mono: true, copy: true }),
+            N('Tier', tier),
+            N('Tier ends', ends)
+          ]
+        };
+        ITEMS.unshift(newItem);
+        saveCustomData();
+        Object.assign(S, { addType: null, addPw: '', addVals: {}, addCvv: false });
+        location.hash = `#/item/${newId}`;
+        toast('Membership saved');
+        announce(`${prog} saved`);
+        return;
+      }
+
+      // Default / 'other'
+      const title = (S.addVals['field-0'] || '').trim() || 'Custom item';
+      const label = (S.addVals['field-1'] || '').trim() || 'Detail';
+      const val = (S.addVals['field-2'] || '').trim();
+      const newId = 'o_' + Date.now();
+
+      const newItem = {
+        id: newId,
+        type: 'other',
+        title,
+        sub: val ? `${label}: ${val}` : 'Custom item',
+        fav: false,
+        custom: true,
+        fields: [
+          N('Title', title),
+          C(label, val, { copy: true })
+        ]
+      };
+      ITEMS.unshift(newItem);
+      saveCustomData();
+      Object.assign(S, { addType: null, addPw: '', addVals: {}, addCvv: false });
+      location.hash = `#/item/${newId}`;
+      toast('Item saved');
+      announce(`${title} saved`);
+    },
+    deleteItem: (id) => {
+      const idx = ITEMS.findIndex((it) => it.id === id);
+      if (idx !== -1) {
+        haptic('danger');
+        const it = ITEMS[idx];
+        const cat = it.type;
+        const cardId = it.card;
+        ITEMS.splice(idx, 1);
+        if (cardId && CARDS[cardId]) {
+          delete CARDS[cardId];
+          delete finishes[cardId];
+        }
+        saveCustomData();
+        location.hash = `#/category/${cat}`;
+        toast('Item removed');
+        announce('Item removed');
+      }
+    },
+    deleteCard: (id) => {
+      const idx = ITEMS.findIndex((it) => it.card === id);
+      haptic('danger');
+      if (idx !== -1) ITEMS.splice(idx, 1);
+      if (CARDS[id]) delete CARDS[id];
+      delete finishes[id];
+      saveCustomData();
+      location.hash = '#/category/card';
+      toast('Card removed');
+      announce('Card removed');
+    },
+    deleteVault: () => {
+      if (window.confirm('Clear custom items and reset vault to default sample state?')) {
+        try {
+          localStorage.removeItem(CUSTOM_ITEMS_KEY);
+          localStorage.removeItem(CUSTOM_CARDS_KEY);
+          localStorage.removeItem(CUSTOM_FINISHES_KEY);
+          localStorage.removeItem(CUSTOM_CODES_KEY);
+        } catch (e) {}
+        location.reload();
+      }
+    },
     notBuilt: (what) => toast(what + ' is not in the prototype yet')
   };
   // Each returns true when the screen must re-render.
@@ -1174,10 +2088,24 @@
     pw: (v) => { S.pw = v; return true; },
     query: (v) => { S.query = v; return true; },
     addPw: (v) => { S.addPw = v; return false; },
-    addField: (v, el) => { S.addVals[el.dataset.key] = v; return false; },
+    addField: (v, el) => {
+      S.addVals[el.dataset.key] = v;
+      if (S.addType === 'card' && el.dataset.key === 'field-2' && !S.userOverrodeNetwork) {
+        const detected = detectNetwork(v);
+        if (detected !== S.addNetwork) {
+          S.addNetwork = detected;
+          return true;
+        }
+      }
+      return false;
+    },
     rkA: (v) => { S.rkA = v; S.rkErr = false; return true; },
     rkB: (v) => { S.rkB = v; S.rkErr = false; return true; },
-    newFolder: (v) => { S.newFolder = v; return true; }
+    newFolder: (v) => { S.newFolder = v; return true; },
+    renewExpiry: (v) => { S.renewExpiry = v; return false; },
+    renewCvv: (v) => { S.renewCvv = v; return false; },
+    customFieldLabel: (v) => { S.customFieldLabel = v; return false; },
+    customFieldValue: (v) => { S.customFieldValue = v; return false; }
   };
   const SUBMITS = {
     // The dial turns while the (simulated) key derivation runs: real progress, not decoration.
@@ -1185,6 +2113,9 @@
       if (!S.pw || S.verifying) return;
       set({ verifying: true });
       later(900, () => { location.hash = '#/vault'; });
+    },
+    saveItem: () => {
+      if (S.addType) ACTIONS.saveItem(S.addType);
     },
     createFolder: () => {
       const id = route().param;
@@ -1209,10 +2140,16 @@
   app.addEventListener('click', onClick);
   nav.addEventListener('click', onClick);
   app.addEventListener('input', (e) => {
-    const el = e.target.closest('[data-bind]');
-    if (!el) return;
-    const fn = BINDS[el.dataset.bind];
-    if (fn && fn(el.value, el)) render();
+    const bindEl = e.target.closest('[data-bind]');
+    if (bindEl) {
+      const fn = BINDS[bindEl.dataset.bind];
+      if (fn && fn(bindEl.value, bindEl)) render();
+      return;
+    }
+    const actEl = e.target.closest('[data-action]');
+    if (actEl && ACTIONS[actEl.dataset.action]) {
+      ACTIONS[actEl.dataset.action](actEl.dataset.arg, actEl);
+    }
   });
   app.addEventListener('submit', (e) => {
     e.preventDefault();

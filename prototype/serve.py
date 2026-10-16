@@ -30,6 +30,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         ".webmanifest": "application/manifest+json",
         ".woff2": "font/woff2",
         ".svg": "image/svg+xml",
+        ".apk": "application/vnd.android.package-archive",
     }
 
     def setup(self):
@@ -44,9 +45,31 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return
         super().handle_one_request()
 
+    def do_GET(self):
+        clean_path = self.path.split("?")[0].rstrip("/")
+        if clean_path in ("/download", "/downloads"):
+            self.send_response(302)
+            self.send_header("Location", "/download.html")
+            self.end_headers()
+            return
+        if clean_path in ("/app-release", "/apk-release", "/apk", "/release"):
+            self.send_response(302)
+            self.send_header("Location", "/app-release.apk")
+            self.end_headers()
+            return
+        if clean_path in ("/app-debug", "/apk-debug", "/debug"):
+            self.send_response(302)
+            self.send_header("Location", "/app-debug.apk")
+            self.end_headers()
+            return
+        return super().do_GET()
+
     def end_headers(self):
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
+        if self.path.split("?")[0].endswith(".apk"):
+            fname = pathlib.Path(self.path.split("?")[0]).name
+            self.send_header("Content-Disposition", f'attachment; filename="{fname}"')
         super().end_headers()
 
 

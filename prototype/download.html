@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Download Vaultaire APK</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0B0B0C;
+      color: #F2EEE6;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 20px;
+    }
+    .container {
+      max-width: 440px;
+      width: 100%;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #C9B38A;
+      background: rgba(201, 179, 138, 0.12);
+      border: 1px solid rgba(201, 179, 138, 0.25);
+      padding: 4px 10px;
+      border-radius: 999px;
+      margin-bottom: 16px;
+      font-weight: 600;
+    }
+    h1 {
+      font-size: 26px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+    p.sub {
+      color: #A8A39A;
+      font-size: 14px;
+      line-height: 1.5;
+      margin-bottom: 28px;
+    }
+    .card {
+      background: #141416;
+      border: 1px solid rgba(255, 245, 230, 0.1);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .card-desc {
+      font-size: 13px;
+      color: #A8A39A;
+      line-height: 1.4;
+      margin-bottom: 16px;
+    }
+    .btn {
+      display: block;
+      width: 100%;
+      text-align: center;
+      padding: 14px 18px;
+      background: #C9B38A;
+      color: #0B0B0C;
+      font-size: 15px;
+      font-weight: 600;
+      text-decoration: none;
+      border-radius: 12px;
+      transition: background 0.15s ease, transform 0.1s ease;
+    }
+    .btn:active {
+      transform: scale(0.98);
+      background: #bfa373;
+    }
+    .btn-secondary {
+      background: #1C1C1F;
+      color: #F2EEE6;
+      border: 1px solid rgba(255, 245, 230, 0.12);
+    }
+    .btn-secondary:active {
+      background: #25252a;
+    }
+    .steps {
+      margin-top: 24px;
+      background: #141416;
+      border: 1px solid rgba(255, 245, 230, 0.08);
+      border-radius: 16px;
+      padding: 20px;
+    }
+    .steps h2 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 14px;
+      color: #F2EEE6;
+    }
+    .steps ol {
+      padding-left: 20px;
+      color: #A8A39A;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+    .steps li strong {
+      color: #F2EEE6;
+    }
+    .footer-link {
+      display: block;
+      margin-top: 24px;
+      text-align: center;
+      color: #8A857C;
+      font-size: 13px;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <span class="badge">Gate G2 / Phase 0 Spike</span>
+    <h1>Install Test APK</h1>
+    <p class="sub">Download the Vaultaire Keystore & Biometrics diagnostic app directly to your Samsung test device.</p>
+
+    <div class="card">
+      <div class="card-title">Release APK (Recommended)</div>
+      <div class="card-desc">R8-minified build with ARM64 native Rust core and JNA. Fast download (2.8 MB).</div>
+      <a class="btn" href="/app-release.apk" download>Download Release APK (2.8 MB)</a>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Debug APK</div>
+      <div class="card-desc">Unminified build with full debug symbols and both ARM64 and x86_64 architectures (31 MB).</div>
+      <a class="btn btn-secondary" href="/app-debug.apk" download>Download Debug APK (31 MB)</a>
+    </div>
+
+    <div class="steps">
+      <h2>How to install on Samsung Galaxy:</h2>
+      <ol>
+        <li>Tap <strong>Download Release APK</strong> above.</li>
+        <li>If Samsung Internet / Chrome shows <em>"File might be harmful"</em>, tap <strong>Download anyway</strong>.</li>
+        <li>When download finishes, tap <strong>Open</strong> (or open <strong>My Files → Downloads</strong>).</li>
+        <li>If prompted <em>"Install unknown apps"</em>, tap <strong>Settings</strong> and switch on <strong>Allow from this source</strong> for your browser / My Files.</li>
+        <li>Tap <strong>Install</strong> and then open <strong>Vaultaire Spike</strong>.</li>
+      </ol>
+    </div>
+
+    <a class="footer-link" href="/">← Return to Web UI Prototype</a>
+  </div>
+</body>
+</html>
